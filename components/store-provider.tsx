@@ -10,6 +10,7 @@ import {
 } from "react"
 import { toast } from "sonner"
 import { products, type Product } from "@/lib/products"
+import { logoutUser, onAuthChange } from "@/services/auth.service"
 
 export type CartItem = {
   id: string
@@ -35,8 +36,6 @@ type StoreContextValue = {
   clearCart: () => void
   toggleWishlist: (product: Product) => void
   isWishlisted: (id: string) => boolean
-  login: (email: string, name?: string) => void
-  signup: (name: string, email: string) => void
   logout: () => void
 }
 
@@ -44,7 +43,6 @@ const StoreContext = createContext<StoreContextValue | null>(null)
 
 const CART_KEY = "yashworld.cart"
 const WISH_KEY = "yashworld.wishlist"
-const USER_KEY = "yashworld.user"
 
 function readStorage<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback
@@ -65,7 +63,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setCart(readStorage<CartItem[]>(CART_KEY, []))
     setWishlist(readStorage<string[]>(WISH_KEY, []))
-    setUser(readStorage<User | null>(USER_KEY, null))
     setHydrated(true)
   }, [])
 
@@ -78,8 +75,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [wishlist, hydrated])
 
   useEffect(() => {
-    if (hydrated) window.localStorage.setItem(USER_KEY, JSON.stringify(user))
-  }, [user, hydrated])
+    const unsubscribe = onAuthChange((firebaseUser) => {
+      setUser(
+        firebaseUser
+          ? {
+              name: firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "",
+              email: firebaseUser.email || "",
+            }
+          : null,
+      )
+    })
+    return unsubscribe
+  }, [])
 
   const value = useMemo<StoreContextValue>(() => {
     const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0)
@@ -136,17 +143,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         })
       },
       isWishlisted: (id) => wishlist.includes(id),
-      login: (email, name) => {
-        const displayName = name ?? email.split("@")[0]
-        setUser({ name: displayName, email })
-        toast.success("Welcome back", { description: email })
-      },
-      signup: (name, email) => {
-        setUser({ name, email })
-        toast.success("Account created", { description: `Welcome, ${name}` })
-      },
-      logout: () => {
-        setUser(null)
+      logout: async () => {
+        await logoutUser()
         toast("Signed out")
       },
     }
