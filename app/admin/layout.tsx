@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { Menu, ShieldAlert } from "lucide-react"
-import { AdminSidebar, AdminSidebarContent } from "@/components/admin/admin-sidebar"
+import { AdminSidebar, AdminSidebarContent, getPermissionForPath } from "@/components/admin/admin-sidebar"
 import { AdminAuthContext, type AdminProfile } from "@/components/admin/admin-auth-context"
 import { onAuthChange } from "@/services/auth.service"
 import { getUserProfile } from "@/services/user.service"
@@ -17,19 +17,24 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 
-const PATH_PERMISSIONS: { prefix: string; permission: AdminPermission }[] = [
-  { prefix: "/admin/staff", permission: "admin_management" },
-  { prefix: "/admin/products", permission: "product_management" },
-  { prefix: "/admin/sellers", permission: "seller_management" },
-  { prefix: "/admin/support", permission: "support" },
-]
-
-function getRequiredPermission(pathname: string): AdminPermission {
-  const match = PATH_PERMISSIONS.find((p) => pathname.startsWith(p.prefix))
-  if (match) return match.permission
-  if (pathname === "/admin") return "product_management"
-  // Safe default: any future/unmapped admin path requires Super Admin.
-  return "admin_management"
+/**
+ * Delegates to components/admin/admin-sidebar.tsx's getPermissionForPath —
+ * the SAME data the sidebar uses to decide what to show — instead of a
+ * separately hand-maintained list. That second list (now removed) was the
+ * actual bug behind "sidebar shows a section but the page denies access":
+ * it only covered /admin/staff, /admin/products, /admin/sellers and
+ * /admin/support, so every other real page (campaigns, coupons, banners,
+ * settings/*) silently fell back to requiring "admin_management"
+ * (super_admin-only) no matter what the sidebar — correctly — said a role
+ * could reach.
+ */
+function getRequiredPermission(pathname: string): AdminPermission | null {
+  const permission = getPermissionForPath(pathname)
+  if (permission === null) return null // dashboard root — any admin role may land here
+  // undefined = not registered in adminSections at all: secure default,
+  // same as the old fallback, for any future page that forgets to add
+  // itself to the sidebar config.
+  return permission ?? "admin_management"
 }
 
 // Routes that render outside the authenticated admin shell — the layout
@@ -158,6 +163,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     )
   }
 
+  const requiredPermission = getRequiredPermission(pathname)
+
   // Explicit, not just implied by hasPermission's short-circuit: super_admin
   // always passes this gate, on every route, full stop.
   // DEV_SHOW_ADMIN_MENU_TO_ALL (see lib/dev-flags.ts): frontend-only, temporary —
@@ -165,7 +172,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const allowed =
     DEV_SHOW_ADMIN_MENU_TO_ALL ||
     admin.role === "super_admin" ||
-    (isAdminRole(admin.role) && hasPermission(admin.role, getRequiredPermission(pathname)))
+    requiredPermission === null ||
+    (isAdminRole(admin.role) && hasPermission(admin.role, requiredPermission))
 
   return (
     <AdminAuthContext.Provider value={admin}>

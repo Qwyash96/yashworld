@@ -27,6 +27,7 @@ import { logoutUser } from "@/services/auth.service"
 import { hasPermission, isAdminRole, ROLE_LABELS, type AdminPermission } from "@/lib/admin-roles"
 import { DEV_SHOW_ADMIN_MENU_TO_ALL } from "@/lib/dev-flags"
 import { cn } from "@/lib/utils"
+import type { UserRole } from "@/types/user"
 
 type AdminSectionItem = {
   label: string
@@ -47,7 +48,7 @@ type AdminSection = {
   items: AdminSectionItem[]
 }
 
-const adminSections: AdminSection[] = [
+export const adminSections: AdminSection[] = [
   {
     label: "Users",
     icon: Users,
@@ -144,6 +145,65 @@ const adminSections: AdminSection[] = [
 ]
 
 /**
+ * Every real (non-"#") route in adminSections, flattened to {path, permission}
+ * — path is what an item's href resolves to with any #hash fragment stripped
+ * (Payments' items link to /admin/settings/payments#section-name; the
+ * permission applies to the whole page, not a fragment).
+ *
+ * This is THE single source of truth app/admin/layout.tsx's route guard
+ * reads from (via getPermissionForPath, below) instead of maintaining its
+ * own separate list — a second hand-maintained copy is exactly what let the
+ * sidebar and the route guard drift out of sync before (sidebar showed a
+ * section as accessible while the route guard, working off a stale/partial
+ * list, denied it).
+ */
+const PATH_PERMISSIONS: { path: string; permission: AdminPermission }[] = adminSections.flatMap((section) =>
+  section.items
+    .filter((item) => item.href !== "#")
+    .map((item) => ({ path: item.href.split("#")[0]!, permission: item.permission ?? section.permission })),
+)
+
+/**
+ * Which permission a given /admin/* pathname requires, per the same data
+ * that drives sidebar visibility. Matches the longest registered path that
+ * is a prefix of pathname, so dynamic routes (e.g. /admin/sellers/[id]) are
+ * covered by their list page's entry (/admin/sellers) without needing a
+ * separate entry. Returns null for "/admin" itself (the dashboard root —
+ * every admin role may land there; see app/admin/page.tsx for how it
+ * adapts its content per role) and undefined for anything not registered
+ * here at all, which callers should treat as "requires super_admin" —
+ * a secure-by-default fallback for any future page that forgets to add
+ * itself to adminSections.
+ */
+export function getPermissionForPath(pathname: string): AdminPermission | null | undefined {
+  if (pathname === "/admin") return null
+  const match = PATH_PERMISSIONS.filter((p) => pathname === p.path || pathname.startsWith(`${p.path}/`)).sort(
+    (a, b) => b.path.length - a.path.length,
+  )[0]
+  return match?.permission
+}
+
+/**
+ * Which sections/items a role can actually see, per the same adminSections
+ * data getPermissionForPath reads from — the single source of truth shared
+ * by the sidebar (this function), the route guard (app/admin/layout.tsx),
+ * and the dashboard root's role-appropriate content (app/admin/page.tsx).
+ * Explicit for super_admin, not just implied by hasPermission's
+ * short-circuit: super_admin always sees every section, full stop,
+ * regardless of anything else about their account.
+ */
+export function getVisibleAdminSections(role: UserRole | undefined | null): AdminSection[] {
+  if (role === "super_admin") return adminSections
+  if (!isAdminRole(role)) return []
+  return adminSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => hasPermission(role, item.permission ?? section.permission)),
+    }))
+    .filter((section) => section.items.length > 0)
+}
+
+/**
  * The actual admin navigation — used both by the always-visible desktop
  * `<aside>` (AdminSidebar, below) and by the mobile hamburger drawer
  * (app/admin/layout.tsx's Sheet). This is the ONE place admin nav content
@@ -156,22 +216,9 @@ export function AdminSidebarContent({ onNavigate }: { onNavigate?: () => void } 
   const staff = useAdminAuth()
   const role = staff.role
 
-  // Explicit, not just implied by hasPermission's short-circuit: super_admin
-  // always sees every section, full stop, regardless of anything else about
-  // their account. Never make this conditional on ROLE_PERMISSIONS.
   // DEV_SHOW_ADMIN_MENU_TO_ALL (lib/dev-flags.ts): temporary, frontend-only —
   // remove this branch to restore role-based menu visibility.
-  const visibleSections =
-    DEV_SHOW_ADMIN_MENU_TO_ALL || role === "super_admin"
-      ? adminSections
-      : isAdminRole(role)
-        ? adminSections
-            .map((section) => ({
-              ...section,
-              items: section.items.filter((item) => hasPermission(role, item.permission ?? section.permission)),
-            }))
-            .filter((section) => section.items.length > 0)
-        : []
+  const visibleSections = DEV_SHOW_ADMIN_MENU_TO_ALL ? adminSections : getVisibleAdminSections(role)
 
   async function handleLogout() {
     await logoutUser()
@@ -198,18 +245,17 @@ export function AdminSidebarContent({ onNavigate }: { onNavigate?: () => void } 
         Home
       </Link>
 
-      {(DEV_SHOW_ADMIN_MENU_TO_ALL ||
-        staff.role === "super_admin" ||
-        (isAdminRole(staff.role) && hasPermission(staff.role, "product_management"))) && (
-        <Link
-          href="/admin"
-          onClick={onNavigate}
-          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-black transition-colors hover:bg-green-50 hover:text-green-700"
-        >
-          <LayoutDashboard className="size-4 shrink-0 text-green-700" />
-          Dashboard
-        </Link>
-      )}
+      {/* Dashboard ("/admin") — every admin role lands here after login (see
+          app/admin/login/page.tsx) and app/admin/page.tsx adapts its content
+          per role, so this link (like Home) needs no permission gate. */}
+      <Link
+        href="/admin"
+        onClick={onNavigate}
+        className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-black transition-colors hover:bg-green-50 hover:text-green-700"
+      >
+        <LayoutDashboard className="size-4 shrink-0 text-green-700" />
+        Dashboard
+      </Link>
 
       <Accordion className="flex w-full flex-col gap-1 overflow-y-auto">
         {visibleSections.map((section) => {
