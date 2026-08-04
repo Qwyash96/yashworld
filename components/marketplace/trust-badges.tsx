@@ -15,18 +15,18 @@ export function TrustBadges({ badges }: { badges: TrustBadge[] }) {
   if (badges.length === 0) return null
 
   return (
-    <section className="border-y border-border bg-white px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mx-auto grid max-w-7xl grid-cols-2 gap-6 sm:grid-cols-4">
+    <section className="border-y border-border bg-white px-3 py-4 sm:px-6 lg:px-8">
+      <div className="mx-auto grid max-w-7xl grid-cols-2 gap-4 sm:grid-cols-4">
         {badges.map((badge, i) => {
           const Icon = ICONS[badge.icon] ?? Shield
           return (
-            <div key={i} className="flex items-center gap-3">
-              <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-green-50">
-                <Icon className="size-5 text-green-700" />
+            <div key={i} className="flex items-center gap-2.5">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-green-50">
+                <Icon className="size-4 text-green-700" />
               </div>
-              <div>
-                <p className="text-sm font-semibold text-black">{badge.title}</p>
-                <p className="text-xs text-[#444444]">{badge.description}</p>
+              <div className="min-w-0">
+                <p className="truncate text-xs font-semibold text-black">{badge.title}</p>
+                <p className="truncate text-[11px] text-[#444444]">{badge.description}</p>
               </div>
             </div>
           )

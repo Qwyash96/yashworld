@@ -29,19 +29,19 @@ export function HeroSlider({ banners }: { banners: Banner[] }) {
   }
 
   const Slide = (
-    <div className="relative h-56 w-full overflow-hidden sm:h-72 lg:h-96">
+    <div className="relative h-[170px] w-full overflow-hidden lg:h-[340px]">
       <Image src={current.imageUrl} alt={current.title ?? "Promotional banner"} fill priority className="object-cover" />
       {current.title && (
-        <div className="absolute inset-0 flex items-end bg-gradient-to-t from-black/50 to-transparent p-6">
-          <h2 className="max-w-lg text-xl font-bold text-white sm:text-3xl">{current.title}</h2>
+        <div className="absolute inset-0 flex items-end bg-gradient-to-t from-black/45 to-transparent p-4 lg:p-6">
+          <h2 className="max-w-lg text-base font-bold text-white sm:text-xl lg:text-2xl">{current.title}</h2>
         </div>
       )}
     </div>
   )
 
   return (
-    <section className="relative mx-auto max-w-7xl overflow-hidden rounded-none bg-gray-100 sm:mx-4 sm:mt-4 sm:rounded-3xl lg:mx-auto lg:px-6">
-      <div className="relative overflow-hidden sm:rounded-3xl">
+    <section className="relative mx-auto max-w-7xl overflow-hidden bg-gray-100 sm:mx-3 sm:mt-3 sm:rounded-2xl lg:mx-auto lg:px-4">
+      <div className="relative overflow-hidden sm:rounded-2xl">
         {current.linkUrl ? <Link href={current.linkUrl}>{Slide}</Link> : Slide}
 
         {banners.length > 1 && (
@@ -49,25 +49,25 @@ export function HeroSlider({ banners }: { banners: Banner[] }) {
             <button
               onClick={() => go(-1)}
               aria-label="Previous banner"
-              className="absolute left-3 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-black shadow transition hover:bg-white"
+              className="absolute left-2 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-black shadow transition hover:bg-white lg:size-9"
             >
-              <ChevronLeft className="size-5" />
+              <ChevronLeft className="size-4 lg:size-5" />
             </button>
             <button
               onClick={() => go(1)}
               aria-label="Next banner"
-              className="absolute right-3 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-black shadow transition hover:bg-white"
+              className="absolute right-2 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-black shadow transition hover:bg-white lg:size-9"
             >
-              <ChevronRight className="size-5" />
+              <ChevronRight className="size-4 lg:size-5" />
             </button>
 
-            <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
+            <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-1.5">
               {banners.map((b, i) => (
                 <button
                   key={b.id}
                   onClick={() => setIndex(i)}
                   aria-label={`Go to banner ${i + 1}`}
-                  className={cn("h-1.5 rounded-full transition-all", i === index ? "w-6 bg-white" : "w-1.5 bg-white/60")}
+                  className={cn("h-1.5 rounded-full transition-all", i === index ? "w-5 bg-white" : "w-1.5 bg-white/60")}
                 />
               ))}
             </div>

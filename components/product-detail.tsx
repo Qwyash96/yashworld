@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Heart, Minus, Plus, ShoppingCart, Star, Truck, RotateCcw, Leaf, Zap } from "lucide-react"
 import { useStore } from "@/components/store-provider"
@@ -20,11 +20,14 @@ import { cn } from "@/lib/utils"
 
 export function ProductDetail({ product }: { product: Product }) {
   const router = useRouter()
-  const { addToCart, toggleWishlist, isWishlisted } = useStore()
+  const { addToCart, toggleWishlist, isWishlisted, recordProductView } = useStore()
   const [size, setSize] = useState(product.sizes[0])
   const [color, setColor] = useState(product.colors[0])
   const [quantity, setQuantity] = useState(1)
   const wishlisted = isWishlisted(product.id)
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => recordProductView(product.id), [product.id])
 
   function handleBuyNow() {
     addToCart(product, size, color, quantity)

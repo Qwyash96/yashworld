@@ -4,6 +4,7 @@
 export interface SocialLinks {
   instagram?: string
   whatsapp?: string
+  facebook?: string
   youtube?: string
   updatedAt?: string
 }

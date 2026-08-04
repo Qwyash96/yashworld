@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
 interface SaveBody {
   instagram?: string
   whatsapp?: string
+  facebook?: string
   youtube?: string
 }
 
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
   const body = (await request.json()) as SaveBody
   const patch: Partial<SocialLinks> = {}
 
-  for (const key of ["instagram", "whatsapp", "youtube"] as const) {
+  for (const key of ["instagram", "whatsapp", "facebook", "youtube"] as const) {
     const value = body[key]
     if (value === undefined) continue
     const trimmed = value.trim()

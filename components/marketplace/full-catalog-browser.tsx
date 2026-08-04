@@ -104,138 +104,134 @@ export function FullCatalogBrowser({ categories }: { categories: Category[] }) {
   const hasMore = visibleCount < filtered.length
 
   return (
-    <div id="browse-all">
-      {/* Quick Filters */}
-      <section className="border-b border-t border-border bg-white px-4 py-5 sm:px-6 lg:px-8">
-        <div className="mx-auto flex max-w-7xl gap-2 overflow-x-auto">
-          {quickFilters.map((filter) => (
+    <div id="browse-all" className="mx-auto max-w-7xl px-3 py-5 sm:px-6 lg:px-8">
+      <h2 className="text-base font-bold text-black sm:text-lg">All Products</h2>
+
+      {/* Quick filters */}
+      <div className="mt-2 flex gap-1.5 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {quickFilters.map((filter) => (
+          <button
+            key={filter.key}
+            onClick={() => {
+              setActiveFilter(filter.key)
+              setVisibleCount(PAGE_SIZE)
+            }}
+            className={cn(
+              "shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+              activeFilter === filter.key
+                ? "border-green-600 bg-green-600 text-white"
+                : "border-border bg-white text-black hover:border-green-600 hover:text-green-700"
+            )}
+          >
+            {filter.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Sort + count */}
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-[#888888]">
+          {filtered.length} product{filtered.length === 1 ? "" : "s"}
+        </p>
+        <div className="flex flex-wrap gap-1">
+          {sortOptions.map((option) => (
             <button
-              key={filter.key}
-              onClick={() => {
-                setActiveFilter(filter.key)
-                setVisibleCount(PAGE_SIZE)
-              }}
+              key={option.key}
+              onClick={() => setSortKey(option.key)}
               className={cn(
-                "shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition-colors",
-                activeFilter === filter.key
-                  ? "border-green-600 bg-green-600 text-white"
-                  : "border-border bg-white text-black hover:border-green-600 hover:text-green-700"
+                "rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors",
+                sortKey === option.key
+                  ? "bg-green-100 text-green-800"
+                  : "bg-[#f3f5f2] text-black hover:bg-green-50 hover:text-green-700"
               )}
             >
-              {filter.label}
+              {option.label}
             </button>
           ))}
         </div>
-      </section>
+      </div>
 
-      {/* Sort Bar */}
-      <section className="border-b border-border px-4 py-5 sm:px-6 lg:px-8">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-[#444444]">
-            {filtered.length} product{filtered.length === 1 ? "" : "s"}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {sortOptions.map((option) => (
-              <button
-                key={option.key}
-                onClick={() => setSortKey(option.key)}
-                className={cn(
-                  "rounded-full px-3 py-1.5 text-xs font-medium transition-colors sm:text-sm",
-                  sortKey === option.key
-                    ? "bg-green-100 text-green-800"
-                    : "bg-[#f3f5f2] text-black hover:bg-green-50 hover:text-green-700"
-                )}
-              >
-                {option.label}
-              </button>
+      {/* Grid */}
+      <div className="mt-3">
+        {loading ? (
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-4 lg:grid-cols-6">
+            {Array.from({ length: PAGE_SIZE }).map((_, i) => (
+              <ProductCardSkeleton key={i} />
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* Marketplace Product Grid */}
-      <section className="bg-[#fafbfa] px-4 py-10 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          {loading ? (
-            <div className="grid gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-              {Array.from({ length: PAGE_SIZE }).map((_, i) => (
-                <ProductCardSkeleton key={i} />
-              ))}
+        ) : visibleProducts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-green-200 bg-white py-12 text-center shadow-sm">
+            <div className="flex size-12 items-center justify-center rounded-full bg-green-50">
+              <PackageSearch className="size-6 text-green-700" />
             </div>
-          ) : visibleProducts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-green-200 bg-white py-20 text-center shadow-sm">
-              <div className="flex size-16 items-center justify-center rounded-full bg-green-50">
-                <PackageSearch className="size-8 text-green-700" />
-              </div>
-              <h2 className="mt-5 text-xl font-bold text-black">
-                {activeFilter === "all" ? "No products yet" : "No products match this filter"}
-              </h2>
-              <p className="mt-2 max-w-sm text-sm text-[#444444]">
-                {activeFilter === "all"
-                  ? "Approved seller products will appear here automatically as sellers list them — nothing is hardcoded on this page."
-                  : "Try a different category or clear your filters to see everything available."}
-              </p>
-              <div className="mt-6 flex flex-wrap justify-center gap-3">
-                {activeFilter !== "all" && (
-                  <button
-                    onClick={() => {
-                      setActiveFilter("all")
-                      setVisibleCount(PAGE_SIZE)
-                    }}
-                    className="rounded-xl border border-green-600 px-6 py-2.5 font-semibold text-green-700 transition hover:bg-green-50"
-                  >
-                    Clear Filter
-                  </button>
-                )}
-                <Link
-                  href="/categories"
-                  className="flex items-center gap-1.5 rounded-xl bg-green-600 px-6 py-2.5 font-semibold text-white transition hover:bg-green-700"
+            <h3 className="mt-3 text-base font-bold text-black">
+              {activeFilter === "all" ? "No products yet" : "No products match this filter"}
+            </h3>
+            <p className="mt-1 max-w-sm text-xs text-[#444444]">
+              {activeFilter === "all"
+                ? "Approved seller products will appear here automatically as sellers list them — nothing is hardcoded on this page."
+                : "Try a different category or clear your filters to see everything available."}
+            </p>
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              {activeFilter !== "all" && (
+                <button
+                  onClick={() => {
+                    setActiveFilter("all")
+                    setVisibleCount(PAGE_SIZE)
+                  }}
+                  className="rounded-xl border border-green-600 px-4 py-2 text-sm font-semibold text-green-700 transition hover:bg-green-50"
                 >
-                  <Sprout className="size-4" />
-                  Browse Categories
-                </Link>
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className="grid gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-                {visibleProducts.map((product) => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
-                {loadingMore &&
-                  Array.from({ length: Math.min(PAGE_SIZE, filtered.length - visibleProducts.length) }).map(
-                    (_, i) => <ProductCardSkeleton key={`more-${i}`} />
-                  )}
-              </div>
-
-              {hasMore && (
-                <div className="mt-10 flex flex-col items-center gap-3">
-                  <p className="text-xs text-[#444444]">
-                    Showing {visibleProducts.length} of {filtered.length} products
-                  </p>
-                  <button
-                    onClick={handleLoadMore}
-                    disabled={loadingMore}
-                    className="flex items-center gap-2 rounded-xl border border-green-600 px-8 py-3 font-semibold text-green-700 transition hover:bg-green-50 disabled:cursor-wait disabled:opacity-60"
-                  >
-                    {loadingMore ? (
-                      <>
-                        <span className="size-4 animate-spin rounded-full border-2 border-green-600 border-t-transparent" />
-                        Loading...
-                      </>
-                    ) : (
-                      <>
-                        Load More
-                        <ChevronDown className="size-4" />
-                      </>
-                    )}
-                  </button>
-                </div>
+                  Clear Filter
+                </button>
               )}
-            </>
-          )}
-        </div>
-      </section>
+              <Link
+                href="/categories"
+                className="flex items-center gap-1.5 rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700"
+              >
+                <Sprout className="size-4" />
+                Browse Categories
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-4 lg:grid-cols-6">
+              {visibleProducts.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+              {loadingMore &&
+                Array.from({ length: Math.min(PAGE_SIZE, filtered.length - visibleProducts.length) }).map(
+                  (_, i) => <ProductCardSkeleton key={`more-${i}`} />
+                )}
+            </div>
+
+            {hasMore && (
+              <div className="mt-6 flex flex-col items-center gap-2">
+                <p className="text-xs text-[#888888]">
+                  Showing {visibleProducts.length} of {filtered.length} products
+                </p>
+                <button
+                  onClick={handleLoadMore}
+                  disabled={loadingMore}
+                  className="flex items-center gap-2 rounded-xl border border-green-600 px-6 py-2 text-sm font-semibold text-green-700 transition hover:bg-green-50 disabled:cursor-wait disabled:opacity-60"
+                >
+                  {loadingMore ? (
+                    <>
+                      <span className="size-4 animate-spin rounded-full border-2 border-green-600 border-t-transparent" />
+                      Loading...
+                    </>
+                  ) : (
+                    <>
+                      Load More
+                      <ChevronDown className="size-4" />
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   )
 }

@@ -44,6 +44,8 @@ type StoreContextValue = {
   toggleCompare: (product: Product) => void
   isCompared: (id: string) => boolean
   clearCompare: () => void
+  recentlyViewed: string[]
+  recordProductView: (id: string) => void
   logout: () => void
 }
 
@@ -52,7 +54,9 @@ const StoreContext = createContext<StoreContextValue | null>(null)
 const CART_KEY = "yashworld.cart"
 const WISH_KEY = "yashworld.wishlist"
 const COMPARE_KEY = "yashworld.compare"
+const RECENTLY_VIEWED_KEY = "yashworld.recentlyViewed"
 const MAX_COMPARE = 4
+const MAX_RECENTLY_VIEWED = 20
 
 function readStorage<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback
@@ -68,6 +72,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([])
   const [wishlist, setWishlist] = useState<string[]>([])
   const [compare, setCompare] = useState<string[]>([])
+  const [recentlyViewed, setRecentlyViewed] = useState<string[]>([])
   const [user, setUser] = useState<User | null>(null)
   const [hydrated, setHydrated] = useState(false)
   const [catalog, setCatalog] = useState<Product[]>([])
@@ -76,6 +81,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setCart(readStorage<CartItem[]>(CART_KEY, []))
     setWishlist(readStorage<string[]>(WISH_KEY, []))
     setCompare(readStorage<string[]>(COMPARE_KEY, []))
+    setRecentlyViewed(readStorage<string[]>(RECENTLY_VIEWED_KEY, []))
     setHydrated(true)
   }, [])
 
@@ -98,6 +104,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (hydrated) window.localStorage.setItem(COMPARE_KEY, JSON.stringify(compare))
   }, [compare, hydrated])
+
+  useEffect(() => {
+    if (hydrated) window.localStorage.setItem(RECENTLY_VIEWED_KEY, JSON.stringify(recentlyViewed))
+  }, [recentlyViewed, hydrated])
 
   useEffect(() => {
     const unsubscribe = onAuthChange((firebaseUser) => {
@@ -141,6 +151,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       cart,
       wishlist,
       compare,
+      recentlyViewed,
       user,
       cartCount,
       cartSubtotal,
@@ -202,12 +213,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
       isCompared: (id) => compare.includes(id),
       clearCompare: () => setCompare([]),
+      recordProductView: (id) => {
+        setRecentlyViewed((prev) => [id, ...prev.filter((existing) => existing !== id)].slice(0, MAX_RECENTLY_VIEWED))
+      },
       logout: async () => {
         await logoutUser()
         toast("Signed out")
       },
     }
-  }, [cart, wishlist, compare, user, catalog])
+  }, [cart, wishlist, compare, recentlyViewed, user, catalog])
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>
 }

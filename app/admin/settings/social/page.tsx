@@ -54,8 +54,8 @@ export default function SocialSettingsPage() {
       <div>
         <h1 className="text-2xl font-bold text-black">Social Links</h1>
         <p className="mt-1 text-sm text-[#444444]">
-          Configure the Instagram, WhatsApp and YouTube links shown in the site footer. Leave a field blank to hide
-          that icon.
+          Configure the Instagram, WhatsApp, Facebook and YouTube links shown in the site footer. Leave a field
+          blank to hide that icon.
         </p>
       </div>
 
@@ -83,6 +83,17 @@ export default function SocialSettingsPage() {
             value={links.whatsapp ?? ""}
             onChange={(e) => setLinks((prev) => ({ ...prev, whatsapp: e.target.value }))}
             placeholder="https://wa.me/91XXXXXXXXXX"
+            className="h-11"
+          />
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="facebook">Facebook URL</Label>
+          <Input
+            id="facebook"
+            value={links.facebook ?? ""}
+            onChange={(e) => setLinks((prev) => ({ ...prev, facebook: e.target.value }))}
+            placeholder="https://facebook.com/yourpage"
             className="h-11"
           />
         </div>

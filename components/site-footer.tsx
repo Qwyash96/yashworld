@@ -2,107 +2,72 @@
 
 import Link from "next/link"
 import { useEffect, useState } from "react"
-import { Camera, MessageCircle, Play, Leaf } from "lucide-react"
+import { Camera, MessageCircle, ThumbsUp, Play, Leaf } from "lucide-react"
 import { getPublicSocialLinks } from "@/services/site-settings.service"
-import { fetchCategories } from "@/services/catalog.service"
 import { NewsletterSignup } from "@/components/newsletter-signup"
 import type { SocialLinks } from "@/types/site-settings"
-import type { Category } from "@/lib/products"
 import { Button } from "@/components/ui/button"
 
-const footerNav = [
-  {
-    title: "Shop",
-    links: [
-      { label: "All Products", href: "/products" },
-      { label: "Categories", href: "/categories" },
-      { label: "Wishlist", href: "/wishlist" },
-      { label: "Cart", href: "/cart" },
-    ],
-  },
-  {
-    title: "Account",
-    links: [
-      { label: "Sign In", href: "/login" },
-      { label: "Create Account", href: "/signup" },
-      { label: "My Profile", href: "/profile" },
-      { label: "My Orders", href: "/orders" },
-      { label: "Become a Seller", href: "/sell" },
-      { label: "Contact", href: "/contact" },
-    ],
-  },
+const footerLinks = [
+  { label: "About", href: "/about" },
+  { label: "Contact", href: "/contact" },
+  { label: "Become a Seller", href: "/sell" },
+  { label: "Privacy Policy", href: "/privacy" },
+  { label: "Refund Policy", href: "/refund-policy" },
+  { label: "Shipping Policy", href: "/shipping-policy" },
 ]
 
 export function SiteFooter() {
   const [social, setSocial] = useState<SocialLinks>({})
-  const [categories, setCategories] = useState<Category[]>([])
 
   useEffect(() => {
     getPublicSocialLinks().then(setSocial)
-    fetchCategories().then((cats) => setCategories(cats.slice(0, 6)))
   }, [])
 
   return (
     <footer className="border-t border-border bg-white">
-      <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 gap-10 md:grid-cols-4 lg:grid-cols-5">
-          <div className="col-span-2 lg:col-span-2">
-            <Link href="/" className="flex items-center gap-1.5 text-2xl font-bold text-green-700">
-              <Leaf className="size-6" />
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <Link href="/" className="flex items-center gap-1.5 text-xl font-bold text-green-700">
+              <Leaf className="size-5" />
               YashWorld
             </Link>
-            <p className="mt-4 max-w-xs text-sm leading-relaxed text-[#444444]">
-              India&apos;s premium marketplace for plants, pots and gardening essentials —
-              sourced from verified sellers, delivered with care.
+            <p className="mt-2 max-w-xs text-xs leading-relaxed text-[#444444]">
+              India&apos;s premium marketplace for plants, pots and gardening essentials.
             </p>
-            <NewsletterSignup className="mt-6" />
+            <NewsletterSignup className="mt-4" />
           </div>
 
-          {footerNav.map((group) => (
-            <div key={group.title}>
-              <h3 className="text-xs font-semibold uppercase tracking-widest text-[#444444]">
-                {group.title}
-              </h3>
-              <ul className="mt-4 space-y-2.5">
-                {group.links.map((link) => (
-                  <li key={link.href}>
-                    <Link
-                      href={link.href}
-                      className="text-sm text-black transition-colors hover:text-green-700"
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-
-          <div>
-            <h3 className="text-xs font-semibold uppercase tracking-widest text-[#444444]">
-              Categories
-            </h3>
-            <ul className="mt-4 space-y-2.5">
-              {categories.map((c) => (
-                <li key={c.slug}>
-                  <Link
-                    href={`/categories/${c.slug}`}
-                    className="text-sm text-black transition-colors hover:text-green-700"
-                  >
-                    {c.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <nav className="flex flex-wrap gap-x-5 gap-y-2 sm:justify-end">
+            {footerLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="text-xs font-medium text-black transition-colors hover:text-green-700"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
         </div>
 
-        <div className="mt-12 flex flex-col items-start justify-between gap-4 border-t border-border pt-6 sm:flex-row sm:items-center">
+        <div className="mt-6 flex flex-col items-start justify-between gap-3 border-t border-border pt-4 sm:flex-row sm:items-center">
           <p className="text-xs text-[#444444]">
             © {new Date().getFullYear()} YashWorld. All rights reserved.
           </p>
-          {(social.instagram || social.whatsapp || social.youtube) && (
+          {(social.whatsapp || social.instagram || social.facebook || social.youtube) && (
             <div className="flex items-center gap-1">
+              {social.whatsapp && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="WhatsApp"
+                  render={<a href={social.whatsapp} target="_blank" rel="noopener noreferrer" />}
+                >
+                  <MessageCircle className="size-4 text-green-700" />
+                </Button>
+              )}
               {social.instagram && (
                 <Button
                   variant="ghost"
@@ -113,14 +78,14 @@ export function SiteFooter() {
                   <Camera className="size-4 text-green-700" />
                 </Button>
               )}
-              {social.whatsapp && (
+              {social.facebook && (
                 <Button
                   variant="ghost"
                   size="icon"
-                  aria-label="WhatsApp"
-                  render={<a href={social.whatsapp} target="_blank" rel="noopener noreferrer" />}
+                  aria-label="Facebook"
+                  render={<a href={social.facebook} target="_blank" rel="noopener noreferrer" />}
                 >
-                  <MessageCircle className="size-4 text-green-700" />
+                  <ThumbsUp className="size-4 text-green-700" />
                 </Button>
               )}
               {social.youtube && (

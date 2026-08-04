@@ -3,13 +3,15 @@ import { getActiveBanners } from "@/services/banner.service"
 import { getActiveFlashSales } from "@/services/campaign.service"
 import { getFeaturedSellers } from "@/services/seller.service"
 import { getTrustBadgesSettings } from "@/lib/platform-settings"
+import { calculateDiscountPercent } from "@/lib/discount"
 import { HeroSlider } from "@/components/marketplace/hero-slider"
-import { AiSearchBar } from "@/components/marketplace/ai-search-bar"
+import { CategoryPillBar } from "@/components/marketplace/category-pill-bar"
 import { TrustBadges } from "@/components/marketplace/trust-badges"
-import { CategoryGrid } from "@/components/marketplace/category-grid"
 import { FlashDeals } from "@/components/marketplace/flash-deals"
 import { FeaturedSellers } from "@/components/marketplace/featured-sellers"
 import { ProductRail } from "@/components/marketplace/product-rail"
+import { PromoStrip } from "@/components/marketplace/promo-strip"
+import { RecentlyViewedSection } from "@/components/marketplace/recently-viewed-section"
 import { FullCatalogBrowser } from "@/components/marketplace/full-catalog-browser"
 import { NewsletterSection } from "@/components/marketplace/newsletter-section"
 
@@ -18,9 +20,10 @@ import { NewsletterSection } from "@/components/marketplace/newsletter-section"
  * backed data (or renders nothing at all): banners from Admin → Banners,
  * categories from Admin → Categories, flash deals from active
  * `flash_sale` campaigns, featured sellers from Admin → Sellers, trust
- * badges from Admin → Settings → General. Best Sellers / New Arrivals /
- * Recommended are derived from the same real product catalog the full
- * browse grid below uses — no separate fetch, no fabricated data.
+ * badges from Admin → Settings → General. Trending / Best Sellers / Indoor
+ * / Outdoor / New Arrivals / Today's Deals are all derived from the same
+ * real product catalog the full browse grid below uses — no separate
+ * fetch, no fabricated data.
  */
 export default async function HomePage() {
   const [products, categories, banners, flashSales, featuredSellers, trustBadgesSettings] = await Promise.all([
@@ -32,29 +35,39 @@ export default async function HomePage() {
     getTrustBadgesSettings(),
   ])
 
+  // Trending: highest rating x review-volume — a simple, honest popularity
+  // proxy that needs no separate analytics pipeline.
+  const trending = [...products]
+    .filter((p) => p.reviews > 0)
+    .sort((a, b) => b.rating * b.reviews - a.rating * a.reviews)
+    .slice(0, 10)
+
   // Best Sellers only shows real sales — a marketplace with zero sales yet
   // has no "best sellers" to fabricate, so the section just doesn't render
   // (see ProductRail's empty-array guard).
   const bestSellers = [...products]
     .filter((p) => (p.unitsSold ?? 0) > 0)
     .sort((a, b) => (b.unitsSold ?? 0) - (a.unitsSold ?? 0))
-    .slice(0, 8)
+    .slice(0, 10)
+
+  const indoorPlants = products.filter((p) => p.category === "indoor-plants").slice(0, 10)
+  const outdoorPlants = products.filter((p) => p.category === "outdoor-plants").slice(0, 10)
 
   const newArrivals = [...products]
     .sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime())
-    .slice(0, 8)
+    .slice(0, 10)
 
-  const shownIds = new Set([...bestSellers, ...newArrivals].map((p) => p.id))
-  const recommended = products.filter((p) => !shownIds.has(p.id)).slice(0, 8)
+  const todaysDeals = [...products]
+    .filter((p) => calculateDiscountPercent(p.price, p.originalPrice) > 0)
+    .sort((a, b) => calculateDiscountPercent(b.price, b.originalPrice) - calculateDiscountPercent(a.price, a.originalPrice))
+    .slice(0, 10)
 
   return (
     <div className="bg-white">
       <HeroSlider banners={banners} />
-      <AiSearchBar categories={categories} />
-      <TrustBadges badges={trustBadgesSettings.badges} />
-      <CategoryGrid categories={categories} />
-      <FlashDeals campaigns={flashSales} />
-      <FeaturedSellers sellers={featuredSellers} />
+      <CategoryPillBar categories={categories} />
+
+      <ProductRail id="trending" title="Trending Plants" subtitle="Popular with our shoppers right now" products={trending} />
       <ProductRail
         id="best-sellers"
         title="Best Sellers"
@@ -62,6 +75,14 @@ export default async function HomePage() {
         products={bestSellers}
         viewAllHref="/products"
       />
+
+      <PromoStrip banner={banners[1 % banners.length]} />
+
+      <ProductRail id="indoor-plants" title="Indoor Plants" subtitle="Low-maintenance greenery for every room" products={indoorPlants} />
+      <ProductRail id="outdoor-plants" title="Outdoor Plants" subtitle="Hardy plants for gardens & terraces" products={outdoorPlants} />
+
+      <PromoStrip banner={banners[2 % banners.length]} />
+
       <ProductRail
         id="new-arrivals"
         title="New Arrivals"
@@ -69,8 +90,17 @@ export default async function HomePage() {
         products={newArrivals}
         viewAllHref="/products"
       />
-      <ProductRail title="Recommended For You" subtitle="Handpicked from our marketplace" products={recommended} />
+      <ProductRail id="todays-deals" title="Today's Deals" subtitle="Biggest discounts on the marketplace right now" products={todaysDeals} />
+      <FlashDeals campaigns={flashSales} />
+
+      <PromoStrip banner={banners[3 % banners.length]} />
+
+      <RecentlyViewedSection />
+      <FeaturedSellers sellers={featuredSellers} />
+
       <FullCatalogBrowser categories={categories} />
+
+      <TrustBadges badges={trustBadgesSettings.badges} />
       <NewsletterSection />
     </div>
   )
