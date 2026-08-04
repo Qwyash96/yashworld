@@ -1,16 +1,16 @@
 import { NextResponse, type NextRequest } from "next/server"
-import { requireSuperAdmin } from "@/lib/admin-api-auth"
-import { getDecryptedCredentials, getIntegrationConfig, markVerified } from "@/lib/integrations/config-store"
+import { getDecryptedCredentials, getIntegrationConfig, markVerified, saveIntegrationConfig } from "@/lib/integrations/config-store"
 import { writeIntegrationLog } from "@/lib/integrations/logs"
+import { requireIntegrationAccess } from "@/lib/integrations/require-integration-access"
 import { getAdapter } from "@/lib/integrations/registry"
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ providerId: string }> }) {
-  const auth = await requireSuperAdmin(request)
-  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status })
-
   const { providerId } = await params
   const adapter = getAdapter(providerId)
   if (!adapter) return NextResponse.json({ error: "Unknown integration provider." }, { status: 404 })
+
+  const auth = await requireIntegrationAccess(request, adapter)
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
   const [config, credentials] = [await getIntegrationConfig(providerId), await getDecryptedCredentials(providerId)]
   const missingFields = adapter.credentialFields.filter((field) => field.required && !credentials[field.key])
@@ -36,6 +36,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     type: "verify",
     message: result.message,
   })
+
+  // A successful Verify Connection proves these credentials genuinely work
+  // right now — auto-activate instead of requiring a separate Enable click.
+  if (result.ok) {
+    await saveIntegrationConfig(providerId, { enabled: true }, auth.uid)
+    if (providerId === "razorpay") {
+      await saveIntegrationConfig(providerId, { settings: { razorpayEnabled: true } }, auth.uid)
+    }
+  }
 
   return NextResponse.json(result)
 }

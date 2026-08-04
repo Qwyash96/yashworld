@@ -77,6 +77,39 @@ assert(getPermissionForPath("/admin/sellers/abc123") === "seller_management", "/
 console.log("\n=== Unregistered future paths still default to super_admin-only (secure default preserved) ===")
 assert(getPermissionForPath("/admin/some-brand-new-page") === undefined, "an unmapped path returns undefined (caller treats as admin_management)")
 
+console.log("\n=== Finance's payments hub: the 6 payment-gateway pages + Payouts/Refunds/Settlements are all reachable via \"payments\" ===")
+const financePaymentPaths = [
+  "/admin/integrations/razorpay",
+  "/admin/integrations/cashfree",
+  "/admin/integrations/phonepe",
+  "/admin/integrations/payu",
+  "/admin/integrations/stripe",
+  "/admin/integrations/paypal",
+  "/admin/payouts",
+  "/admin/refunds",
+  "/admin/settlements",
+]
+for (const path of financePaymentPaths) {
+  const required = getPermissionForPath(path)
+  assert(required === "payments", `${path} requires "payments" (got "${required}")`)
+  assert(hasPermission("finance", "payments"), `finance holds "payments" -> can open ${path}`)
+}
+
+console.log("\n=== Every other integration provider stays settings-only (super_admin), not leaked via the payments override ===")
+const nonPaymentIntegrationPaths = [
+  "/admin/integrations",
+  "/admin/integrations/shiprocket",
+  "/admin/integrations/delhivery",
+  "/admin/integrations/gokwik",
+  "/admin/integrations/meta_whatsapp",
+  "/admin/integrations/google_analytics",
+]
+for (const path of nonPaymentIntegrationPaths) {
+  const required = getPermissionForPath(path)
+  assert(required === "settings", `${path} requires "settings" (got "${required}")`)
+  assert(!hasPermission("finance", "settings"), `finance does NOT hold "settings" -> cannot open ${path}`)
+}
+
 console.log("\n=== finance/marketing/support/catalog_manager are correctly narrow ===")
 assert(!hasPermission("finance", "order_management"), "finance cannot manage orders")
 assert(!hasPermission("marketing", "user_management"), "marketing cannot manage users")

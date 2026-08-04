@@ -89,7 +89,11 @@ export default function AdminIntegrationDetailPage() {
       return
     }
     setCredentials({})
-    toast.success(`${adapter.name} settings saved.`)
+    toast.success(
+      result.verified
+        ? `${adapter.name} connected and enabled — credentials verified successfully.`
+        : `${adapter.name} settings saved.`,
+    )
     refresh()
   }
 

@@ -66,12 +66,12 @@ export interface SaveIntegrationInput {
 export async function saveIntegration(
   providerId: string,
   patch: SaveIntegrationInput,
-): Promise<{ ok: true; config: MaskedIntegrationConfig } | { ok: false; error: string }> {
+): Promise<{ ok: true; config: MaskedIntegrationConfig; verified: boolean | null } | { ok: false; error: string }> {
   const headers = await authHeaders()
   const response = await fetch(`/api/admin/integrations/${providerId}`, { method: "POST", headers, body: JSON.stringify(patch) })
-  const result = await parseResult<{ config: MaskedIntegrationConfig }>(response)
+  const result = await parseResult<{ config: MaskedIntegrationConfig; verified: boolean | null }>(response)
   if (!result.ok) return result
-  return { ok: true, config: result.data.config }
+  return { ok: true, config: result.data.config, verified: result.data.verified }
 }
 
 export async function verifyIntegration(providerId: string): Promise<{ ok: true; result: VerifyResult } | { ok: false; error: string }> {

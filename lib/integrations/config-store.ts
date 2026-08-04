@@ -119,6 +119,23 @@ export async function getDecryptedCredentials(providerId: string): Promise<Recor
   return result
 }
 
+/** Existing decrypted credentials with any newly-submitted plaintext values
+ * overlaid (blank/missing patch fields keep the existing value) — the set to
+ * verifyConnection() against BEFORE persisting a credentials save, so an
+ * invalid save is rejected without ever being written. */
+export async function buildCandidateCredentials(
+  providerId: string,
+  patchCredentials: Record<string, string> | undefined,
+): Promise<Record<string, string>> {
+  const existing = await getDecryptedCredentials(providerId)
+  if (!patchCredentials) return existing
+  const merged = { ...existing }
+  for (const [key, value] of Object.entries(patchCredentials)) {
+    if (value && value.trim()) merged[key] = value.trim()
+  }
+  return merged
+}
+
 export async function markVerified(providerId: string, ok: boolean, health: IntegrationHealth): Promise<void> {
   await getAdminDb()
     .collection(COLLECTION)
