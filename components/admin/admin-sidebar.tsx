@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   LogOut,
   Plug,
+  FolderOpen,
   type LucideIcon,
 } from "lucide-react"
 import {
@@ -312,6 +313,20 @@ export function AdminSidebarContent({ onNavigate }: { onNavigate?: () => void } 
         <Bell className="size-4 shrink-0 text-green-700" />
         Notifications
       </Link>
+
+      {/* Media — the cross-feature upload library (Admin -> Media), gated by
+          the same permission as the content types that actually use it
+          (banners/campaigns/coupons all live under "coupons_offers"). */}
+      {(DEV_SHOW_ADMIN_MENU_TO_ALL || (isAdminRole(role) && hasPermission(role, "coupons_offers"))) && (
+        <Link
+          href="/admin/media"
+          onClick={onNavigate}
+          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-black transition-colors hover:bg-green-50 hover:text-green-700"
+        >
+          <FolderOpen className="size-4 shrink-0 text-green-700" />
+          Media
+        </Link>
+      )}
 
       <Accordion className="flex w-full flex-col gap-1 overflow-y-auto">
         {visibleSections.map((section) => {

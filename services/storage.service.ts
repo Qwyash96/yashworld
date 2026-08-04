@@ -132,6 +132,18 @@ async function uploadImage(
   return url
 }
 
+/** Direct folder upload for Admin → Media's own "Upload"/"Replace" actions,
+ * where the destination folder is chosen in the UI rather than fixed by a
+ * specific feature. */
+export async function uploadToMediaFolder(
+  folder: MediaFolder,
+  uid: string,
+  file: File,
+  onProgress?: (percent: number) => void,
+): Promise<string> {
+  return uploadImage(folder, uid, file, onProgress)
+}
+
 /** Product gallery images — `product-images/{uid}/{uuid}.{ext}`. */
 export async function uploadProductImage(uid: string, file: File, onProgress?: (percent: number) => void): Promise<string> {
   return uploadImage("product-images", uid, file, onProgress)
