@@ -5,6 +5,7 @@ import { Suspense } from 'react'
 import { StoreProvider } from '@/components/store-provider'
 import { SiteChrome } from '@/components/site-chrome'
 import { PresenceHeartbeat } from '@/components/presence-heartbeat'
+import { AnalyticsScripts } from '@/components/analytics-scripts'
 import { Toaster } from '@/components/ui/sonner'
 import './globals.css'
 
@@ -39,6 +40,7 @@ export default function RootLayout({
           <Toaster position="bottom-right" />
         </StoreProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
+        <AnalyticsScripts />
       </body>
     </html>
   )

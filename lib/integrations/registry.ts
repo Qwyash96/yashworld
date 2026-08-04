@@ -20,6 +20,8 @@ import { sendgridAdapter } from "@/lib/integrations/adapters/sendgrid"
 import { smtpAdapter } from "@/lib/integrations/adapters/smtp"
 import { msg91Adapter } from "@/lib/integrations/adapters/msg91"
 import { twilioSmsAdapter } from "@/lib/integrations/adapters/twilio-sms"
+import { googleAnalyticsAdapter } from "@/lib/integrations/adapters/google-analytics"
+import { metaPixelAdapter } from "@/lib/integrations/adapters/meta-pixel"
 
 /**
  * The single place a new provider gets registered — write the adapter under
@@ -47,6 +49,8 @@ const ADAPTERS: IntegrationAdapter[] = [
   smtpAdapter,
   msg91Adapter,
   twilioSmsAdapter,
+  googleAnalyticsAdapter,
+  metaPixelAdapter,
 ]
 
 export function listAdapters(): IntegrationAdapter[] {
