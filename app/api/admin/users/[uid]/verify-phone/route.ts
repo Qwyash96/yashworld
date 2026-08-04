@@ -1,0 +1,27 @@
+import { NextResponse, type NextRequest } from "next/server"
+import { requireAdminPermission } from "@/lib/admin-api-auth"
+import { getAdminDb } from "@/lib/firebase-admin"
+import { writeAuditLog } from "@/lib/audit-log"
+
+type RouteContext = { params: Promise<{ uid: string }> }
+
+/** Admin attestation, not automated OTP verification. */
+export async function POST(request: NextRequest, { params }: RouteContext) {
+  const auth = await requireAdminPermission(request, "user_management")
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status })
+
+  const { uid } = await params
+  await getAdminDb().collection("users").doc(uid).update({ phoneVerified: true })
+
+  await writeAuditLog({
+    actorUid: auth.uid,
+    actorEmail: auth.email,
+    actorRole: auth.role,
+    action: "user.verify_phone",
+    targetType: "user",
+    targetId: uid,
+    after: { phoneVerified: true },
+  })
+
+  return NextResponse.json({ ok: true })
+}

@@ -54,7 +54,7 @@ export const adminSections: AdminSection[] = [
     icon: Users,
     permission: "user_management",
     items: [
-      { label: "Buyers", href: "#", permission: "user_management" },
+      { label: "Buyers", href: "/admin/users", permission: "user_management" },
       { label: "Sellers", href: "/admin/sellers", permission: "seller_management" },
       { label: "Staff", href: "/admin/staff", permission: "admin_management" },
       { label: "Roles & Permissions", href: "/admin/staff", permission: "admin_management" },

@@ -36,7 +36,10 @@ export interface UserProfile {
   // Admin/staff-only fields — present when role is one of the admin roles.
   department?: string
   mobile?: string
-  status?: "active" | "suspended"
+  status?: "active" | "suspended" | "banned"
+  /** Admin-attestation flags set via the Users module's Verify actions — not automated OTP verification. */
+  emailVerified?: boolean
+  phoneVerified?: boolean
   /** Set by services/user.service.ts's ensureUserProfile() on every login, not just the first. */
   lastLoginAt?: string
   /** The last time this admin marked their notification bell as read — see types/notification.ts. */

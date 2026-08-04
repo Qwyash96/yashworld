@@ -100,6 +100,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           return
         }
 
+        if (profile.status === "suspended" || profile.status === "banned") {
+          // eslint-disable-next-line no-console
+          console.log(`[admin-gate] DENIED — account status "${profile.status}" at ${docPath}.`)
+          const params = new URLSearchParams({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email ?? "",
+            docPath,
+            role: profile.role,
+            reason: "account_" + profile.status,
+          })
+          router.replace(`/admin/access-denied?${params.toString()}`)
+          return
+        }
+
         if (!DEV_SHOW_ADMIN_MENU_TO_ALL && !isAdminRole(profile.role)) {
           // eslint-disable-next-line no-console
           console.log(`[admin-gate] DENIED — role "${profile.role}" at ${docPath} is not an admin role.`)

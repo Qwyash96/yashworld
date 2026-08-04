@@ -12,6 +12,7 @@ import { toast } from "sonner"
 import { type Product } from "@/lib/products"
 import { logoutUser, onAuthChange } from "@/services/auth.service"
 import { getProductCatalog } from "@/services/catalog.service"
+import { getUserProfile } from "@/services/user.service"
 
 export type CartItem = {
   id: string
@@ -97,6 +98,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             }
           : null,
       )
+
+      // A banned/suspended account's Firebase Auth sign-in is disabled
+      // server-side too (see app/api/admin/users/[uid]/{ban,suspend}), but
+      // that only takes effect on the next token refresh (up to ~1hr) —
+      // check the Firestore flag immediately so an already-open session
+      // doesn't keep working in the meantime.
+      if (firebaseUser) {
+        getUserProfile(firebaseUser.uid)
+          .then((profile) => {
+            if (profile?.status === "suspended" || profile?.status === "banned") {
+              toast.error("Your account has been " + profile.status + ". Contact support if you believe this is a mistake.")
+              logoutUser()
+            }
+          })
+          .catch(() => {})
+      }
     })
     return unsubscribe
   }, [])
