@@ -78,9 +78,9 @@ export const adminSections: AdminSection[] = [
     icon: ClipboardList,
     permission: "order_management",
     items: [
-      { label: "All Orders", href: "#" },
+      { label: "All Orders", href: "/admin/orders" },
       { label: "Returns", href: "#" },
-      { label: "Refunds", href: "#" },
+      { label: "Refunds", href: "/admin/orders?paymentStatus=Refunded" },
     ],
   },
   {
@@ -161,7 +161,7 @@ export const adminSections: AdminSection[] = [
 const PATH_PERMISSIONS: { path: string; permission: AdminPermission }[] = adminSections.flatMap((section) =>
   section.items
     .filter((item) => item.href !== "#")
-    .map((item) => ({ path: item.href.split("#")[0]!, permission: item.permission ?? section.permission })),
+    .map((item) => ({ path: item.href.split(/[#?]/)[0]!, permission: item.permission ?? section.permission })),
 )
 
 // Routes any admin role may reach — same standing as the sidebar's own
