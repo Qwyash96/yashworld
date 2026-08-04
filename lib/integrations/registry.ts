@@ -7,6 +7,7 @@ import { phonepeAdapter } from "@/lib/integrations/adapters/phonepe"
 import { payuAdapter } from "@/lib/integrations/adapters/payu"
 import { stripeAdapter } from "@/lib/integrations/adapters/stripe"
 import { paypalAdapter } from "@/lib/integrations/adapters/paypal"
+import { gokwikAdapter } from "@/lib/integrations/adapters/gokwik"
 
 /**
  * The single place a new provider gets registered — write the adapter under
@@ -14,7 +15,15 @@ import { paypalAdapter } from "@/lib/integrations/adapters/paypal"
  * Nothing else in the framework (routes, admin UI, encryption, logging)
  * needs to change to support it.
  */
-const ADAPTERS: IntegrationAdapter[] = [razorpayAdapter, cashfreeAdapter, phonepeAdapter, payuAdapter, stripeAdapter, paypalAdapter]
+const ADAPTERS: IntegrationAdapter[] = [
+  razorpayAdapter,
+  cashfreeAdapter,
+  phonepeAdapter,
+  payuAdapter,
+  stripeAdapter,
+  paypalAdapter,
+  gokwikAdapter,
+]
 
 export function listAdapters(): IntegrationAdapter[] {
   return ADAPTERS
