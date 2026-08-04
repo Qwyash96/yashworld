@@ -2,15 +2,13 @@
 
 import Link from "next/link"
 import { useEffect, useState } from "react"
-import { toast } from "sonner"
 import { Camera, MessageCircle, Play, Leaf } from "lucide-react"
-import { subscribeToNewsletter } from "@/services/newsletter.service"
 import { getPublicSocialLinks } from "@/services/site-settings.service"
 import { fetchCategories } from "@/services/catalog.service"
+import { NewsletterSignup } from "@/components/newsletter-signup"
 import type { SocialLinks } from "@/types/site-settings"
 import type { Category } from "@/lib/products"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 
 const footerNav = [
   {
@@ -36,8 +34,6 @@ const footerNav = [
 ]
 
 export function SiteFooter() {
-  const [email, setEmail] = useState("")
-  const [subscribing, setSubscribing] = useState(false)
   const [social, setSocial] = useState<SocialLinks>({})
   const [categories, setCategories] = useState<Category[]>([])
 
@@ -45,24 +41,6 @@ export function SiteFooter() {
     getPublicSocialLinks().then(setSocial)
     fetchCategories().then((cats) => setCategories(cats.slice(0, 6)))
   }, [])
-
-  async function subscribe(e: React.FormEvent) {
-    e.preventDefault()
-    if (!email.trim() || subscribing) return
-    setSubscribing(true)
-    const result = await subscribeToNewsletter(email)
-    setSubscribing(false)
-    if (!result.ok) {
-      toast.error(result.error)
-      return
-    }
-    if (result.alreadySubscribed) {
-      toast.info("You're already subscribed.")
-    } else {
-      toast.success("Subscribed", { description: "You're on the list for plant care tips & offers." })
-    }
-    setEmail("")
-  }
 
   return (
     <footer className="border-t border-border bg-white">
@@ -77,20 +55,7 @@ export function SiteFooter() {
               India&apos;s premium marketplace for plants, pots and gardening essentials —
               sourced from verified sellers, delivered with care.
             </p>
-            <form onSubmit={subscribe} className="mt-6 flex max-w-sm gap-2">
-              <Input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Email address"
-                aria-label="Email address"
-                className="h-10"
-              />
-              <Button type="submit" size="lg" className="h-10 shrink-0" disabled={subscribing}>
-                {subscribing ? "Subscribing..." : "Subscribe"}
-              </Button>
-            </form>
+            <NewsletterSignup className="mt-6" />
           </div>
 
           {footerNav.map((group) => (

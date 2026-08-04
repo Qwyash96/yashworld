@@ -42,8 +42,8 @@ const shopGroup: MenuGroup = {
     { label: "Home", href: "/", icon: Home },
     { label: "Shop All", href: "/products", icon: ShoppingBag },
     { label: "Categories", href: "/categories", icon: LayoutGrid },
-    { label: "Offers", href: "#", icon: Tag },
-    { label: "New Arrivals", href: "#", icon: Sparkles },
+    { label: "Flash Deals", href: "/#flash-deals", icon: Tag },
+    { label: "New Arrivals", href: "/#new-arrivals", icon: Sparkles },
   ],
 }
 
