@@ -15,6 +15,9 @@ import { xpressbeesAdapter } from "@/lib/integrations/adapters/xpressbees"
 import { dtdcAdapter } from "@/lib/integrations/adapters/dtdc"
 import { metaWhatsappAdapter } from "@/lib/integrations/adapters/meta-whatsapp"
 import { twilioWhatsappAdapter } from "@/lib/integrations/adapters/twilio-whatsapp"
+import { resendAdapter } from "@/lib/integrations/adapters/resend"
+import { sendgridAdapter } from "@/lib/integrations/adapters/sendgrid"
+import { smtpAdapter } from "@/lib/integrations/adapters/smtp"
 
 /**
  * The single place a new provider gets registered — write the adapter under
@@ -37,6 +40,9 @@ const ADAPTERS: IntegrationAdapter[] = [
   dtdcAdapter,
   metaWhatsappAdapter,
   twilioWhatsappAdapter,
+  resendAdapter,
+  sendgridAdapter,
+  smtpAdapter,
 ]
 
 export function listAdapters(): IntegrationAdapter[] {
