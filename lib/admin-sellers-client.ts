@@ -50,6 +50,16 @@ export async function banSeller(uid: string, reason: string) {
   return reasonAction(uid, "ban", reason)
 }
 
+export async function setSellerFeatured(uid: string, featured: boolean): Promise<{ ok: true } | { ok: false; error: string }> {
+  const headers = await authHeaders()
+  const response = await fetch(`/api/admin/sellers/${uid}/featured`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ featured }),
+  })
+  return parseResult<{ ok: true }>(response)
+}
+
 export async function getSellerDocumentUrl(
   uid: string,
   docKey: string,

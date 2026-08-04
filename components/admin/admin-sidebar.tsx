@@ -69,7 +69,7 @@ export const adminSections: AdminSection[] = [
     permission: "product_management",
     items: [
       { label: "Products", href: "/admin/products", permission: "product_management" },
-      { label: "Categories", href: "#", permission: "product_management" },
+      { label: "Categories", href: "/admin/categories", permission: "product_management" },
       { label: "Brands", href: "#", permission: "product_management" },
       { label: "Inventory", href: "#", permission: "product_management" },
       { label: "Reviews", href: "#", permission: "reviews" },

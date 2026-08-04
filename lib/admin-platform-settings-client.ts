@@ -1,5 +1,5 @@
 import { auth } from "@/services/firebase/client"
-import type { GeneralSettings, ShippingSettings } from "@/types/platform-settings"
+import type { GeneralSettings, ShippingSettings, TrustBadgesSettings } from "@/types/platform-settings"
 
 async function authHeaders(): Promise<HeadersInit> {
   const token = await auth.currentUser?.getIdToken()
@@ -45,6 +45,24 @@ export async function saveShippingSettingsClient(
   const headers = await authHeaders()
   const response = await fetch("/api/admin/settings/shipping", { method: "POST", headers, body: JSON.stringify(patch) })
   const result = await parseResult<ShippingSettings>(response)
+  if (!result.ok) return result
+  return { ok: true, settings: result.data }
+}
+
+export async function fetchTrustBadgesSettings(): Promise<{ ok: true; settings: TrustBadgesSettings } | { ok: false; error: string }> {
+  const headers = await authHeaders()
+  const response = await fetch("/api/admin/settings/trust-badges", { headers })
+  const result = await parseResult<TrustBadgesSettings>(response)
+  if (!result.ok) return result
+  return { ok: true, settings: result.data }
+}
+
+export async function saveTrustBadgesSettingsClient(
+  badges: TrustBadgesSettings["badges"],
+): Promise<{ ok: true; settings: TrustBadgesSettings } | { ok: false; error: string }> {
+  const headers = await authHeaders()
+  const response = await fetch("/api/admin/settings/trust-badges", { method: "POST", headers, body: JSON.stringify({ badges }) })
+  const result = await parseResult<TrustBadgesSettings>(response)
   if (!result.ok) return result
   return { ok: true, settings: result.data }
 }

@@ -21,8 +21,12 @@ export type Product = {
   badge?: "New" | "Sale" | "Bestseller"
   /** Owning seller's uid, for real Firestore products. Undefined for the static fallback catalog. */
   sellerId?: string
+  /** Joined from sellers/{sellerId}.shopName — see services/catalog.service.ts's attachSellerNames(). */
+  sellerName?: string
   /** ISO timestamp, for real Firestore products. Undefined for the static fallback catalog. */
   createdAt?: string
+  /** Cumulative units sold — powers the homepage's Best Sellers ranking. Undefined for the static fallback catalog. */
+  unitsSold?: number
 }
 export const categories: Category[] = [
   {

@@ -24,6 +24,26 @@ export async function getSellerProfile(uid: string): Promise<Seller | null> {
   }
 }
 
+/** Every approved seller, newest first — sellers/{uid} is public-read (see
+ * firestore.rules), no admin auth needed. Never throws — an empty homepage
+ * section is better than a broken one. */
+export async function getApprovedSellers(): Promise<Seller[]> {
+  try {
+    const q = query(collection(db, SELLERS_COLLECTION), where("status", "==", "approved"), orderBy("createdAt", "desc"))
+    const snapshot = await getDocs(q)
+    return snapshot.docs.map((d) => d.data() as Seller)
+  } catch (error) {
+    console.error(toServiceError("Failed to fetch approved sellers", error).message)
+    return []
+  }
+}
+
+/** Admin-curated subset of getApprovedSellers() for the homepage's Featured Sellers section. */
+export async function getFeaturedSellers(): Promise<Seller[]> {
+  const sellers = await getApprovedSellers()
+  return sellers.filter((s) => s.featured)
+}
+
 /** The caller's own KYC application (or an admin's view of someone else's). */
 export async function getSellerApplication(uid: string): Promise<SellerApplication | null> {
   try {

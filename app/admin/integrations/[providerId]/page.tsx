@@ -15,6 +15,7 @@ import {
   type ProviderDetail,
   type WebhookEventDto,
 } from "@/lib/admin-integrations-client"
+import { ToggleSwitch } from "@/components/admin/toggle-switch"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -365,23 +366,5 @@ export default function AdminIntegrationDetailPage() {
         )}
       </section>
     </div>
-  )
-}
-
-function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: (checked: boolean) => void }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${checked ? "bg-green-600" : "bg-gray-300"}`}
-    >
-      <span
-        className={`absolute top-0.5 size-5 rounded-full bg-white shadow transition-transform ${
-          checked ? "translate-x-5" : "translate-x-0.5"
-        }`}
-      />
-    </button>
   )
 }

@@ -82,5 +82,7 @@ export interface Seller {
   sellerId: string
   ratingAvg: number
   ratingCount: number
+  /** Admin-curated "Featured Sellers" homepage placement — unset/false means not featured. */
+  featured?: boolean
   createdAt: string
 }

@@ -4,10 +4,11 @@ import Link from "next/link"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { Camera, MessageCircle, Play, Leaf } from "lucide-react"
-import { categories } from "@/lib/products"
 import { subscribeToNewsletter } from "@/services/newsletter.service"
 import { getPublicSocialLinks } from "@/services/site-settings.service"
+import { fetchCategories } from "@/services/catalog.service"
 import type { SocialLinks } from "@/types/site-settings"
+import type { Category } from "@/lib/products"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
@@ -38,9 +39,11 @@ export function SiteFooter() {
   const [email, setEmail] = useState("")
   const [subscribing, setSubscribing] = useState(false)
   const [social, setSocial] = useState<SocialLinks>({})
+  const [categories, setCategories] = useState<Category[]>([])
 
   useEffect(() => {
     getPublicSocialLinks().then(setSocial)
+    fetchCategories().then((cats) => setCategories(cats.slice(0, 6)))
   }, [])
 
   async function subscribe(e: React.FormEvent) {

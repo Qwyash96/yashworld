@@ -31,3 +31,16 @@ export interface ShippingSettings {
   expressRate: number
   updatedAt: string
 }
+
+export interface TrustBadge {
+  icon: "shield" | "truck" | "rotate-ccw" | "badge-check" | "headset" | "leaf"
+  title: string
+  description: string
+}
+
+/** Firestore `platformSettings/trustBadges` — the homepage's trust-badge
+ * strip (e.g. "Secure Payments", "Verified Sellers"), fully admin-editable. */
+export interface TrustBadgesSettings {
+  badges: TrustBadge[]
+  updatedAt: string
+}

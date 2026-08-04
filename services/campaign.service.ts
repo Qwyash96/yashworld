@@ -20,6 +20,28 @@ export async function listCampaigns(): Promise<Campaign[]> {
   }
 }
 
+/**
+ * Every currently-live flash sale, for the homepage's Flash Deals section.
+ * Eligibility is a real-time startAt/endAt window check — the same trust
+ * model lib/price-candidates.ts already uses for pricing — not the admin-set
+ * `status` field alone, which is bookkeeping and can go stale (there's no
+ * cron in this app to flip scheduled->active->ended automatically). Never
+ * throws — an empty section is better than a broken homepage.
+ */
+export async function getActiveFlashSales(): Promise<Campaign[]> {
+  try {
+    const q = query(collection(db, CAMPAIGNS_COLLECTION), where("type", "==", "flash_sale"))
+    const snapshot = await getDocs(q)
+    const now = new Date().toISOString()
+    return snapshot.docs
+      .map((d) => ({ id: d.id, ...d.data() }) as Campaign)
+      .filter((c) => c.status !== "cancelled" && c.startAt <= now && c.endAt >= now)
+  } catch (error) {
+    console.error(toServiceError("Failed to fetch active flash sales", error).message)
+    return []
+  }
+}
+
 export async function getCampaign(id: string): Promise<Campaign | null> {
   try {
     const snapshot = await getDoc(doc(db, CAMPAIGNS_COLLECTION, id))

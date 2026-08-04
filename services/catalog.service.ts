@@ -1,5 +1,5 @@
 import { cache } from "react"
-import { collection, getDocs, query, where } from "firebase/firestore"
+import { collection, documentId, getDocs, query, where } from "firebase/firestore"
 import { db } from "@/services/firebase/client"
 import { toServiceError } from "@/services/firebase/errors"
 import { normalizeProductImages, getCoverImageUrl } from "@/lib/product-images"
@@ -55,7 +55,33 @@ function toUIProduct(product: FirestoreProduct, now: Date = new Date()): Product
     rating: product.ratingAvg,
     reviews: product.ratingCount,
     createdAt: product.createdAt,
+    unitsSold: product.unitsSold,
   }
+}
+
+/** Joins each product's sellerId -> sellers/{id}.shopName, chunked into
+ * "in" queries of 10 (Firestore's per-query cap is higher, but this app's
+ * seller count is small — keep chunks conservative). Never throws — an
+ * unlabeled seller name is better than a broken product list. */
+async function attachSellerNames(items: Product[]): Promise<Product[]> {
+  const sellerIds = Array.from(new Set(items.map((p) => p.sellerId).filter((id): id is string => !!id)))
+  if (sellerIds.length === 0) return items
+
+  const nameById = new Map<string, string>()
+  const CHUNK_SIZE = 10
+  try {
+    for (let i = 0; i < sellerIds.length; i += CHUNK_SIZE) {
+      const chunk = sellerIds.slice(i, i + CHUNK_SIZE)
+      const q = query(collection(db, "sellers"), where(documentId(), "in", chunk))
+      const snapshot = await getDocs(q)
+      snapshot.docs.forEach((d) => nameById.set(d.id, (d.data() as { shopName?: string }).shopName ?? ""))
+    }
+  } catch (error) {
+    console.error(toServiceError("Failed to join seller names", error).message)
+    return items
+  }
+
+  return items.map((p) => (p.sellerId ? { ...p, sellerName: nameById.get(p.sellerId) } : p))
 }
 
 /**
@@ -73,10 +99,11 @@ export async function fetchApprovedProducts(): Promise<Product[]> {
     const q = query(collection(db, PRODUCTS_COLLECTION), where("status", "==", "approved"))
     const snapshot = await getDocs(q)
     if (snapshot.empty) return fallbackProducts
-    return snapshot.docs.map((d) => {
+    const items = snapshot.docs.map((d) => {
       const data = d.data()
       return toUIProduct({ id: d.id, ...data, images: normalizeProductImages(data.images) } as FirestoreProduct)
     })
+    return attachSellerNames(items)
   } catch (error) {
     console.error(toServiceError("Falling back to static products", error).message)
     return fallbackProducts
@@ -86,8 +113,9 @@ export async function fetchApprovedProducts(): Promise<Product[]> {
 /** Same as fetchApprovedProducts, memoized per request — for Server Components. */
 export const getProductCatalog = cache(fetchApprovedProducts)
 
-/** Same Firestore-first / fallback pattern as getProductCatalog, for categories. */
-export const getCategoryCatalog = cache(async (): Promise<Category[]> => {
+/** Firestore-first / fallback pattern, same as fetchApprovedProducts above.
+ * Plain (uncached) version — use this from Client Components. */
+export async function fetchCategories(): Promise<Category[]> {
   try {
     const snapshot = await getDocs(collection(db, CATEGORIES_COLLECTION))
     if (snapshot.empty) return fallbackCategories
@@ -96,4 +124,7 @@ export const getCategoryCatalog = cache(async (): Promise<Category[]> => {
     console.error(toServiceError("Falling back to static categories", error).message)
     return fallbackCategories
   }
-})
+}
+
+/** Same as fetchCategories, memoized per request — for Server Components. */
+export const getCategoryCatalog = cache(fetchCategories)

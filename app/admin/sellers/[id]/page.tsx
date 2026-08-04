@@ -15,7 +15,9 @@ import {
   suspendSeller,
   banSeller,
   getSellerDocumentUrl,
+  setSellerFeatured,
 } from "@/lib/admin-sellers-client"
+import { ToggleSwitch } from "@/components/admin/toggle-switch"
 import { fetchSellerWallet, approveWithdrawal, rejectWithdrawal, markWithdrawalPaid } from "@/lib/admin-seller-wallet-client"
 import { formatPrice } from "@/lib/products"
 import { useAdminAuth } from "@/components/admin/admin-auth-context"
@@ -99,6 +101,7 @@ export default function AdminSellerDetailPage() {
   const [wallet, setWallet] = useState<SellerWallet | null>(null)
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[] | null>(null)
   const [sellerProfile, setSellerProfile] = useState<Seller | null>(null)
+  const [featuredBusy, setFeaturedBusy] = useState(false)
 
   const canViewPayments = admin.role === "super_admin" || (isAdminRole(admin.role) && hasPermission(admin.role, "payments"))
 
@@ -187,6 +190,18 @@ export default function AdminSellerDetailPage() {
   function startAction(action: ReasonAction) {
     setActiveAction((current) => (current === action ? null : action))
     setReason("")
+  }
+
+  async function handleToggleFeatured(next: boolean) {
+    setFeaturedBusy(true)
+    const result = await setSellerFeatured(params.id, next)
+    setFeaturedBusy(false)
+    if (!result.ok) {
+      toast.error(result.error)
+      return
+    }
+    setSellerProfile((prev) => (prev ? { ...prev, featured: next } : prev))
+    toast.success(next ? "Seller featured on the homepage." : "Seller removed from the homepage.")
   }
 
   return (
@@ -291,6 +306,16 @@ export default function AdminSellerDetailPage() {
           </Button>
         )}
       </div>
+
+      {sellerProfile && (
+        <div className="mt-4 flex items-center justify-between gap-4 rounded-xl border border-border bg-white p-4">
+          <div>
+            <p className="text-sm font-semibold text-black">Featured on Homepage</p>
+            <p className="text-xs text-[#444444]">Shown in the storefront&apos;s Featured Sellers section.</p>
+          </div>
+          <ToggleSwitch checked={!!sellerProfile.featured} onChange={handleToggleFeatured} disabled={featuredBusy} />
+        </div>
+      )}
 
       {activeAction && (
         <div className="mt-4 rounded-xl border border-border bg-[#f3f5f2] p-4">

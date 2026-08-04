@@ -1,6 +1,6 @@
 import "server-only"
 import { getAdminDb } from "@/lib/firebase-admin"
-import type { PlatformSettings, GeneralSettings, ShippingSettings } from "@/types/platform-settings"
+import type { PlatformSettings, GeneralSettings, ShippingSettings, TrustBadgesSettings } from "@/types/platform-settings"
 
 const COLLECTION = "platformSettings"
 
@@ -65,4 +65,27 @@ export async function saveShippingSettings(patch: Partial<ShippingSettings>): Pr
   await ref.set({ ...patch, updatedAt: new Date().toISOString() }, { merge: true })
   const snapshot = await ref.get()
   return { ...DEFAULT_SHIPPING_SETTINGS, ...(snapshot.data() as Partial<ShippingSettings>) }
+}
+
+const DEFAULT_TRUST_BADGES_SETTINGS: TrustBadgesSettings = {
+  badges: [
+    { icon: "shield", title: "Secure Payments", description: "100% secure checkout, every order" },
+    { icon: "badge-check", title: "Verified Sellers", description: "Every seller is KYC-verified" },
+    { icon: "rotate-ccw", title: "Easy Returns", description: "Hassle-free return window" },
+    { icon: "truck", title: "Fast Delivery", description: "Dispatched within 24 hours" },
+  ],
+  updatedAt: new Date(0).toISOString(),
+}
+
+export async function getTrustBadgesSettings(): Promise<TrustBadgesSettings> {
+  const snapshot = await getAdminDb().collection(COLLECTION).doc("trustBadges").get()
+  if (!snapshot.exists) return DEFAULT_TRUST_BADGES_SETTINGS
+  return { ...DEFAULT_TRUST_BADGES_SETTINGS, ...(snapshot.data() as Partial<TrustBadgesSettings>) }
+}
+
+export async function saveTrustBadgesSettings(patch: Partial<TrustBadgesSettings>): Promise<TrustBadgesSettings> {
+  const ref = getAdminDb().collection(COLLECTION).doc("trustBadges")
+  await ref.set({ ...patch, updatedAt: new Date().toISOString() }, { merge: true })
+  const snapshot = await ref.get()
+  return { ...DEFAULT_TRUST_BADGES_SETTINGS, ...(snapshot.data() as Partial<TrustBadgesSettings>) }
 }
