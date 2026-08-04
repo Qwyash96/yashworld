@@ -13,6 +13,8 @@ import { delhiveryAdapter } from "@/lib/integrations/adapters/delhivery"
 import { bluedartAdapter } from "@/lib/integrations/adapters/bluedart"
 import { xpressbeesAdapter } from "@/lib/integrations/adapters/xpressbees"
 import { dtdcAdapter } from "@/lib/integrations/adapters/dtdc"
+import { metaWhatsappAdapter } from "@/lib/integrations/adapters/meta-whatsapp"
+import { twilioWhatsappAdapter } from "@/lib/integrations/adapters/twilio-whatsapp"
 
 /**
  * The single place a new provider gets registered — write the adapter under
@@ -33,6 +35,8 @@ const ADAPTERS: IntegrationAdapter[] = [
   bluedartAdapter,
   xpressbeesAdapter,
   dtdcAdapter,
+  metaWhatsappAdapter,
+  twilioWhatsappAdapter,
 ]
 
 export function listAdapters(): IntegrationAdapter[] {
