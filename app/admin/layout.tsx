@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { Menu, ShieldAlert } from "lucide-react"
 import { AdminSidebar, AdminSidebarContent, getPermissionForPath } from "@/components/admin/admin-sidebar"
+import { AdminNotificationBell } from "@/components/admin/admin-notification-bell"
 import { AdminAuthContext, type AdminProfile } from "@/components/admin/admin-auth-context"
 import { onAuthChange } from "@/services/auth.service"
 import { getUserProfile } from "@/services/user.service"
@@ -209,12 +210,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <AdminSidebarContent onNavigate={() => setMobileNavOpen(false)} />
           </SheetContent>
         </Sheet>
-        <span className="text-sm font-bold text-green-700">YashWorld Admin</span>
+        <span className="flex-1 text-sm font-bold text-green-700">YashWorld Admin</span>
+        <AdminNotificationBell />
       </div>
 
       <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-6 px-4 py-6 sm:px-6 lg:flex-row lg:px-8">
         <AdminSidebar />
-        <main className="min-w-0 flex-1">{allowed ? children : <ModuleAccessDenied />}</main>
+        <div className="min-w-0 flex-1">
+          <div className="mb-4 hidden justify-end lg:flex">
+            <AdminNotificationBell />
+          </div>
+          <main className="min-w-0">{allowed ? children : <ModuleAccessDenied />}</main>
+        </div>
       </div>
     </AdminAuthContext.Provider>
   )

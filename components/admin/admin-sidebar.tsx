@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation"
 import {
   Home,
   LayoutDashboard,
+  Bell,
   Users,
   ShoppingBag,
   ClipboardList,
@@ -163,20 +164,24 @@ const PATH_PERMISSIONS: { path: string; permission: AdminPermission }[] = adminS
     .map((item) => ({ path: item.href.split("#")[0]!, permission: item.permission ?? section.permission })),
 )
 
+// Routes any admin role may reach — same standing as the sidebar's own
+// ungated Home/Dashboard/Notifications links above (not part of
+// adminSections since they're not permission-scoped sections).
+const UNGATED_PATHS = ["/admin", "/admin/notifications"]
+
 /**
  * Which permission a given /admin/* pathname requires, per the same data
  * that drives sidebar visibility. Matches the longest registered path that
  * is a prefix of pathname, so dynamic routes (e.g. /admin/sellers/[id]) are
  * covered by their list page's entry (/admin/sellers) without needing a
- * separate entry. Returns null for "/admin" itself (the dashboard root —
- * every admin role may land there; see app/admin/page.tsx for how it
- * adapts its content per role) and undefined for anything not registered
- * here at all, which callers should treat as "requires super_admin" —
- * a secure-by-default fallback for any future page that forgets to add
- * itself to adminSections.
+ * separate entry. Returns null for UNGATED_PATHS (every admin role may
+ * land there — their own query/content narrows by role) and undefined for
+ * anything not registered here at all, which callers should treat as
+ * "requires super_admin" — a secure-by-default fallback for any future
+ * page that forgets to add itself to adminSections.
  */
 export function getPermissionForPath(pathname: string): AdminPermission | null | undefined {
-  if (pathname === "/admin") return null
+  if (UNGATED_PATHS.includes(pathname)) return null
   const match = PATH_PERMISSIONS.filter((p) => pathname === p.path || pathname.startsWith(`${p.path}/`)).sort(
     (a, b) => b.path.length - a.path.length,
   )[0]
@@ -255,6 +260,19 @@ export function AdminSidebarContent({ onNavigate }: { onNavigate?: () => void } 
       >
         <LayoutDashboard className="size-4 shrink-0 text-green-700" />
         Dashboard
+      </Link>
+
+      {/* Notifications — the alerts feed (distinct from the "Marketing >
+          Notifications" placeholder below, which is outbound marketing
+          campaigns). Its own query narrows by the viewer's permissions, so
+          like Dashboard this needs no gate here. */}
+      <Link
+        href="/admin/notifications"
+        onClick={onNavigate}
+        className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-black transition-colors hover:bg-green-50 hover:text-green-700"
+      >
+        <Bell className="size-4 shrink-0 text-green-700" />
+        Notifications
       </Link>
 
       <Accordion className="flex w-full flex-col gap-1 overflow-y-auto">

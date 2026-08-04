@@ -84,3 +84,27 @@ export function hasPermission(role: AdminRole, permission: AdminPermission): boo
   if (role === "super_admin") return true
   return ROLE_PERMISSIONS[role].includes(permission)
 }
+
+export const ADMIN_PERMISSIONS: AdminPermission[] = [
+  "user_management",
+  "seller_management",
+  "product_management",
+  "order_management",
+  "payments",
+  "reviews",
+  "coupons_offers",
+  "reports_analytics",
+  "marketing",
+  "website_management",
+  "security",
+  "settings",
+  "support",
+  "admin_management",
+]
+
+/** Every permission a role holds — super_admin holds all of them. Used by
+ * the notifications bell to query `targetPermission in [...]`. */
+export function getPermissionsForRole(role: AdminRole): AdminPermission[] {
+  if (role === "super_admin") return ADMIN_PERMISSIONS
+  return ROLE_PERMISSIONS[role]
+}
