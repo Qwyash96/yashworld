@@ -14,6 +14,7 @@ export interface Address {
   fullName: string
   line1: string
   line2?: string
+  landmark?: string
   city: string
   state: string
   postalCode: string
@@ -44,6 +45,11 @@ export interface UserProfile {
   lastLoginAt?: string
   /** The last time this admin marked their notification bell as read — see types/notification.ts. */
   notificationsReadAt?: string
+  /** Same idea, separate timestamp — a seller's own order-fulfillment
+   * notification bell (types/seller-notification.ts). Kept distinct from
+   * notificationsReadAt so a user who is both an approved seller and staff
+   * doesn't have one bell's "mark read" silently clear the other's. */
+  sellerNotificationsReadAt?: string
 }
 
 export type UserProfileInput = Omit<UserProfile, "createdAt">

@@ -449,14 +449,18 @@ export default function AdminSellerDetailPage() {
             <p className="text-sm text-[#444444]">Loading...</p>
           ) : (
             <>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                 <div className="rounded-xl border border-border bg-white p-4 shadow-sm">
                   <p className="text-xs uppercase tracking-widest text-[#888888]">Available Balance</p>
                   <p className="mt-1 text-xl font-bold text-black">{formatPrice(wallet.balance)}</p>
                 </div>
                 <div className="rounded-xl border border-border bg-white p-4 shadow-sm">
                   <p className="text-xs uppercase tracking-widest text-[#888888]">On Hold</p>
-                  <p className="mt-1 text-xl font-bold text-black">{formatPrice(wallet.pendingBalance)}</p>
+                  <p className="mt-1 text-xl font-bold text-black">{formatPrice(wallet.onHoldBalance)}</p>
+                </div>
+                <div className="rounded-xl border border-border bg-white p-4 shadow-sm">
+                  <p className="text-xs uppercase tracking-widest text-[#888888]">Pending Settlement</p>
+                  <p className="mt-1 text-xl font-bold text-black">{formatPrice(wallet.pendingSettlement)}</p>
                 </div>
                 <div className="rounded-xl border border-border bg-white p-4 shadow-sm">
                   <p className="text-xs uppercase tracking-widest text-[#888888]">Lifetime Withdrawn</p>
@@ -571,7 +575,7 @@ function SellerPerformancePanel({
 }) {
   if (orders === null) return <p className="mt-6 text-sm text-[#444444]">Loading...</p>
   const mine = orders.map((o) => o.sellerOrders.find((so) => so.sellerId === sellerId)).filter((so): so is NonNullable<typeof so> => !!so)
-  const delivered = mine.filter((so) => so.status === "Delivered" || so.status === "Completed").length
+  const delivered = mine.filter((so) => so.status === "Delivered").length
   const cancelled = mine.filter((so) => so.status === "Cancelled").length
   const fulfilmentRate = mine.length > 0 ? Math.round((delivered / mine.length) * 100) : 0
 

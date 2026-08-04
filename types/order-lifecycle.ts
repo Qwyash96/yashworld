@@ -13,46 +13,62 @@
 // Firestore-backed implementation of these rules.
 
 /**
- * The single order status field. Return and replacement sub-flows are
- * states of this SAME enum (not a separate ReturnStatus/ReplacementStatus) —
- * there is only ever one status per order.
+ * The single order status field — one SellerOrder's fulfilment stage. Modeled
+ * on the Amazon Seller Central / Flipkart Seller Hub fulfilment pipeline:
+ * granular pickup/transit stages instead of one generic "Shipped", and a
+ * single "Returned" terminal state instead of a multi-step Return Requested/
+ * Approved/Rejected sub-flow (kept simple since no return-approval workflow
+ * is actually built — see ReturnRequestRecord's doc comment below). Courier
+ * sub-state ("Pickup Scheduled", "Courier Assigned") is tracked separately
+ * on SellerOrder's courier fields (types/order.ts), not as an OrderStatus —
+ * it's metadata about a status, not a status itself.
  */
 export type OrderStatus =
   | "Pending"
   | "Accepted"
-  | "Packing"
-  | "Ready To Ship"
-  | "Shipped"
+  | "Ready To Pack"
+  | "Packed"
+  | "Pickup Requested"
+  | "Picked Up"
+  | "In Transit"
   | "Out For Delivery"
   | "Delivered"
+  | "Returned"
   | "Cancelled"
-  | "Return Requested"
-  | "Return Approved"
-  | "Return Rejected"
-  | "Pickup Scheduled"
-  | "Picked Up"
-  | "Refunded"
-  | "Replacement Requested"
-  | "Replacement Approved"
-  | "Replacement Rejected"
-  | "Completed"
 
 /** The forward fulfilment path a seller pushes an order through, in order. */
 export const ORDER_FULFILMENT_SEQUENCE: OrderStatus[] = [
   "Pending",
   "Accepted",
-  "Packing",
-  "Ready To Ship",
-  "Shipped",
+  "Ready To Pack",
+  "Packed",
+  "Pickup Requested",
+  "Picked Up",
+  "In Transit",
   "Out For Delivery",
   "Delivered",
 ]
 
-const CANCELLABLE_STATUSES = new Set<OrderStatus>(["Pending", "Accepted", "Packing", "Ready To Ship"])
+const CANCELLABLE_STATUSES = new Set<OrderStatus>([
+  "Pending",
+  "Accepted",
+  "Ready To Pack",
+  "Packed",
+  "Pickup Requested",
+])
 
-/** Rule: Cancel allowed only before shipping. */
+/** Rule: Cancel allowed only before the courier has physically picked it up. */
 export function isCancellable(status: OrderStatus): boolean {
   return CANCELLABLE_STATUSES.has(status)
+}
+
+const RETURNABLE_STATUSES = new Set<OrderStatus>(["Picked Up", "In Transit", "Out For Delivery", "Delivered"])
+
+/** Rule: Returned covers both a post-delivery buyer return and an RTO
+ * (failed/refused delivery in transit) — allowed once the courier has the
+ * package, through to (and including) Delivered. */
+export function isReturnable(status: OrderStatus): boolean {
+  return RETURNABLE_STATUSES.has(status)
 }
 
 export const RETURN_WINDOW_DAYS = 7

@@ -32,8 +32,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   const order = snap.data() as Order
 
   const sellerOrders = body.sellerId
-    ? order.sellerOrders.map((so) => (so.sellerId === body.sellerId ? { ...so, status: "Refunded" as const } : so))
-    : order.sellerOrders.map((so) => ({ ...so, status: "Refunded" as const }))
+    ? order.sellerOrders.map((so) => (so.sellerId === body.sellerId ? { ...so, status: "Returned" as const } : so))
+    : order.sellerOrders.map((so) => ({ ...so, status: "Returned" as const }))
 
   await ref.update({ paymentStatus: "Refunded", sellerOrders })
 

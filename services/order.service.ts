@@ -52,31 +52,47 @@ export async function updateOrderStatus(id: string, status: OrderStatus): Promis
   }
 }
 
+export interface SellerOrderStatusUpdate {
+  status: OrderStatus
+  /** Required to reject a Pending order or cancel any cancellable order. */
+  reason?: string
+  /** Required exactly when transitioning to "Pickup Requested" (Schedule Pickup). */
+  courierPartner?: string
+  pickupDate?: string
+  pickupTime?: string
+  trackingNumber?: string
+}
+
 /**
- * Seller action: updates only their own entry within sellerOrders. Goes
- * through app/api/seller/orders/[id]/status (Admin SDK) rather than a
- * direct Firestore write — firestore.rules no longer lets a seller write
- * orders/{id} at all, since a direct write let them rewrite the whole
- * sellerOrders array including commissionAmount/payoutAmount. The route
- * derives the caller's own sellerId from their auth token; the `sellerId`
- * parameter here is kept only so existing call sites don't need to change.
+ * Seller action: updates only their own entry within sellerOrders — every
+ * fulfillment transition (accept/reject, mark packed, schedule pickup,
+ * hand to courier, advance stages, mark returned, cancel) goes through this
+ * one call. Goes through app/api/seller/orders/[id]/status (Admin SDK)
+ * rather than a direct Firestore write — firestore.rules no longer lets a
+ * seller write orders/{id} at all, since a direct write let them rewrite
+ * the whole sellerOrders array including commissionAmount/payoutAmount. The
+ * route derives the caller's own sellerId from their auth token; the
+ * `sellerId` parameter here is kept only so existing call sites don't need
+ * to change.
  */
 export async function updateSellerOrderStatus(
   orderId: string,
   _sellerId: string,
-  status: OrderStatus,
+  update: OrderStatus | SellerOrderStatusUpdate,
 ): Promise<void> {
   const token = await auth.currentUser?.getIdToken()
   if (!token) throw new Error("Not signed in.")
 
+  const body = typeof update === "string" ? { status: update } : update
+
   const response = await fetch(`/api/seller/orders/${orderId}/status`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ status }),
+    body: JSON.stringify(body),
   })
   if (!response.ok) {
-    const body = await response.json().catch(() => ({}))
-    throw new Error(body.error ?? `Failed to update seller order status for order "${orderId}"`)
+    const responseBody = await response.json().catch(() => ({}))
+    throw new Error(responseBody.error ?? `Failed to update seller order status for order "${orderId}"`)
   }
 }
 

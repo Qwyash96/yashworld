@@ -7,8 +7,13 @@ export interface SellerWallet {
   sellerId: string
   /** Released funds not yet withdrawn — available to request payout for. */
   balance: number
-  /** Funds still on Hold (delivered, inside the return window). */
-  pendingBalance: number
+  /** Delivered, still inside the RETURN_WINDOW_DAYS window — not eligible for release yet. */
+  onHoldBalance: number
+  /** Delivered, return window has elapsed — eligible for release, awaiting the
+   * admin release-holds batch (app/api/admin/wallets/release-holds) actually
+   * running. Distinct from onHoldBalance: this money is just waiting on an
+   * admin action, not waiting on time. */
+  pendingSettlement: number
   lifetimeEarnings: number
   lifetimeWithdrawn: number
   updatedAt: string

@@ -1,43 +1,43 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
+import { Search, Wallet as WalletIcon, PackageSearch } from "lucide-react"
 import { useSellerGate } from "@/hooks/use-seller-status"
 import { useStore } from "@/components/store-provider"
-import { getOrdersBySeller, updateSellerOrderStatus } from "@/services/order.service"
+import { getOrdersBySeller } from "@/services/order.service"
 import { fetchMyWallet, requestWithdrawal } from "@/lib/seller-wallet-client"
 import { formatPrice } from "@/lib/products"
 import type { Order, OrderStatus } from "@/types/order"
 import type { SellerWallet, WithdrawalRequest } from "@/types/wallet"
 import { OrderStatusBadge } from "@/components/orders/order-status-badge"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { SellerNotificationBell } from "@/components/seller/seller-notification-bell"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import type { DiscountSource } from "@/types/order"
+import { cn } from "@/lib/utils"
 
-const DISCOUNT_SOURCE_LABELS: Partial<Record<DiscountSource, string>> = {
-  scheduled_offer: "Scheduled Offer",
-  campaign: "Campaign",
-  seller_coupon: "Coupon",
-}
+type FilterKey = "all" | "Pending" | "Accepted" | "Packed" | "Pickup Pending" | "Shipped" | "Delivered" | "Returned" | "Cancelled"
 
-const STATUS_OPTIONS: OrderStatus[] = [
-  "Pending",
-  "Accepted",
-  "Packing",
-  "Ready To Ship",
-  "Shipped",
-  "Out For Delivery",
-  "Delivered",
-  "Cancelled",
+const FILTERS: { key: FilterKey; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "Pending", label: "Pending" },
+  { key: "Accepted", label: "Accepted" },
+  { key: "Packed", label: "Packed" },
+  { key: "Pickup Pending", label: "Pickup Pending" },
+  { key: "Shipped", label: "Shipped" },
+  { key: "Delivered", label: "Delivered" },
+  { key: "Returned", label: "Returned" },
+  { key: "Cancelled", label: "Cancelled" },
 ]
+
+function matchesFilter(status: OrderStatus, filter: FilterKey): boolean {
+  if (filter === "all") return true
+  if (filter === "Packed") return status === "Ready To Pack" || status === "Packed"
+  if (filter === "Pickup Pending") return status === "Pickup Requested"
+  if (filter === "Shipped") return status === "Picked Up" || status === "In Transit" || status === "Out For Delivery"
+  return status === filter
+}
 
 export default function SellerOrdersPage() {
   const gate = useSellerGate()
@@ -48,6 +48,10 @@ export default function SellerOrdersPage() {
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[] | null>(null)
   const [withdrawAmount, setWithdrawAmount] = useState("")
   const [requesting, setRequesting] = useState(false)
+
+  const [filter, setFilter] = useState<FilterKey>("all")
+  const [search, setSearch] = useState("")
+  const [dateFilter, setDateFilter] = useState("")
 
   function refreshWallet() {
     fetchMyWallet().then((result) => {
@@ -82,33 +86,37 @@ export default function SellerOrdersPage() {
     refreshWallet()
   }
 
-  async function handleStatusChange(orderId: string, status: OrderStatus) {
-    if (!sellerUid) return
-    await updateSellerOrderStatus(orderId, sellerUid, status)
-    setOrders((prev) =>
-      prev
-        ? prev.map((o) =>
-            o.id === orderId
-              ? {
-                  ...o,
-                  sellerOrders: o.sellerOrders.map((so) =>
-                    so.sellerId === sellerUid ? { ...so, status } : so,
-                  ),
-                }
-              : o,
-          )
-        : prev,
-    )
-  }
+  const rows = useMemo(() => {
+    if (!orders || !sellerUid) return []
+    return orders
+      .map((order) => ({ order, mine: order.sellerOrders.find((so) => so.sellerId === sellerUid) }))
+      .filter((r): r is { order: Order; mine: NonNullable<typeof r.mine> } => !!r.mine)
+  }, [orders, sellerUid])
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return rows.filter(({ order, mine }) => {
+      if (!matchesFilter(mine.status, filter)) return false
+      if (dateFilter && !order.createdAt.startsWith(dateFilter)) return false
+      if (q) {
+        const idMatch = order.id.toLowerCase().includes(q)
+        const nameMatch = order.shippingAddress.fullName.toLowerCase().includes(q)
+        const trackingMatch = mine.trackingNumber?.toLowerCase().includes(q)
+        const productMatch = mine.items.some((i) => (getProductById(i.productId)?.name ?? "").toLowerCase().includes(q))
+        if (!idMatch && !nameMatch && !trackingMatch && !productMatch) return false
+      }
+      return true
+    })
+  }, [rows, filter, dateFilter, search, getProductById])
 
   if (gate.state === "loading") {
-    return <div className="mx-auto max-w-5xl px-4 py-16">Loading...</div>
+    return <div className="mx-auto max-w-6xl px-4 py-16">Loading...</div>
   }
   if (gate.state === "signed-out") {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-16">
+      <div className="mx-auto max-w-6xl px-4 py-16">
         <p className="mb-4">Sign in to access the seller dashboard.</p>
-        <Link href="/login" className="underline underline-offset-4">
+        <Link href="/login" className="text-green-700 underline underline-offset-4">
           Sign in
         </Link>
       </div>
@@ -117,147 +125,145 @@ export default function SellerOrdersPage() {
   if (gate.state !== "approved") {
     if (gate.state === "rejected") {
       return (
-        <div className="mx-auto max-w-5xl px-4 py-16">
-          <p className="mb-4">
-            {gate.reason || "Your seller application was rejected. Please review and resubmit."}
-          </p>
-          <Link href="/sell/register" className="underline underline-offset-4">
+        <div className="mx-auto max-w-6xl px-4 py-16">
+          <p className="mb-4">{gate.reason || "Your seller application was rejected. Please review and resubmit."}</p>
+          <Link href="/sell/register" className="text-green-700 underline underline-offset-4">
             Edit &amp; Resubmit
           </Link>
         </div>
       )
     }
     const message =
-      gate.state === "not-applied"
-        ? "You haven't applied to become a seller yet."
-        : "Your seller application is pending admin approval."
-    return <div className="mx-auto max-w-5xl px-4 py-16">{message}</div>
+      gate.state === "not-applied" ? "You haven't applied to become a seller yet." : "Your seller application is pending admin approval."
+    return <div className="mx-auto max-w-6xl px-4 py-16">{message}</div>
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
-      <h1 className="font-serif text-3xl font-semibold tracking-tight">My Orders</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        Only your own items within each order are shown here.
-      </p>
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-black">Order Fulfillment</h1>
+          <p className="mt-1 text-sm text-[#444444]">Only your own items within each order are shown here.</p>
+        </div>
+        <SellerNotificationBell sellerId={sellerUid!} />
+      </div>
 
       {wallet && (
-        <div className="mt-6 rounded-md border border-border p-4">
-          <h2 className="font-medium">Wallet</h2>
-          <div className="mt-2 grid grid-cols-3 gap-4 text-sm">
-            <div>
-              <p className="text-muted-foreground">Available</p>
-              <p className="text-lg font-semibold">{formatPrice(wallet.balance)}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">On Hold</p>
-              <p className="text-lg font-semibold">{formatPrice(wallet.pendingBalance)}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Lifetime Withdrawn</p>
-              <p className="text-lg font-semibold">{formatPrice(wallet.lifetimeWithdrawn)}</p>
-            </div>
+        <section className="mt-6 rounded-2xl border border-border bg-white p-5 shadow-sm">
+          <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-[#444444]">
+            <WalletIcon className="size-4 text-green-700" />
+            Wallet
+          </h2>
+          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-5">
+            <WalletTile label="Available Balance" value={wallet.balance} highlight />
+            <WalletTile label="On Hold" value={wallet.onHoldBalance} />
+            <WalletTile label="Pending Settlement" value={wallet.pendingSettlement} />
+            <WalletTile label="Lifetime Earnings" value={wallet.lifetimeEarnings} />
+            <WalletTile label="Total Withdrawn" value={wallet.lifetimeWithdrawn} />
           </div>
-          <div className="mt-4 flex gap-2">
+          <div className="mt-4 flex flex-wrap gap-2">
             <Input
               value={withdrawAmount}
               onChange={(e) => setWithdrawAmount(e.target.value.replace(/[^0-9.]/g, ""))}
               placeholder="Amount to withdraw"
-              className="h-9 w-48"
+              className="h-10 w-48"
             />
-            <Button size="sm" className="h-9" disabled={requesting || wallet.balance <= 0} onClick={handleRequestWithdrawal}>
+            <Button className="h-10" disabled={requesting || wallet.balance <= 0} onClick={handleRequestWithdrawal}>
               {requesting ? "Requesting..." : "Request Withdrawal"}
             </Button>
           </div>
           {withdrawals && withdrawals.length > 0 && (
-            <div className="mt-4 space-y-1 text-sm text-muted-foreground">
+            <div className="mt-4 flex flex-col gap-1 text-sm text-[#444444]">
               {withdrawals.slice(0, 5).map((w) => (
                 <div key={w.id} className="flex justify-between">
-                  <span>{formatPrice(w.amount)} — {new Date(w.requestedAt).toLocaleDateString()}</span>
+                  <span>
+                    {formatPrice(w.amount)} — {new Date(w.requestedAt).toLocaleDateString()}
+                  </span>
                   <span className="capitalize">{w.status}</span>
                 </div>
               ))}
             </div>
           )}
-        </div>
+        </section>
       )}
 
-      {orders === null ? (
-        <p className="mt-8 text-sm text-muted-foreground">Loading orders...</p>
-      ) : orders.length === 0 ? (
-        <p className="mt-8 text-sm text-muted-foreground">No orders yet.</p>
-      ) : (
-        <ul className="mt-8 space-y-6">
-          {orders.map((order) => {
-            const mine = order.sellerOrders.find((so) => so.sellerId === sellerUid)
-            if (!mine) return null
-            const total = mine.items.reduce((sum, i) => sum + i.price * i.quantity, 0)
-            return (
-              <li key={order.id} className="rounded-md border border-border p-4">
-                <div className="flex items-center justify-between">
+      {/* Filters */}
+      <section className="mt-6 flex flex-wrap gap-2 overflow-x-auto">
+        {FILTERS.map((f) => (
+          <button
+            key={f.key}
+            onClick={() => setFilter(f.key)}
+            className={cn(
+              "shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
+              filter === f.key ? "border-green-600 bg-green-600 text-white" : "border-border bg-white text-black hover:border-green-600 hover:text-green-700",
+            )}
+          >
+            {f.label}
+          </button>
+        ))}
+      </section>
+
+      {/* Search + date */}
+      <section className="mt-4 flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[240px]">
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#888888]" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by Order ID, customer name, product, or tracking number..."
+            className="h-10 pl-9"
+          />
+        </div>
+        <Input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="h-10 w-44" />
+      </section>
+
+      {/* Orders */}
+      <section className="mt-6">
+        {orders === null ? (
+          <p className="text-sm text-[#444444]">Loading orders...</p>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-white py-16 text-center">
+            <PackageSearch className="size-8 text-[#888888]" />
+            <p className="mt-3 text-sm text-[#444444]">No orders match this view.</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {filtered.map(({ order, mine }) => {
+              const total = mine.items.reduce((sum, i) => sum + i.price * i.quantity, 0)
+              return (
+                <Link
+                  key={order.id}
+                  href={`/seller/orders/${order.id}`}
+                  className="flex flex-col gap-2 rounded-2xl border border-border bg-white p-4 shadow-sm transition hover:border-green-600 sm:flex-row sm:items-center sm:justify-between"
+                >
                   <div>
-                    <p className="font-medium">Order #{order.id.slice(0, 8)}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {new Date(order.createdAt).toLocaleDateString()} · {formatPrice(total)}
+                    <p className="font-semibold text-black">
+                      #{order.id.slice(0, 8)} · {order.shippingAddress.fullName}
                     </p>
-                    <p className="text-xs text-muted-foreground">
-                      Commission {formatPrice(mine.commissionAmount)} · Payout {formatPrice(mine.payoutAmount)}
+                    <p className="text-xs text-[#888888]">
+                      {new Date(order.createdAt).toLocaleString()} · {mine.items.length} item{mine.items.length === 1 ? "" : "s"} ·{" "}
+                      {formatPrice(total)}
+                    </p>
+                    <p className="text-xs text-[#444444]">
+                      Earnings {formatPrice(mine.payoutAmount)} · Commission {formatPrice(mine.commissionAmount)}
                     </p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <OrderStatusBadge status={mine.status} />
-                    <Select
-                      value={mine.status}
-                      onValueChange={(v) => {
-                        if (v) handleStatusChange(order.id, v as OrderStatus)
-                      }}
-                    >
-                      <SelectTrigger className="w-40">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {STATUS_OPTIONS.map((s) => (
-                          <SelectItem key={s} value={s}>
-                            {s}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <ul className="mt-4 space-y-1 text-sm">
-                  {mine.items.map((item) => {
-                    const product = getProductById(item.productId)
-                    const sourceLabel = item.discountSource ? DISCOUNT_SOURCE_LABELS[item.discountSource] : undefined
-                    return (
-                      <li
-                        key={item.productId}
-                        className="flex justify-between text-muted-foreground"
-                      >
-                        <span>
-                          {product?.name ?? item.productId} × {item.quantity}
-                          {sourceLabel && (
-                            <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                              {sourceLabel}
-                              {item.couponCode ? ` · ${item.couponCode}` : ""}
-                            </span>
-                          )}
-                        </span>
-                        <span>
-                          {item.originalPrice !== undefined && item.originalPrice > item.price && (
-                            <span className="mr-2 text-xs line-through">{formatPrice(item.originalPrice * item.quantity)}</span>
-                          )}
-                          {formatPrice(item.price * item.quantity)}
-                        </span>
-                      </li>
-                    )
-                  })}
-                </ul>
-              </li>
-            )
-          })}
-        </ul>
-      )}
+                  <OrderStatusBadge status={mine.status} />
+                </Link>
+              )
+            })}
+          </div>
+        )}
+      </section>
+    </div>
+  )
+}
+
+function WalletTile({ label, value, highlight }: { label: string; value: number; highlight?: boolean }) {
+  return (
+    <div className={cn("rounded-xl border p-3", highlight ? "border-green-600 bg-green-50" : "border-border bg-white")}>
+      <p className="text-xs uppercase tracking-widest text-[#888888]">{label}</p>
+      <p className={cn("mt-1 text-lg font-bold", highlight ? "text-green-700" : "text-black")}>{formatPrice(value)}</p>
     </div>
   )
 }

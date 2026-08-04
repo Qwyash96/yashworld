@@ -4,22 +4,15 @@ import type { OrderStatus } from "@/types/order"
 const STATUS_VARIANT: Record<OrderStatus, "default" | "secondary" | "outline" | "destructive"> = {
   Pending: "secondary",
   Accepted: "outline",
-  Packing: "outline",
-  "Ready To Ship": "outline",
-  Shipped: "default",
+  "Ready To Pack": "outline",
+  Packed: "outline",
+  "Pickup Requested": "outline",
+  "Picked Up": "outline",
+  "In Transit": "default",
   "Out For Delivery": "default",
   Delivered: "default",
+  Returned: "destructive",
   Cancelled: "destructive",
-  "Return Requested": "secondary",
-  "Return Approved": "outline",
-  "Return Rejected": "destructive",
-  "Pickup Scheduled": "outline",
-  "Picked Up": "outline",
-  Refunded: "destructive",
-  "Replacement Requested": "secondary",
-  "Replacement Approved": "outline",
-  "Replacement Rejected": "destructive",
-  Completed: "default",
 }
 
 export function OrderStatusBadge({ status }: { status: OrderStatus }) {

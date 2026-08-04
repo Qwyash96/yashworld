@@ -55,7 +55,7 @@ for (let i = 0; i < seq.length - 1; i++) {
 }
 assert(isCancellable("Pending"), "Pending is cancellable")
 assert(isCancellable("Accepted"), "Accepted is cancellable")
-assert(!isCancellable("Shipped"), "Shipped is NOT cancellable")
+assert(!isCancellable("Picked Up"), "Picked Up is NOT cancellable (courier already has it)")
 assert(!isCancellable("Delivered"), "Delivered is NOT cancellable")
 
 // Mirrors the route's isAllowedTransition() logic exactly, to catch drift.
@@ -68,8 +68,8 @@ function isAllowedTransition(from: OrderStatus, to: OrderStatus): boolean {
 assert(isAllowedTransition("Pending", "Accepted"), "Pending -> Accepted allowed")
 assert(!isAllowedTransition("Pending", "Delivered"), "Pending -> Delivered (skipping steps) NOT allowed")
 assert(!isAllowedTransition("Delivered", "Pending"), "Delivered -> Pending (backwards) NOT allowed")
-assert(isAllowedTransition("Packing", "Cancelled"), "Packing -> Cancelled allowed (still cancellable)")
-assert(!isAllowedTransition("Shipped", "Cancelled"), "Shipped -> Cancelled NOT allowed (past the cancel window)")
+assert(isAllowedTransition("Ready To Pack", "Cancelled"), "Ready To Pack -> Cancelled allowed (still cancellable)")
+assert(!isAllowedTransition("Picked Up", "Cancelled"), "Picked Up -> Cancelled NOT allowed (past the cancel window)")
 
 console.log(`\n${pass} passed, ${fail} failed`)
 if (fail > 0) process.exit(1)

@@ -3,6 +3,8 @@ import { requireAdminPermission } from "@/lib/admin-api-auth"
 import { getAdminDb } from "@/lib/firebase-admin"
 import { recomputeSellerWallet } from "@/lib/wallet-service"
 import { writeAuditLog } from "@/lib/audit-log"
+import { writeSellerNotification } from "@/lib/seller-notifications"
+import { formatPrice } from "@/lib/products"
 import { RETURN_WINDOW_DAYS } from "@/types/order-lifecycle"
 import type { Order } from "@/types/order"
 
@@ -26,7 +28,7 @@ export async function POST(request: NextRequest) {
   const snap = await db.collection("orders").where("hasHeldPayouts", "==", true).get()
 
   let releasedCount = 0
-  const affectedSellerIds = new Set<string>()
+  const releasedAmountBySeller = new Map<string, number>()
 
   for (const doc of snap.docs) {
     const order = doc.data() as Order
@@ -39,7 +41,7 @@ export async function POST(request: NextRequest) {
       ) {
         changed = true
         releasedCount++
-        affectedSellerIds.add(so.sellerId)
+        releasedAmountBySeller.set(so.sellerId, (releasedAmountBySeller.get(so.sellerId) ?? 0) + so.payoutAmount)
         return { ...so, payoutStatus: "Released" as const }
       }
       return so
@@ -51,7 +53,20 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  const affectedSellerIds = new Set(releasedAmountBySeller.keys())
   await Promise.all(Array.from(affectedSellerIds).map((sellerId) => recomputeSellerWallet(sellerId)))
+  await Promise.all(
+    Array.from(releasedAmountBySeller.entries()).map(([sellerId, amount]) =>
+      writeSellerNotification({
+        sellerId,
+        type: "payment_settled",
+        title: "Payment settled",
+        message: `${formatPrice(amount)} has been released to your available balance.`,
+        relatedType: "sellerWallet",
+        relatedId: sellerId,
+      }),
+    ),
+  )
 
   if (releasedCount > 0) {
     await writeAuditLog({

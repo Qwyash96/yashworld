@@ -134,9 +134,11 @@ export default function ProfilePage() {
   const pendingStatuses = new Set<OrderStatus>([
     "Pending",
     "Accepted",
-    "Packing",
-    "Ready To Ship",
-    "Shipped",
+    "Ready To Pack",
+    "Packed",
+    "Pickup Requested",
+    "Picked Up",
+    "In Transit",
     "Out For Delivery",
   ])
   const pendingOrders = orders.filter((o) => pendingStatuses.has(o.status)).length

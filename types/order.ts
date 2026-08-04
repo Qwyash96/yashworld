@@ -43,11 +43,21 @@ export interface SellerOrder {
   sellerId: string
   items: OrderItem[]
   status: OrderStatus
+  /** One entry appended by app/api/seller/orders/[id]/status on every real
+   * transition — the seller-facing Tracking Timeline reads this directly. */
   timeline?: OrderTimelineEvent[]
+  /** The courier's AWB / tracking number — set when Schedule Pickup is submitted. */
   trackingNumber?: string
+  /** Set once a courier is assigned via Schedule Pickup. */
+  courierPartner?: string
+  pickupDate?: string
+  pickupTime?: string
   shippedAt?: string
   deliveredAt?: string
   cancelledAt?: string
+  returnedAt?: string
+  /** Set when the seller rejects a Pending order. */
+  rejectionReason?: string
   /** Seller-side money flow for this seller's portion of the order. */
   payoutStatus?: SellerPayoutStatus
   /** Platform commission on this seller's item revenue, at the rate active when the order was placed. */

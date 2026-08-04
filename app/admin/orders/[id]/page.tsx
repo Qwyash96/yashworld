@@ -16,13 +16,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 const STATUS_OPTIONS: OrderStatus[] = [
   "Pending",
   "Accepted",
-  "Packing",
-  "Ready To Ship",
-  "Shipped",
+  "Ready To Pack",
+  "Packed",
+  "Pickup Requested",
+  "Picked Up",
+  "In Transit",
   "Out For Delivery",
   "Delivered",
+  "Returned",
   "Cancelled",
-  "Refunded",
 ]
 
 export default function AdminOrderDetailPage() {
@@ -145,7 +147,7 @@ export default function AdminOrderDetailPage() {
                 <p className="text-xs uppercase tracking-widest text-[#444444]">Seller {so.sellerId}</p>
                 <div className="flex items-center gap-2">
                   <OrderStatusBadge status={so.status} />
-                  {so.status !== "Refunded" && (
+                  {so.status !== "Returned" && (
                     <Button size="sm" variant="outline" className="h-8" onClick={() => handleRefund(so.sellerId)}>
                       Refund
                     </Button>

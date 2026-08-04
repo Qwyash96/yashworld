@@ -29,6 +29,7 @@ type CheckoutForm = {
   fullName: string
   line1: string
   line2: string
+  landmark: string
   city: string
   state: string
   postalCode: string
@@ -95,6 +96,7 @@ const emptyForm = (email: string): CheckoutForm => ({
   fullName: "",
   line1: "",
   line2: "",
+  landmark: "",
   city: "",
   state: "",
   postalCode: "",
@@ -244,6 +246,7 @@ export default function CheckoutPage() {
       fullName: form.fullName.trim(),
       line1: form.line1.trim(),
       line2: form.line2.trim() || undefined,
+      landmark: form.landmark.trim() || undefined,
       city: form.city.trim(),
       state: form.state.trim(),
       postalCode: form.postalCode.trim(),
@@ -439,6 +442,16 @@ export default function CheckoutPage() {
                 id="line2"
                 value={form.line2}
                 onChange={(e) => setField("line2", e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="landmark">Landmark (optional)</Label>
+              <Input
+                id="landmark"
+                placeholder="e.g. Near City Mall"
+                value={form.landmark}
+                onChange={(e) => setField("landmark", e.target.value)}
               />
             </div>
 

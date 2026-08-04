@@ -68,7 +68,16 @@ export function SiteHeader() {
       return
     }
     let cancelled = false
-    const pendingStatuses = new Set(["Pending", "Accepted", "Packing", "Ready To Ship", "Shipped", "Out For Delivery"])
+    const pendingStatuses = new Set([
+      "Pending",
+      "Accepted",
+      "Ready To Pack",
+      "Packed",
+      "Pickup Requested",
+      "Picked Up",
+      "In Transit",
+      "Out For Delivery",
+    ])
     getOrdersByBuyer(user.uid).then((orders) => {
       if (cancelled) return
       setPendingOrders(orders.filter((o) => pendingStatuses.has(o.status)).length)

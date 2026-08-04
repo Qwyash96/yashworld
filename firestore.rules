@@ -388,6 +388,16 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // sellerNotifications/{id} — the seller fulfillment dashboard's own bell
+    // (types/seller-notification.ts), targeted by uid instead of admin
+    // permission. Always written by the Admin SDK (lib/order-finalize.ts,
+    // app/api/seller/orders/[id]/status, app/api/admin/wallets/release-holds)
+    // — no client create path needed or allowed.
+    match /sellerNotifications/{id} {
+      allow read: if isSignedIn() && resource.data.sellerId == request.auth.uid;
+      allow write: if false;
+    }
+
     // sellerWallets/{sellerId} — a read-through cache recomputed by
     // lib/wallet-service.ts from that seller's own orders. Never
     // client-writable — always trust the Admin-SDK recompute, never a

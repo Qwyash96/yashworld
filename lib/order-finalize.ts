@@ -14,6 +14,7 @@ import type { Product } from "@/types/product"
 import type { Order, PaymentMethod, PaymentStatus, SellerOrder, ShippingMethod } from "@/types/order"
 import type { Coupon } from "@/types/coupon"
 import type { AdminNotificationInput } from "@/types/notification"
+import type { SellerNotificationInput } from "@/types/seller-notification"
 
 // Re-exported so existing importers (app/api/payments/razorpay/create-order,
 // app/api/payments/razorpay/verify) don't need to change their import path —
@@ -240,6 +241,20 @@ export async function finalizeOrder(input: FinalizeOrderInput): Promise<Finalize
     }
     for (const notification of notifications) {
       tx.set(db.collection("notifications").doc(), { ...notification, createdAt: now.toISOString() })
+    }
+
+    // One per seller on this order — their own fulfillment-dashboard bell
+    // (types/seller-notification.ts), distinct from the admin bell above.
+    for (const sellerId of sellerIds) {
+      const sellerNotification: SellerNotificationInput = {
+        sellerId,
+        type: "new_order",
+        title: "New order received",
+        message: `You have a new order — #${orderRef.id.slice(0, 8)}.`,
+        relatedType: "order",
+        relatedId: orderRef.id,
+      }
+      tx.set(db.collection("sellerNotifications").doc(), { ...sellerNotification, createdAt: now.toISOString() })
     }
 
     return total

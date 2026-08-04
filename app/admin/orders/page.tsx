@@ -17,13 +17,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 const STATUS_OPTIONS: OrderStatus[] = [
   "Pending",
   "Accepted",
-  "Packing",
-  "Ready To Ship",
-  "Shipped",
+  "Ready To Pack",
+  "Packed",
+  "Pickup Requested",
+  "Picked Up",
+  "In Transit",
   "Out For Delivery",
   "Delivered",
+  "Returned",
   "Cancelled",
-  "Refunded",
 ]
 
 const PAYMENT_STATUS_OPTIONS: PaymentStatus[] = ["Pending", "Paid", "Failed", "Refunded"]
