@@ -56,8 +56,15 @@ export interface DashboardStats {
   monthlyRevenue: number
   pendingWithdrawalsCount: number
   pendingWithdrawalsAmount: number
+  /** Count of tickets with status in [new, open, in_progress] — a true
+   * aggregate, unlike recentSupportTickets below which is only the 5 most
+   * recent (any status). */
+  openSupportTicketsCount: number
   recentSupportTickets: RecentTicketSummary[]
   lowStockProducts: LowStockProduct[]
   topSellingProducts: TopSellingProduct[]
   revenueChart: DashboardChartPoint[]
+  activeCampaignsCount: number
+  activeCouponsCount: number
+  activeBannersCount: number
 }

@@ -16,6 +16,9 @@ import {
   LifeBuoy,
   PackageX,
   TrendingUp,
+  Megaphone,
+  Tag,
+  Image as ImageIcon,
 } from "lucide-react"
 import { getPendingProducts, approveProduct, rejectProduct } from "@/services/product.service"
 import { useAdminAuth } from "@/components/admin/admin-auth-context"
@@ -52,8 +55,10 @@ export default function AdminDashboardPage() {
   const showReports = has("reports_analytics")
   const showProducts = has("product_management")
   const showSupport = has("support")
+  const showMarketing = has("coupons_offers") || has("marketing")
 
-  const anySection = showUsers || showSellers || showOrders || showPayments || showReports || showProducts || showSupport
+  const anySection =
+    showUsers || showSellers || showOrders || showPayments || showReports || showProducts || showSupport || showMarketing
 
   if (!anySection) {
     return <RoleLandingPage />
@@ -94,11 +99,12 @@ export default function AdminDashboardPage() {
                 hint={formatPrice(stats.pendingWithdrawalsAmount)}
               />
             )}
-            {showSupport && (
-              <StatTile icon={LifeBuoy} label="Open Support Tickets" value={stats.recentSupportTickets.filter((t) => t.status !== "closed" && t.status !== "resolved").length} />
-            )}
+            {showSupport && <StatTile icon={LifeBuoy} label="Open Support Tickets" value={stats.openSupportTicketsCount} />}
             {showProducts && <StatTile icon={PackageX} label="Low Stock Products" value={stats.lowStockProducts.length} />}
             {showProducts && <StatTile icon={TrendingUp} label="Top Selling Products" value={stats.topSellingProducts.length} />}
+            {showMarketing && <StatTile icon={Megaphone} label="Active Campaigns" value={stats.activeCampaignsCount} />}
+            {showMarketing && <StatTile icon={Tag} label="Active Coupons" value={stats.activeCouponsCount} />}
+            {showMarketing && <StatTile icon={ImageIcon} label="Live Banners" value={stats.activeBannersCount} />}
           </div>
 
           {showReports && (

@@ -5,7 +5,6 @@ import { useParams } from "next/navigation"
 import { toast } from "sonner"
 import { ArrowLeft, Plug, ShieldCheck, ScrollText, Webhook } from "lucide-react"
 import Link from "next/link"
-import { useAdminAuth } from "@/components/admin/admin-auth-context"
 import {
   fetchIntegration,
   fetchIntegrationLogs,
@@ -25,7 +24,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 export default function AdminIntegrationDetailPage() {
   const params = useParams<{ providerId: string }>()
   const providerId = params.providerId
-  const admin = useAdminAuth()
 
   const [detail, setDetail] = useState<ProviderDetail | null>(null)
   const [credentials, setCredentials] = useState<Record<string, string>>({})
@@ -68,10 +66,12 @@ export default function AdminIntegrationDetailPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(loadLogs, [providerId, logLevel])
 
-  if (admin.role !== "super_admin") {
-    return <div className="p-8 text-center text-sm text-[#444444]">Only Super Admin can access Integrations.</div>
-  }
-
+  // AdminLayout's route guard is the authoritative gate here (see
+  // getPermissionForPath / components/admin/admin-sidebar.tsx) — payment
+  // gateway paths (razorpay, cashfree, phonepe, payu, stripe, paypal) are
+  // reachable by "payments"-holders, every other provider stays
+  // super_admin-only. A redundant client-side super_admin-only check here
+  // would incorrectly block finance from the very pages it's meant to use.
   if (!detail) return null
   const { config, adapter } = detail
 

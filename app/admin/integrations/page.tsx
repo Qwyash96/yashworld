@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import { CreditCard, Truck, ShoppingCart, MessageCircle, Mail, MessageSquare, BarChart3, Plug } from "lucide-react"
 import { useAdminAuth } from "@/components/admin/admin-auth-context"
 import { fetchIntegrations, type ProviderSummary } from "@/lib/admin-integrations-client"
+import { hasPermission, isAdminRole } from "@/lib/admin-roles"
 import type { IntegrationCategory } from "@/types/integrations"
 import { Badge } from "@/components/ui/badge"
 
@@ -52,16 +53,26 @@ export default function AdminIntegrationsPage() {
     })
   }, [])
 
-  if (admin.role !== "super_admin") {
-    return <div className="p-8 text-center text-sm text-[#444444]">Only Super Admin can access Integrations.</div>
+  // Route guard (AdminLayout) already restricts who can reach this page at
+  // all; a "payments"-holder who isn't super_admin only ever gets here to
+  // manage payment gateways (see components/admin/admin-sidebar.tsx's
+  // Payments section), so their view of this shared list is filtered down
+  // to just that category — they never see Shipping/WhatsApp/Email/SMS/
+  // Analytics credentials.
+  const canManagePaymentsOnly = admin.role !== "super_admin" && isAdminRole(admin.role) && hasPermission(admin.role, "payments")
+  if (admin.role !== "super_admin" && !canManagePaymentsOnly) {
+    return <div className="p-8 text-center text-sm text-[#444444]">You don't have access to Integrations.</div>
   }
 
   if (!providers) return null
 
-  const grouped = CATEGORY_ORDER.map((category) => ({
-    category,
-    providers: providers.filter((p) => p.adapter.category === category),
-  })).filter((group) => group.providers.length > 0)
+  const visibleCategories = canManagePaymentsOnly ? (["payment"] as IntegrationCategory[]) : CATEGORY_ORDER
+  const grouped = visibleCategories
+    .map((category) => ({
+      category,
+      providers: providers.filter((p) => p.adapter.category === category),
+    }))
+    .filter((group) => group.providers.length > 0)
 
   return (
     <div className="flex flex-col gap-6">

@@ -35,3 +35,9 @@ export interface WithdrawalRequest {
 }
 
 export type WithdrawalRequestInput = Omit<WithdrawalRequest, "id" | "status" | "requestedAt">
+
+/** A withdrawal request denormalized with the seller's shop name, for the
+ * platform-wide /admin/payouts list (as opposed to the per-seller wallet tab). */
+export interface PayoutRow extends WithdrawalRequest {
+  sellerShopName: string
+}

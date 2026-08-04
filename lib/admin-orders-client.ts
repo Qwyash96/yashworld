@@ -45,3 +45,19 @@ export async function refundOrder(orderId: string, sellerId?: string): Promise<{
   })
   return parseResult<{ ok: true }>(response)
 }
+
+/** For /admin/refunds — "payments"-permission reachable (unlike fetchOrders
+ * above, which requires order_management), scoped to just Paid/Refunded. */
+export async function fetchRefundableOrders(
+  params: { paymentStatus?: "Paid" | "Refunded"; cursor?: string | null } = {},
+): Promise<{ ok: true; orders: Order[]; nextCursor: string | null; hasMore: boolean } | { ok: false; error: string }> {
+  const headers = await authHeaders()
+  const query = new URLSearchParams()
+  if (params.paymentStatus) query.set("paymentStatus", params.paymentStatus)
+  if (params.cursor) query.set("cursor", params.cursor)
+
+  const response = await fetch(`/api/admin/refunds?${query.toString()}`, { headers })
+  const result = await parseResult<{ orders: Order[]; nextCursor: string | null; hasMore: boolean }>(response)
+  if (!result.ok) return result
+  return { ok: true, ...result.data }
+}

@@ -82,18 +82,32 @@ export const adminSections: AdminSection[] = [
     items: [
       { label: "All Orders", href: "/admin/orders" },
       { label: "Returns", href: "#" },
-      { label: "Refunds", href: "/admin/orders?paymentStatus=Refunded" },
     ],
   },
   {
-    // Razorpay configuration moved into the generic Plug-and-Play
-    // Integration System (see the "Integrations" section below) —
-    // this section just keeps "payments"-permission roles (finance, admin)
-    // a direct link to it, matching their pre-migration access.
+    // The finance role's primary section — every item here is reachable by
+    // "payments"-permission roles (finance, admin), NOT superAdminOnly,
+    // since finance's whole job is exactly this content. "Payment Settings"
+    // is deliberately first. Each of the 6 payment-gateway links points at
+    // its own /admin/integrations/{id} page (the generic Plug-and-Play
+    // Integration System) — registering these specific paths here is what
+    // gives "payments"-holders a route-guard override on those exact pages
+    // without opening the rest of /admin/integrations (still settings-only,
+    // see the Integrations section below).
     label: "Payments",
     icon: Wallet,
     permission: "payments",
-    items: [{ label: "Razorpay Settings", href: "/admin/integrations/razorpay", superAdminOnly: true }],
+    items: [
+      { label: "Payment Settings", href: "/admin/integrations/razorpay" },
+      { label: "Cashfree", href: "/admin/integrations/cashfree" },
+      { label: "PhonePe PG", href: "/admin/integrations/phonepe" },
+      { label: "PayU", href: "/admin/integrations/payu" },
+      { label: "Stripe", href: "/admin/integrations/stripe" },
+      { label: "PayPal", href: "/admin/integrations/paypal" },
+      { label: "Payouts", href: "/admin/payouts" },
+      { label: "Refunds", href: "/admin/refunds" },
+      { label: "Settlements", href: "/admin/settlements" },
+    ],
   },
   {
     label: "Integrations",
