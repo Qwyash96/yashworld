@@ -16,6 +16,7 @@ import {
   LifeBuoy,
   ShieldCheck,
   LogOut,
+  Plug,
   type LucideIcon,
 } from "lucide-react"
 import {
@@ -95,6 +96,21 @@ export const adminSections: AdminSection[] = [
       { label: "Payment Link", href: "/admin/settings/payments#payment-link", superAdminOnly: true },
       { label: "Currency", href: "/admin/settings/payments#currency", superAdminOnly: true },
       { label: "Webhook Settings", href: "/admin/settings/payments#webhook-settings", superAdminOnly: true },
+    ],
+  },
+  {
+    label: "Integrations",
+    icon: Plug,
+    permission: "settings",
+    items: [
+      { label: "All Integrations", href: "/admin/integrations", superAdminOnly: true },
+      { label: "Payment Gateways", href: "/admin/integrations?category=payment", superAdminOnly: true },
+      { label: "Shipping", href: "/admin/integrations?category=shipping", superAdminOnly: true },
+      { label: "Checkout (GoKwik)", href: "/admin/integrations?category=checkout", superAdminOnly: true },
+      { label: "WhatsApp", href: "/admin/integrations?category=whatsapp", superAdminOnly: true },
+      { label: "Email", href: "/admin/integrations?category=email", superAdminOnly: true },
+      { label: "SMS", href: "/admin/integrations?category=sms", superAdminOnly: true },
+      { label: "Analytics", href: "/admin/integrations?category=analytics", superAdminOnly: true },
     ],
   },
   {

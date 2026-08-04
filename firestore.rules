@@ -144,6 +144,29 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // integrations/{providerId} — the generic Plug-and-Play Integration
+    // System's config doc per provider (Razorpay, Stripe, Shiprocket,
+    // GoKwik, ...). Contains AES-256-GCM encrypted credentials (see
+    // lib/integrations/crypto.ts), so like paymentSettings this is a hard
+    // deny for every client request. Read/write exclusively through
+    // app/api/admin/integrations/* (Admin SDK, super_admin only).
+    match /integrations/{providerId} {
+      allow read, write: if false;
+    }
+
+    // integrationLogs/{id} / integrationWebhookEvents/{id} — API call/error
+    // logs and webhook delivery records for the integrations above. Written
+    // by lib/integrations/logs.ts and lib/integrations/webhook-events.ts
+    // (Admin SDK) from inside the generic verify/test/webhook routes; read
+    // exclusively through app/api/admin/integrations/[providerId]/logs
+    // (super_admin only).
+    match /integrationLogs/{id} {
+      allow read, write: if false;
+    }
+    match /integrationWebhookEvents/{id} {
+      allow read, write: if false;
+    }
+
     // newsletterSubscribers/{email} — write-only from the client's
     // perspective, and even that only goes through the public Admin-SDK
     // route at app/api/newsletter/subscribe (validates + de-dupes server
