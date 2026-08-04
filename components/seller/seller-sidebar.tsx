@@ -2,13 +2,14 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Leaf, Package, ShoppingBag, Tag } from "lucide-react"
+import { Leaf, Package, ShoppingBag, Tag, Megaphone } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const NAV_ITEMS = [
   { href: "/seller/products", label: "Products", icon: Package },
   { href: "/seller/orders", label: "Orders", icon: ShoppingBag },
   { href: "/seller/offers", label: "Offers", icon: Tag },
+  { href: "/seller/marketing", label: "Marketing", icon: Megaphone },
 ]
 
 export function SellerSidebarContent() {

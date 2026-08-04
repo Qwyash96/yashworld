@@ -441,12 +441,20 @@ service cloud.firestore {
 
     // sponsoredAds/{id} — a seller's paid product-promotion campaign.
     // Created (at "pending") and every subsequent status transition
-    // (paid/approved/rejected/running/expired/paused) go through Admin-SDK
-    // routes only (app/api/ads/*, app/api/admin/sponsored-ads/*) — the fee
-    // is looked up server-side from platformSettings/adPricing, never
-    // client-supplied, exactly like campaign/coupon pricing elsewhere.
+    // (paid/approved/rejected/paused) go through Admin-SDK routes only
+    // (app/api/ads/*, app/api/admin/sponsored-ads/*) — the fee is looked
+    // up server-side from platformSettings/adPricing, never client-
+    // supplied, exactly like campaign/coupon pricing elsewhere.
+    // "Running"/"expired" are never stored — they're computed from
+    // status == 'approved' plus the [startAt, endAt] window at read time
+    // (lib/sponsored-ad-status.ts), same precedent as banners' active +
+    // startAt/endAt. Public read is unconditional for status == 'approved'
+    // (the window filtering happens in services/sponsored-ad.service.ts),
+    // same shape as banners/{id}'s unconditional public read above.
     match /sponsoredAds/{id} {
-      allow read: if isAdmin() || (isSignedIn() && resource.data.sellerId == request.auth.uid);
+      allow read: if resource.data.status == 'approved'
+        || isAdmin()
+        || (isSignedIn() && resource.data.sellerId == request.auth.uid);
       allow write: if false;
     }
 

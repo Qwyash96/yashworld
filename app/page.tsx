@@ -2,6 +2,7 @@ import { getProductCatalog, getCategoryCatalog } from "@/services/catalog.servic
 import { getActiveBanners } from "@/services/banner.service"
 import { getActiveFlashSales } from "@/services/campaign.service"
 import { getFeaturedSellers } from "@/services/seller.service"
+import { getRunningAdsByPosition } from "@/services/sponsored-ad.service"
 import { getTrustBadgesSettings } from "@/lib/platform-settings"
 import { calculateDiscountPercent } from "@/lib/discount"
 import { HeroSlider } from "@/components/marketplace/hero-slider"
@@ -11,9 +12,11 @@ import { FlashDeals } from "@/components/marketplace/flash-deals"
 import { FeaturedSellers } from "@/components/marketplace/featured-sellers"
 import { ProductRail } from "@/components/marketplace/product-rail"
 import { PromoStrip } from "@/components/marketplace/promo-strip"
+import { SponsoredAdSlot } from "@/components/marketplace/sponsored-ad-slot"
 import { RecentlyViewedSection } from "@/components/marketplace/recently-viewed-section"
 import { FullCatalogBrowser } from "@/components/marketplace/full-catalog-browser"
 import { NewsletterSection } from "@/components/marketplace/newsletter-section"
+import type { Banner } from "@/types/banner"
 
 /**
  * The homepage — every section below is real, admin-editable, database-
@@ -26,14 +29,35 @@ import { NewsletterSection } from "@/components/marketplace/newsletter-section"
  * fetch, no fabricated data.
  */
 export default async function HomePage() {
-  const [products, categories, banners, flashSales, featuredSellers, trustBadgesSettings] = await Promise.all([
-    getProductCatalog(),
-    getCategoryCatalog(),
-    getActiveBanners(),
-    getActiveFlashSales(),
-    getFeaturedSellers(),
-    getTrustBadgesSettings(),
-  ])
+  const [products, categories, banners, flashSales, featuredSellers, trustBadgesSettings, adsByPosition] =
+    await Promise.all([
+      getProductCatalog(),
+      getCategoryCatalog(),
+      getActiveBanners(),
+      getActiveFlashSales(),
+      getFeaturedSellers(),
+      getTrustBadgesSettings(),
+      getRunningAdsByPosition(),
+    ])
+
+  // Position 1 (Top Hero Slider) — a paid seller promotion slots into the
+  // same rotation as admin banners, just appended after them (real banners
+  // always lead) and ranked among themselves by priority.
+  const heroSlides: Banner[] = [
+    ...banners,
+    ...adsByPosition.hero.map(
+      (ad, i): Banner => ({
+        id: `ad-${ad.id}`,
+        imageUrl: ad.productImage,
+        title: ad.productName,
+        buttonText: "Shop Now",
+        productId: ad.productId,
+        order: banners.length + i,
+        active: true,
+        createdAt: ad.createdAt,
+      }),
+    ),
+  ]
 
   // Trending: highest rating x review-volume — a simple, honest popularity
   // proxy that needs no separate analytics pipeline.
@@ -64,10 +88,14 @@ export default async function HomePage() {
 
   return (
     <div className="bg-white">
-      <HeroSlider banners={banners} />
+      <HeroSlider banners={heroSlides} />
       <CategoryPillBar categories={categories} />
 
       <ProductRail id="trending" title="Trending Plants" subtitle="Popular with our shoppers right now" products={trending} />
+
+      {/* Position 2 — After Trending */}
+      <SponsoredAdSlot ads={adsByPosition["after-trending"]} />
+
       <ProductRail
         id="best-sellers"
         title="Best Sellers"
@@ -80,6 +108,9 @@ export default async function HomePage() {
 
       <ProductRail id="indoor-plants" title="Indoor Plants" subtitle="Low-maintenance greenery for every room" products={indoorPlants} />
       <ProductRail id="outdoor-plants" title="Outdoor Plants" subtitle="Hardy plants for gardens & terraces" products={outdoorPlants} />
+
+      {/* Position 3 — Middle Banner */}
+      <SponsoredAdSlot ads={adsByPosition.middle} />
 
       <PromoStrip banner={banners[2 % banners.length]} />
 
@@ -97,6 +128,9 @@ export default async function HomePage() {
 
       <RecentlyViewedSection />
       <FeaturedSellers sellers={featuredSellers} />
+
+      {/* Position 4 — Bottom Banner */}
+      <SponsoredAdSlot ads={adsByPosition.bottom} />
 
       <FullCatalogBrowser categories={categories} />
 

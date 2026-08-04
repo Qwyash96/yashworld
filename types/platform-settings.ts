@@ -44,3 +44,12 @@ export interface TrustBadgesSettings {
   badges: TrustBadge[]
   updatedAt: string
 }
+
+/** Firestore `platformSettings/adPricing` — the real, admin-editable fee
+ * (in rupees) a seller pays to run a Sponsored Ad for each offered
+ * duration. Looked up server-side when a seller starts a promotion
+ * (app/api/ads/create-order) — never client-supplied. */
+export interface AdPricingSettings {
+  feeByDurationDays: Record<"1" | "3" | "7" | "15" | "30", number>
+  updatedAt: string
+}

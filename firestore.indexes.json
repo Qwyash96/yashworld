@@ -323,7 +323,6 @@
       "collectionGroup": "sponsoredAds",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "position", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "priority", "order": "DESCENDING" }
       ]

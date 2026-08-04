@@ -1,6 +1,12 @@
 import "server-only"
 import { getAdminDb } from "@/lib/firebase-admin"
-import type { PlatformSettings, GeneralSettings, ShippingSettings, TrustBadgesSettings } from "@/types/platform-settings"
+import type {
+  PlatformSettings,
+  GeneralSettings,
+  ShippingSettings,
+  TrustBadgesSettings,
+  AdPricingSettings,
+} from "@/types/platform-settings"
 
 const COLLECTION = "platformSettings"
 
@@ -88,4 +94,35 @@ export async function saveTrustBadgesSettings(patch: Partial<TrustBadgesSettings
   await ref.set({ ...patch, updatedAt: new Date().toISOString() }, { merge: true })
   const snapshot = await ref.get()
   return { ...DEFAULT_TRUST_BADGES_SETTINGS, ...(snapshot.data() as Partial<TrustBadgesSettings>) }
+}
+
+// Starter pricing — real, admin-editable rupee amounts from day one, not a
+// placeholder; an admin can change these in Admin → Marketing → Sponsored
+// Ads → Pricing at any time.
+const DEFAULT_AD_PRICING_SETTINGS: AdPricingSettings = {
+  feeByDurationDays: { "1": 49, "3": 129, "7": 249, "15": 449, "30": 799 },
+  updatedAt: new Date(0).toISOString(),
+}
+
+export async function getAdPricingSettings(): Promise<AdPricingSettings> {
+  const snapshot = await getAdminDb().collection(COLLECTION).doc("adPricing").get()
+  if (!snapshot.exists) return DEFAULT_AD_PRICING_SETTINGS
+  const data = snapshot.data() as Partial<AdPricingSettings>
+  return {
+    ...DEFAULT_AD_PRICING_SETTINGS,
+    ...data,
+    feeByDurationDays: { ...DEFAULT_AD_PRICING_SETTINGS.feeByDurationDays, ...data.feeByDurationDays },
+  }
+}
+
+export async function saveAdPricingSettings(patch: Partial<AdPricingSettings>): Promise<AdPricingSettings> {
+  const ref = getAdminDb().collection(COLLECTION).doc("adPricing")
+  await ref.set({ ...patch, updatedAt: new Date().toISOString() }, { merge: true })
+  const snapshot = await ref.get()
+  const data = snapshot.data() as Partial<AdPricingSettings>
+  return {
+    ...DEFAULT_AD_PRICING_SETTINGS,
+    ...data,
+    feeByDurationDays: { ...DEFAULT_AD_PRICING_SETTINGS.feeByDurationDays, ...data.feeByDurationDays },
+  }
 }

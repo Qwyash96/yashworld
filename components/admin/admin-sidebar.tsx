@@ -129,9 +129,10 @@ export const adminSections: AdminSection[] = [
     icon: Megaphone,
     permission: "marketing",
     items: [
-      { label: "Campaigns", href: "/admin/campaigns", permission: "coupons_offers" },
-      { label: "Coupons", href: "/admin/coupons", permission: "coupons_offers" },
       { label: "Home Banners", href: "/admin/banners", permission: "coupons_offers" },
+      { label: "Sponsored Ads", href: "/admin/sponsored-ads", permission: "coupons_offers" },
+      { label: "Coupons", href: "/admin/coupons", permission: "coupons_offers" },
+      { label: "Campaigns", href: "/admin/campaigns", permission: "coupons_offers" },
       { label: "Notifications", href: "#", permission: "marketing" },
     ],
   },
