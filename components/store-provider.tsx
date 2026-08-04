@@ -25,6 +25,7 @@ export type User = {
   uid: string
   name: string
   email: string
+  photoUrl?: string
 }
 
 type StoreContextValue = {
@@ -117,6 +118,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               uid: firebaseUser.uid,
               name: firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "",
               email: firebaseUser.email || "",
+              photoUrl: firebaseUser.photoURL || undefined,
             }
           : null,
       )

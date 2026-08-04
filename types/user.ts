@@ -34,6 +34,8 @@ export interface UserProfile {
   role: UserRole
   addresses: Address[]
   createdAt: string
+  /** Account profile photo — Firebase Storage download URL, uploaded via the Profile page. */
+  photoUrl?: string
   // Admin/staff-only fields — present when role is one of the admin roles.
   department?: string
   mobile?: string

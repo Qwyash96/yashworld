@@ -1,3 +1,5 @@
+import Link from "next/link"
+import Image from "next/image"
 import { Store, Star, BadgeCheck } from "lucide-react"
 import type { Seller } from "@/types/seller"
 
@@ -13,9 +15,17 @@ export function FeaturedSellers({ sellers }: { sellers: Seller[] }) {
 
       <div className="mt-3 grid gap-2.5 sm:gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {sellers.map((seller) => (
-          <div key={seller.uid} className="flex flex-col items-center gap-2 rounded-xl border border-border bg-white p-3 text-center shadow-sm">
-            <div className="flex size-11 items-center justify-center rounded-full bg-green-50">
-              <Store className="size-5 text-green-700" />
+          <Link
+            key={seller.uid}
+            href={`/sellers/${seller.uid}`}
+            className="flex flex-col items-center gap-2 rounded-xl border border-border bg-white p-3 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+          >
+            <div className="relative flex size-11 items-center justify-center overflow-hidden rounded-full bg-green-50">
+              {seller.logoUrl ? (
+                <Image src={seller.logoUrl} alt={seller.shopName} fill className="object-cover" />
+              ) : (
+                <Store className="size-5 text-green-700" />
+              )}
             </div>
             <div>
               <p className="flex items-center justify-center gap-1 text-sm font-semibold text-black">
@@ -30,7 +40,7 @@ export function FeaturedSellers({ sellers }: { sellers: Seller[] }) {
                 {seller.ratingAvg.toFixed(1)} ({seller.ratingCount})
               </span>
             )}
-          </div>
+          </Link>
         ))}
       </div>
     </section>

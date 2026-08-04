@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Leaf, Package, ShoppingBag, Tag, Megaphone } from "lucide-react"
+import { Leaf, Package, ShoppingBag, Tag, Megaphone, Store } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const NAV_ITEMS = [
@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { href: "/seller/orders", label: "Orders", icon: ShoppingBag },
   { href: "/seller/offers", label: "Offers", icon: Tag },
   { href: "/seller/marketing", label: "Marketing", icon: Megaphone },
+  { href: "/seller/shop-profile", label: "Shop Profile", icon: Store },
 ]
 
 export function SellerSidebarContent() {

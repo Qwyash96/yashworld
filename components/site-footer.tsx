@@ -1,9 +1,10 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { useEffect, useState } from "react"
 import { Camera, MessageCircle, ThumbsUp, Play, Leaf } from "lucide-react"
-import { getPublicSocialLinks } from "@/services/site-settings.service"
+import { getPublicSocialLinks, getPublicSiteBranding } from "@/services/site-settings.service"
 import { NewsletterSignup } from "@/components/newsletter-signup"
 import type { SocialLinks } from "@/types/site-settings"
 import { Button } from "@/components/ui/button"
@@ -19,9 +20,11 @@ const footerLinks = [
 
 export function SiteFooter() {
   const [social, setSocial] = useState<SocialLinks>({})
+  const [logoUrl, setLogoUrl] = useState<string | undefined>(undefined)
 
   useEffect(() => {
     getPublicSocialLinks().then(setSocial)
+    getPublicSiteBranding().then((b) => setLogoUrl(b.logoUrl))
   }, [])
 
   return (
@@ -30,8 +33,16 @@ export function SiteFooter() {
         <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <Link href="/" className="flex items-center gap-1.5 text-xl font-bold text-green-700">
-              <Leaf className="size-5" />
-              YashWorld
+              {logoUrl ? (
+                <span className="relative block h-8 w-32">
+                  <Image src={logoUrl} alt="YashWorld" fill className="object-contain object-left" />
+                </span>
+              ) : (
+                <>
+                  <Leaf className="size-5" />
+                  YashWorld
+                </>
+              )}
             </Link>
             <p className="mt-2 max-w-xs text-xs leading-relaxed text-[#444444]">
               India&apos;s premium marketplace for plants, pots and gardening essentials.

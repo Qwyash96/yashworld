@@ -27,6 +27,8 @@ import { formatPrice } from "@/lib/products"
 import { getSellerApplication } from "@/services/seller.service"
 import { getOrdersByBuyer } from "@/services/order.service"
 import { getUserProfile, updateUserProfile, updateUserAddresses } from "@/services/user.service"
+import { updateAuthPhoto } from "@/services/auth.service"
+import { uploadProfilePhoto } from "@/services/storage.service"
 import { sanitizeIndianMobile, sanitizeDigits } from "@/lib/numeric-input"
 import type { Order, OrderStatus } from "@/types/order"
 import type { Address, UserProfile } from "@/types/user"
@@ -35,7 +37,7 @@ import { OrderStatusBadge } from "@/components/orders/order-status-badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
 function formatDate(iso: string) {
@@ -63,6 +65,7 @@ export default function ProfilePage() {
 
   const [editOpen, setEditOpen] = useState(false)
   const [editMobile, setEditMobile] = useState("")
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
 
   const [addressSheetOpen, setAddressSheetOpen] = useState(false)
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null)
@@ -184,6 +187,21 @@ export default function ProfilePage() {
     refresh()
   }
 
+  async function handlePhotoChange(file: File | undefined) {
+    if (!file || !user) return
+    setUploadingPhoto(true)
+    try {
+      const photoUrl = await uploadProfilePhoto(user.uid, file)
+      await Promise.all([updateUserProfile(user.uid, { photoUrl }), updateAuthPhoto(photoUrl)])
+      toast.success("Profile photo updated")
+      refresh()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed.")
+    } finally {
+      setUploadingPhoto(false)
+    }
+  }
+
   function openAddAddress() {
     setEditingAddressId(null)
     setAddressForm(emptyAddressForm)
@@ -259,6 +277,7 @@ export default function ProfilePage() {
           <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
               <Avatar className="h-24 w-24 border-4 border-green-500 shadow-md sm:h-28 sm:w-28">
+                {profile.photoUrl && <AvatarImage src={profile.photoUrl} alt={displayName} />}
                 <AvatarFallback className="bg-green-600 text-3xl font-bold text-white">
                   {initials}
                 </AvatarFallback>
@@ -485,8 +504,22 @@ export default function ProfilePage() {
           <div className="flex flex-col gap-4 p-5">
             <div className="flex flex-col items-center gap-3">
               <Avatar className="h-20 w-20 border-2 border-green-500">
+                {profile.photoUrl && <AvatarImage src={profile.photoUrl} alt={displayName} />}
                 <AvatarFallback className="bg-green-600 text-xl text-white">{initials}</AvatarFallback>
               </Avatar>
+              <label className="cursor-pointer text-xs font-medium text-green-700 hover:underline">
+                {uploadingPhoto ? "Uploading..." : "Change Photo"}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  disabled={uploadingPhoto}
+                  onChange={(e) => {
+                    handlePhotoChange(e.target.files?.[0])
+                    e.target.value = ""
+                  }}
+                />
+              </label>
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="edit-mobile">Mobile Number</Label>

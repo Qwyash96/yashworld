@@ -72,8 +72,10 @@ export type SellerApplicationInput = Omit<
 >
 
 /**
- * Firestore `sellers/{uid}` — public storefront profile. Only ever written
- * by the admin approval route (Admin SDK); clients cannot write it.
+ * Firestore `sellers/{uid}` — public storefront profile. Created/moderated
+ * only by the admin approval route (Admin SDK) — clients cannot write it
+ * directly, but the owning seller can update logoUrl/bannerUrl through
+ * app/api/seller/shop-profile (Admin SDK, scoped to those two fields only).
  */
 export interface Seller {
   uid: string
@@ -84,5 +86,8 @@ export interface Seller {
   ratingCount: number
   /** Admin-curated "Featured Sellers" homepage placement — unset/false means not featured. */
   featured?: boolean
+  /** Seller-managed public storefront branding — see app/seller/shop-profile. */
+  logoUrl?: string
+  bannerUrl?: string
   createdAt: string
 }

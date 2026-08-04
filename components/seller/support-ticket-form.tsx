@@ -1,7 +1,9 @@
 "use client"
 
 import { useState, type FormEvent } from "react"
+import Image from "next/image"
 import { toast } from "sonner"
+import { Loader2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -13,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { createSupportTicket } from "@/services/support-ticket.service"
+import { uploadSupportImage } from "@/services/storage.service"
 import { sanitizeIndianMobile } from "@/lib/numeric-input"
 
 const problemTypes = [
@@ -29,6 +32,8 @@ const contactTimes = ["Morning (9am - 12pm)", "Afternoon (12pm - 4pm)", "Evening
 const textareaClass =
   "min-h-24 w-full rounded-lg border border-border bg-white p-3 text-sm text-black outline-none focus:border-primary"
 
+const MAX_SCREENSHOTS = 3
+
 export function SupportTicketForm({
   sellerId,
   buyerId,
@@ -40,15 +45,30 @@ export function SupportTicketForm({
   sellerName: string
   onSubmitted?: () => void
 }) {
+  const uid = sellerId ?? buyerId ?? ""
   const [subject, setSubject] = useState("")
   const [problemType, setProblemType] = useState("")
   const [description, setDescription] = useState("")
-  const [screenshotFileName, setScreenshotFileName] = useState("")
+  const [screenshotUrls, setScreenshotUrls] = useState<string[]>([])
+  const [uploadingScreenshot, setUploadingScreenshot] = useState(false)
   const [mobile, setMobile] = useState("")
   const [preferredContactTime, setPreferredContactTime] = useState("")
   const [error, setError] = useState("")
 
   const [submitting, setSubmitting] = useState(false)
+
+  async function handleScreenshotChange(file: File | undefined) {
+    if (!file || !uid) return
+    setUploadingScreenshot(true)
+    try {
+      const url = await uploadSupportImage(uid, file)
+      setScreenshotUrls((prev) => [...prev, url].slice(0, MAX_SCREENSHOTS))
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed.")
+    } finally {
+      setUploadingScreenshot(false)
+    }
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -67,14 +87,14 @@ export function SupportTicketForm({
         subject: subject.trim(),
         problemType,
         description: description.trim(),
-        ...(screenshotFileName ? { screenshotFileName } : {}),
+        ...(screenshotUrls.length > 0 ? { screenshotUrls } : {}),
         preferredContactTime,
       })
       toast.success("Support ticket created. Our team will reach out soon.")
       setSubject("")
       setProblemType("")
       setDescription("")
-      setScreenshotFileName("")
+      setScreenshotUrls([])
       setMobile("")
       setPreferredContactTime("")
       onSubmitted?.()
@@ -124,14 +144,40 @@ export function SupportTicketForm({
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor="ticket-screenshot">Upload Screenshot (optional)</Label>
-        <input
-          id="ticket-screenshot"
-          type="file"
-          accept="image/*"
-          onChange={(e) => setScreenshotFileName(e.target.files?.[0]?.name ?? "")}
-          className="h-11 cursor-pointer text-sm text-black file:mr-4 file:h-full file:cursor-pointer file:rounded-lg file:border-0 file:bg-green-600 file:px-4 file:text-sm file:font-medium file:text-white hover:file:bg-green-700"
-        />
+        <Label htmlFor="ticket-screenshot">Upload Screenshots (optional, up to {MAX_SCREENSHOTS})</Label>
+        {screenshotUrls.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {screenshotUrls.map((url, i) => (
+              <div key={url} className="relative size-16 overflow-hidden rounded-lg border border-border">
+                <Image src={url} alt="" fill className="object-cover" />
+                <button
+                  type="button"
+                  onClick={() => setScreenshotUrls((prev) => prev.filter((_, idx) => idx !== i))}
+                  aria-label="Remove screenshot"
+                  className="absolute right-0.5 top-0.5 flex size-4 items-center justify-center rounded-full bg-black/60 text-white"
+                >
+                  <X className="size-2.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        {screenshotUrls.length < MAX_SCREENSHOTS && (
+          <div className="flex items-center gap-2">
+            <input
+              id="ticket-screenshot"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              disabled={uploadingScreenshot}
+              onChange={(e) => {
+                handleScreenshotChange(e.target.files?.[0])
+                e.target.value = ""
+              }}
+              className="h-11 cursor-pointer text-sm text-black file:mr-4 file:h-full file:cursor-pointer file:rounded-lg file:border-0 file:bg-green-600 file:px-4 file:text-sm file:font-medium file:text-white hover:file:bg-green-700"
+            />
+            {uploadingScreenshot && <Loader2 className="size-4 animate-spin text-green-700" />}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-2">
@@ -164,7 +210,7 @@ export function SupportTicketForm({
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
-      <Button type="submit" className="mt-2 h-11" disabled={submitting}>
+      <Button type="submit" className="mt-2 h-11" disabled={submitting || uploadingScreenshot}>
         {submitting ? "Submitting..." : "Submit Support Request"}
       </Button>
     </form>

@@ -6,6 +6,7 @@ import {
   setPersistence,
   signInWithPopup,
   signOut,
+  updateProfile,
   type User as FirebaseUser,
 } from "firebase/auth"
 import { auth } from "@/services/firebase/client"
@@ -24,4 +25,12 @@ export async function logoutUser() {
 
 export function onAuthChange(callback: (user: FirebaseUser | null) => void) {
   return onAuthStateChanged(auth, callback)
+}
+
+/** Mirrors a newly-uploaded profile photo onto the Firebase Auth user's own
+ * photoURL — this is what store-provider's auth listener reads, so the
+ * header avatar updates immediately without a separate Firestore fetch. */
+export async function updateAuthPhoto(photoUrl: string): Promise<void> {
+  if (!auth.currentUser) return
+  await updateProfile(auth.currentUser, { photoURL: photoUrl })
 }

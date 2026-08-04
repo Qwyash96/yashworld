@@ -27,7 +27,7 @@ const CATEGORIES_COLLECTION = "categories"
  * server-side) so a scheduled/campaign price shows everywhere automatically,
  * with no per-page changes needed.
  */
-function toUIProduct(product: FirestoreProduct, now: Date = new Date()): Product {
+export function toUIProduct(product: FirestoreProduct, now: Date = new Date()): Product {
   const { plantAttrs } = product
   const originalUnitPrice = product.originalPrice ?? product.price
   const best = pickBestCandidate(buildBaseCandidates(product, now))

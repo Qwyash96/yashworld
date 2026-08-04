@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { useEffect, useState } from "react"
 import {
   Menu,
@@ -22,6 +23,7 @@ import {
 } from "lucide-react"
 import { useStore } from "@/components/store-provider"
 import { getOrdersByBuyer } from "@/services/order.service"
+import { getPublicSiteBranding } from "@/services/site-settings.service"
 import { DEV_SHOW_ADMIN_MENU_TO_ALL } from "@/lib/dev-flags"
 import { HeaderSearchBar } from "@/components/marketplace/header-search-bar"
 import { Button } from "@/components/ui/button"
@@ -67,6 +69,11 @@ export function SiteHeader() {
   const { user, wishlist, cartCount } = useStore()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [pendingOrders, setPendingOrders] = useState(0)
+  const [logoUrl, setLogoUrl] = useState<string | undefined>(undefined)
+
+  useEffect(() => {
+    getPublicSiteBranding().then((b) => setLogoUrl(b.logoUrl))
+  }, [])
 
   useEffect(() => {
     if (!user) {
@@ -175,10 +182,19 @@ export function SiteHeader() {
           </SheetContent>
         </Sheet>
 
-        {/* Logo */}
+        {/* Logo — a custom uploaded logo (Admin -> Settings -> Branding) takes
+            over here when set; otherwise the default Leaf+text lockup. */}
         <Link href="/" className="flex shrink-0 items-center gap-1 text-lg font-bold text-green-700 sm:text-xl">
-          <Leaf className="size-5 shrink-0" />
-          <span className="hidden sm:inline">YashWorld</span>
+          {logoUrl ? (
+            <span className="relative block h-7 w-24 shrink-0 sm:h-8 sm:w-28">
+              <Image src={logoUrl} alt="YashWorld" fill className="object-contain object-left" priority />
+            </span>
+          ) : (
+            <>
+              <Leaf className="size-5 shrink-0" />
+              <span className="hidden sm:inline">YashWorld</span>
+            </>
+          )}
         </Link>
 
         {/* Search */}
@@ -190,6 +206,7 @@ export function SiteHeader() {
         <nav className="flex shrink-0 items-center gap-0.5 sm:gap-1">
           {quickActions.map((action) => {
             const Icon = action.icon
+            const showPhoto = action.label === "Profile" && user?.photoUrl
             return (
               <Link
                 key={action.label}
@@ -197,7 +214,13 @@ export function SiteHeader() {
                 aria-label={action.label}
                 className="group relative rounded-xl p-2 transition-colors hover:bg-green-50 sm:p-2.5"
               >
-                <Icon className="size-5 text-green-700 transition-transform group-hover:scale-110" />
+                {showPhoto ? (
+                  <span className="relative block size-5 overflow-hidden rounded-full ring-1 ring-green-200 transition-transform group-hover:scale-110">
+                    <Image src={user.photoUrl!} alt="Profile" fill className="object-cover" />
+                  </span>
+                ) : (
+                  <Icon className="size-5 text-green-700 transition-transform group-hover:scale-110" />
+                )}
                 {action.count > 0 && (
                   <Badge className="absolute -right-0.5 -top-0.5 size-4 justify-center rounded-full p-0 text-[10px]">
                     {action.count}

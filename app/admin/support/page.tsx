@@ -1,11 +1,13 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { LifeBuoy, Phone, FileImage } from "lucide-react"
+import Image from "next/image"
+import { LifeBuoy, Phone } from "lucide-react"
 import { toast } from "sonner"
 import { getAllSupportTickets, updateTicketStatus } from "@/services/support-ticket.service"
 import type { SupportTicket, TicketStatus } from "@/types/support-ticket"
 import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 
 const statusTabs: { key: TicketStatus | "all"; label: string }[] = [
   { key: "all", label: "All" },
@@ -35,6 +37,7 @@ function formatDate(iso: string) {
 export default function AdminSupportTicketsPage() {
   const [tickets, setTickets] = useState<SupportTicket[]>([])
   const [statusFilter, setStatusFilter] = useState<TicketStatus | "all">("all")
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
   function refresh() {
     getAllSupportTickets().then(setTickets)
@@ -108,17 +111,26 @@ export default function AdminSupportTicketsPage() {
 
               <p className="mt-3 text-sm text-black">{ticket.description}</p>
 
+              {ticket.screenshotUrls && ticket.screenshotUrls.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {ticket.screenshotUrls.map((url) => (
+                    <button
+                      key={url}
+                      type="button"
+                      onClick={() => setPreviewUrl(url)}
+                      className="relative size-16 overflow-hidden rounded-lg border border-border transition hover:border-green-600"
+                    >
+                      <Image src={url} alt="Support screenshot" fill className="object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-[#444444]">
                 <span className="flex items-center gap-1">
                   <Phone className="size-3.5 text-green-700" />
                   {ticket.mobile}
                 </span>
-                {ticket.screenshotFileName && (
-                  <span className="flex items-center gap-1">
-                    <FileImage className="size-3.5 text-green-700" />
-                    {ticket.screenshotFileName}
-                  </span>
-                )}
                 <span>Preferred time: {ticket.preferredContactTime}</span>
                 <span>Submitted: {formatDate(ticket.createdAt)}</span>
               </div>
@@ -144,6 +156,17 @@ export default function AdminSupportTicketsPage() {
           ))
         )}
       </div>
+
+      <Dialog open={!!previewUrl} onOpenChange={(open) => !open && setPreviewUrl(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogTitle>Screenshot</DialogTitle>
+          {previewUrl && (
+            <div className="relative mt-2 aspect-video w-full overflow-hidden rounded-xl bg-gray-50">
+              <Image src={previewUrl} alt="Support screenshot" fill className="object-contain" />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -8,3 +8,11 @@ export interface SocialLinks {
   youtube?: string
   updatedAt?: string
 }
+
+/** Firestore `siteSettings/branding` — the platform's own logo, shown in
+ * the header/footer in place of the default Leaf-icon lockup once set.
+ * Same public-read/super_admin-write shape as SocialLinks. */
+export interface SiteBranding {
+  logoUrl?: string
+  updatedAt?: string
+}

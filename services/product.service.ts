@@ -65,6 +65,25 @@ export async function getProductsBySeller(sellerId: string): Promise<Product[]> 
   }
 }
 
+/** A seller's live, public-facing catalog — unlike getProductsBySeller
+ * (that seller's own dashboard, every status), this explicitly filters to
+ * status == "approved" in the query itself. Firestore rules require every
+ * document a query returns to individually satisfy the read rule; a buyer
+ * reading someone else's draft/pending/rejected products would fail the
+ * whole query, not just skip them, so the filter has to be server-side
+ * here rather than a client-side .filter() afterwards. Used by the public
+ * seller storefront page. */
+export async function getPublicProductsBySeller(sellerId: string): Promise<Product[]> {
+  try {
+    const q = query(collection(db, COLLECTION), where("sellerId", "==", sellerId), where("status", "==", "approved"))
+    const snapshot = await getDocs(q)
+    return snapshot.docs.map(toProduct)
+  } catch (error) {
+    console.error(toServiceError(`Failed to fetch public products for seller "${sellerId}"`, error).message)
+    return []
+  }
+}
+
 export async function createProduct(input: ProductInput): Promise<string> {
   try {
     const docRef = await addDoc(collection(db, COLLECTION), {

@@ -155,6 +155,7 @@ export const adminSections: AdminSection[] = [
     permission: "settings",
     items: [
       { label: "General Settings", href: "/admin/settings/general", superAdminOnly: true },
+      { label: "Branding", href: "/admin/settings/branding", superAdminOnly: true },
       { label: "Shipping", href: "/admin/settings/shipping", superAdminOnly: true },
       { label: "Tax / GST", href: "#" },
       { label: "Email & SMS", href: "#" },

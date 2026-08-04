@@ -10,7 +10,8 @@ export interface SupportTicket {
   subject: string
   problemType: string
   description: string
-  screenshotFileName?: string
+  /** Firebase Storage download URLs — uploaded via services/storage.service.ts's uploadSupportImage(). */
+  screenshotUrls?: string[]
   preferredContactTime: string
   status: TicketStatus
   createdAt: string
