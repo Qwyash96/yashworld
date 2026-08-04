@@ -2,6 +2,11 @@ import "server-only"
 import type { IntegrationAdapter } from "@/lib/integrations/types"
 import type { IntegrationCategory } from "@/types/integrations"
 import { razorpayAdapter } from "@/lib/integrations/adapters/razorpay"
+import { cashfreeAdapter } from "@/lib/integrations/adapters/cashfree"
+import { phonepeAdapter } from "@/lib/integrations/adapters/phonepe"
+import { payuAdapter } from "@/lib/integrations/adapters/payu"
+import { stripeAdapter } from "@/lib/integrations/adapters/stripe"
+import { paypalAdapter } from "@/lib/integrations/adapters/paypal"
 
 /**
  * The single place a new provider gets registered — write the adapter under
@@ -9,7 +14,7 @@ import { razorpayAdapter } from "@/lib/integrations/adapters/razorpay"
  * Nothing else in the framework (routes, admin UI, encryption, logging)
  * needs to change to support it.
  */
-const ADAPTERS: IntegrationAdapter[] = [razorpayAdapter]
+const ADAPTERS: IntegrationAdapter[] = [razorpayAdapter, cashfreeAdapter, phonepeAdapter, payuAdapter, stripeAdapter, paypalAdapter]
 
 export function listAdapters(): IntegrationAdapter[] {
   return ADAPTERS
