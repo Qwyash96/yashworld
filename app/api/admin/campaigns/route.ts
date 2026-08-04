@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ campaigns })
 }
 
-const CAMPAIGN_TYPES: CampaignType[] = ["flash_sale", "festival_sale", "category_discount"]
+const CAMPAIGN_TYPES: CampaignType[] = ["flash_sale", "festival_sale", "category_discount", "deal_of_day"]
 const DISCOUNT_TYPES: DiscountType[] = ["percent", "flat"]
 const ENROLLMENT_MODES: CampaignEnrollmentMode[] = ["open", "invite_only"]
 

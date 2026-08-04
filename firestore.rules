@@ -424,5 +424,42 @@ service cloud.firestore {
       allow read: if isAdmin();
       allow write: if false;
     }
+
+    // media/{id} — Media Library entries, one per uploaded file across every
+    // upload surface in the app (product images, banners, logos, review
+    // photos, etc.) — written automatically by services/storage.service.ts
+    // right after a successful upload. Owners manage their own entries
+    // directly (e.g. removing a product image also drops its library
+    // record); Admin → Media manages everyone's via Admin-SDK routes
+    // (app/api/admin/media/*), which bypass these rules entirely — same
+    // pattern as seller KYC document review.
+    match /media/{id} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.uploadedBy == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.uploadedBy == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.uploadedBy == request.auth.uid;
+    }
+
+    // sponsoredAds/{id} — a seller's paid product-promotion campaign.
+    // Created (at "pending") and every subsequent status transition
+    // (paid/approved/rejected/running/expired/paused) go through Admin-SDK
+    // routes only (app/api/ads/*, app/api/admin/sponsored-ads/*) — the fee
+    // is looked up server-side from platformSettings/adPricing, never
+    // client-supplied, exactly like campaign/coupon pricing elsewhere.
+    match /sponsoredAds/{id} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.sellerId == request.auth.uid);
+      allow write: if false;
+    }
+
+    // emailCampaigns/{id}, pushCampaigns/{id} — a record of one admin-sent
+    // marketing blast (subject/audience/result counts). Sending itself goes
+    // through Admin-SDK routes only (app/api/admin/marketing/*); history is
+    // read back through those same routes, not directly by clients — same
+    // treatment as auditLogs.
+    match /emailCampaigns/{id} {
+      allow read, write: if false;
+    }
+    match /pushCampaigns/{id} {
+      allow read, write: if false;
+    }
   }
 }

@@ -1,4 +1,4 @@
-export type CampaignType = "flash_sale" | "festival_sale" | "category_discount"
+export type CampaignType = "flash_sale" | "festival_sale" | "category_discount" | "deal_of_day"
 export type DiscountType = "percent" | "flat"
 export type CampaignStatus = "draft" | "scheduled" | "active" | "ended" | "cancelled"
 export type CampaignEnrollmentMode = "open" | "invite_only"

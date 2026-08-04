@@ -4,7 +4,6 @@ import { useRef, useState, type DragEvent } from "react"
 import Image from "next/image"
 import { GripVertical, ImagePlus, Loader2, Star, Trash2, X } from "lucide-react"
 import { uploadProductImage, deleteProductImage } from "@/services/storage.service"
-import { compressImage } from "@/lib/image-compression"
 import type { ProductImage } from "@/types/product"
 import { Label } from "@/components/ui/label"
 
@@ -96,8 +95,7 @@ export function ProductImageUploader({
       setUploading((prev) => [...prev, { id, fileName: file.name, progress: 0 }])
 
       try {
-        const compressed = await compressImage(file)
-        const url = await uploadProductImage(uid, compressed, (percent) => {
+        const url = await uploadProductImage(uid, file, (percent) => {
           setUploading((prev) => prev.map((item) => (item.id === id ? { ...item, progress: percent } : item)))
         })
         setUploading((prev) => prev.filter((item) => item.id !== id))

@@ -26,6 +26,7 @@ interface CreateBody {
   usageLimitPerBuyer?: number
   startAt?: string
   endAt?: string
+  bannerImageUrl?: string
 }
 
 export async function POST(request: NextRequest) {
@@ -68,6 +69,7 @@ export async function POST(request: NextRequest) {
     ...(body.minOrderValue ? { minOrderValue: body.minOrderValue } : {}),
     ...(body.usageLimit ? { usageLimit: body.usageLimit } : {}),
     ...(body.usageLimitPerBuyer ? { usageLimitPerBuyer: body.usageLimitPerBuyer } : {}),
+    ...(body.bannerImageUrl ? { bannerImageUrl: body.bannerImageUrl } : {}),
     startAt: body.startAt,
     endAt: body.endAt,
     status: "active",

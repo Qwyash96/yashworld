@@ -9,6 +9,9 @@ interface PatchBody {
   imageUrl?: string
   linkUrl?: string
   title?: string
+  subtitle?: string
+  buttonText?: string
+  productId?: string
   startAt?: string
   endAt?: string
   order?: number
@@ -32,7 +35,18 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   }
 
   const patch: Record<string, unknown> = {}
-  for (const key of ["imageUrl", "linkUrl", "title", "startAt", "endAt", "order", "active"] as const) {
+  for (const key of [
+    "imageUrl",
+    "linkUrl",
+    "title",
+    "subtitle",
+    "buttonText",
+    "productId",
+    "startAt",
+    "endAt",
+    "order",
+    "active",
+  ] as const) {
     if (body[key] !== undefined) patch[key] = body[key]
   }
 

@@ -26,18 +26,33 @@ service firebase.storage {
         && request.resource.contentType.matches('image/(jpeg|jpg|png|webp)');
       allow delete: if request.auth != null && request.auth.uid == uid;
     }
-    // banner-images/{uid}/{fileName} — admin-uploaded promotional banners.
-    // Same owner-only-write/public-read shape as product-images. The real
-    // access control is at the Firestore layer: banners/{id} is
-    // Admin-SDK-only to write (see firestore.rules), so even if a
-    // non-admin uploaded a file to their own uid folder here, it can never
-    // become a live banner — identical reasoning to product-images above.
-    match /banner-images/{uid}/{fileName} {
+    // Every other image-upload surface in the app shares one shape: public
+    // read, owner-only write, image-only, 10MB cap — banner-images,
+    // category-images, seller-logos, seller-banners, profile-photos,
+    // support-images, coupon-banners, site-branding, review-images,
+    // ad-creatives (see types/media.ts MEDIA_FOLDERS, the single source of
+    // truth this list must stay in sync with). Real access control for
+    // what an uploaded file is actually USED as lives at the Firestore
+    // layer (e.g. banners/{id} and sponsoredAds/{id} are Admin-SDK-write-
+    // only) — a non-admin uploading an orphan file to their own uid folder
+    // here has no cross-user impact, identical reasoning to product-images
+    // above.
+    match /{folder}/{uid}/{fileName} {
       allow read: if true;
-      allow write: if request.auth != null && request.auth.uid == uid
+      allow write: if folder in [
+          'banner-images', 'category-images', 'seller-logos', 'seller-banners',
+          'profile-photos', 'support-images', 'coupon-banners', 'site-branding',
+          'review-images', 'ad-creatives'
+        ]
+        && request.auth != null && request.auth.uid == uid
         && request.resource.size < 10 * 1024 * 1024
         && request.resource.contentType.matches('image/(jpeg|jpg|png|webp)');
-      allow delete: if request.auth != null && request.auth.uid == uid;
+      allow delete: if folder in [
+          'banner-images', 'category-images', 'seller-logos', 'seller-banners',
+          'profile-photos', 'support-images', 'coupon-banners', 'site-branding',
+          'review-images', 'ad-creatives'
+        ]
+        && request.auth != null && request.auth.uid == uid;
     }
   }
 }

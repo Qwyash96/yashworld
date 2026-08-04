@@ -17,6 +17,8 @@ export interface Coupon {
   maxDiscountAmount?: number
   /** Order subtotal required to use this coupon — only meaningful for "global" scope, checked cart-wide. */
   minOrderValue?: number
+  /** Optional promotional banner shown on the storefront's Offers surfaces. */
+  bannerImageUrl?: string
   /** Total redemptions allowed across all buyers — unset means unlimited. */
   usageLimit?: number
   usageLimitPerBuyer?: number

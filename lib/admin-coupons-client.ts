@@ -24,6 +24,7 @@ export interface CreateGlobalCouponInput {
   usageLimitPerBuyer?: number
   startAt: string
   endAt: string
+  bannerImageUrl?: string
 }
 
 export async function fetchGlobalCoupons(): Promise<{ ok: true; coupons: Coupon[] } | { ok: false; error: string }> {

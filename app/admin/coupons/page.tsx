@@ -6,6 +6,9 @@ import { Ticket, Plus, Pencil, Trash2 } from "lucide-react"
 import { fetchGlobalCoupons, createGlobalCoupon, updateGlobalCoupon, deleteGlobalCoupon } from "@/lib/admin-coupons-client"
 import { sanitizeDecimal, sanitizeDigits } from "@/lib/numeric-input"
 import { formatPrice } from "@/lib/products"
+import { useAdminAuth } from "@/components/admin/admin-auth-context"
+import { uploadCouponBanner } from "@/services/storage.service"
+import { SingleImageUploader } from "@/components/media/single-image-uploader"
 import type { Coupon, CouponStatus } from "@/types/coupon"
 import type { DiscountType } from "@/types/campaign"
 import { Button } from "@/components/ui/button"
@@ -30,9 +33,11 @@ const emptyForm = {
   usageLimitPerBuyer: "",
   startAt: "",
   endAt: "",
+  bannerImageUrl: "",
 }
 
 export default function AdminCouponsPage() {
+  const admin = useAdminAuth()
   const [coupons, setCoupons] = useState<Coupon[] | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editingCode, setEditingCode] = useState<string | null>(null)
@@ -71,6 +76,7 @@ export default function AdminCouponsPage() {
       usageLimitPerBuyer: coupon.usageLimitPerBuyer !== undefined ? String(coupon.usageLimitPerBuyer) : "",
       startAt: coupon.startAt.slice(0, 16),
       endAt: coupon.endAt.slice(0, 16),
+      bannerImageUrl: coupon.bannerImageUrl ?? "",
     })
     setError("")
     setSheetOpen(true)
@@ -96,6 +102,7 @@ export default function AdminCouponsPage() {
       ...(form.usageLimitPerBuyer.trim() ? { usageLimitPerBuyer: Number(form.usageLimitPerBuyer) } : {}),
       startAt: new Date(form.startAt).toISOString(),
       endAt: new Date(form.endAt).toISOString(),
+      ...(form.bannerImageUrl ? { bannerImageUrl: form.bannerImageUrl } : {}),
     }
 
     const result = editingCode
@@ -306,6 +313,16 @@ export default function AdminCouponsPage() {
                 />
               </div>
             </div>
+
+            <SingleImageUploader
+              uid={admin.uid}
+              folder="coupon-banners"
+              value={form.bannerImageUrl}
+              onChange={(url) => setForm((f) => ({ ...f, bannerImageUrl: url }))}
+              uploadFn={uploadCouponBanner}
+              label="Offer Banner (optional)"
+              aspectClassName="aspect-[3/1]"
+            />
 
             {error && <p className="text-sm text-destructive">{error}</p>}
 

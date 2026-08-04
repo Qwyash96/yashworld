@@ -4,6 +4,9 @@ import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { Sprout, Plus, Pencil, Trash2 } from "lucide-react"
 import { fetchAdminCategories, createCategoryAdmin, updateCategoryAdmin, deleteCategoryAdmin } from "@/lib/admin-categories-client"
+import { useAdminAuth } from "@/components/admin/admin-auth-context"
+import { uploadCategoryImage } from "@/services/storage.service"
+import { SingleImageUploader } from "@/components/media/single-image-uploader"
 import type { Category } from "@/types/category"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,6 +16,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 const emptyForm = { name: "", slug: "", description: "", image: "" }
 
 export default function AdminCategoriesPage() {
+  const admin = useAdminAuth()
   const [categories, setCategories] = useState<Category[] | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -162,20 +166,15 @@ export default function AdminCategoriesPage() {
               />
             </div>
 
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="cat-image">Image URL</Label>
-              {form.image && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={form.image} alt="" className="h-32 w-full rounded-lg object-cover" />
-              )}
-              <Input
-                id="cat-image"
-                value={form.image}
-                onChange={(e) => setForm((f) => ({ ...f, image: e.target.value }))}
-                placeholder="/placeholder.svg"
-                className="h-11"
-              />
-            </div>
+            <SingleImageUploader
+              uid={admin.uid}
+              folder="category-images"
+              value={form.image}
+              onChange={(url) => setForm((f) => ({ ...f, image: url }))}
+              uploadFn={uploadCategoryImage}
+              label="Category Image"
+              aspectClassName="aspect-video"
+            />
 
             {error && <p className="text-sm text-destructive">{error}</p>}
 

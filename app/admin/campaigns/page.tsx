@@ -8,6 +8,9 @@ import { fetchCampaigns, createCampaign } from "@/lib/admin-campaigns-client"
 import { getCategoryCatalog } from "@/services/catalog.service"
 import { sanitizeDecimal } from "@/lib/numeric-input"
 import { formatPrice } from "@/lib/products"
+import { useAdminAuth } from "@/components/admin/admin-auth-context"
+import { uploadBannerImage } from "@/services/storage.service"
+import { SingleImageUploader } from "@/components/media/single-image-uploader"
 import type { Campaign, CampaignEnrollmentMode, CampaignType, DiscountType } from "@/types/campaign"
 import type { Category } from "@/lib/products"
 import { Button } from "@/components/ui/button"
@@ -20,6 +23,7 @@ const TYPE_LABELS: Record<CampaignType, string> = {
   flash_sale: "Flash Sale",
   festival_sale: "Festival Sale",
   category_discount: "Category Discount",
+  deal_of_day: "Deal of the Day",
 }
 
 const STATUS_STYLES: Record<Campaign["status"], string> = {
@@ -40,9 +44,12 @@ const emptyForm = {
   endAt: "",
   enrollmentMode: "open" as CampaignEnrollmentMode,
   maxDiscountAmount: "",
+  bannerImageUrl: "",
+  bannerLinkUrl: "",
 }
 
 export default function AdminCampaignsPage() {
+  const admin = useAdminAuth()
   const [campaigns, setCampaigns] = useState<Campaign[] | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -103,6 +110,8 @@ export default function AdminCampaignsPage() {
       endAt: new Date(form.endAt).toISOString(),
       enrollmentMode: form.enrollmentMode,
       ...(form.maxDiscountAmount.trim() ? { maxDiscountAmount: Number(form.maxDiscountAmount) } : {}),
+      ...(form.bannerImageUrl ? { bannerImageUrl: form.bannerImageUrl } : {}),
+      ...(form.bannerLinkUrl.trim() ? { bannerLinkUrl: form.bannerLinkUrl.trim() } : {}),
     })
     setSaving(false)
     if (!result.ok) {
@@ -283,6 +292,29 @@ export default function AdminCampaignsPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            <SingleImageUploader
+              uid={admin.uid}
+              folder="banner-images"
+              value={form.bannerImageUrl}
+              onChange={(url) => setForm((f) => ({ ...f, bannerImageUrl: url }))}
+              uploadFn={uploadBannerImage}
+              label="Campaign Banner (optional)"
+              aspectClassName="aspect-[3/1]"
+            />
+
+            {form.bannerImageUrl && (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="c-banner-link">Banner Link (optional)</Label>
+                <Input
+                  id="c-banner-link"
+                  value={form.bannerLinkUrl}
+                  onChange={(e) => setForm((f) => ({ ...f, bannerLinkUrl: e.target.value }))}
+                  placeholder="/products"
+                  className="h-11"
+                />
+              </div>
+            )}
 
             <div className="flex flex-col gap-2">
               <Label>Restrict to Categories (optional)</Label>

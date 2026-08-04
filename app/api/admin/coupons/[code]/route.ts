@@ -28,6 +28,7 @@ interface PatchBody {
   startAt?: string
   endAt?: string
   status?: CouponStatus
+  bannerImageUrl?: string
 }
 
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
@@ -58,6 +59,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     "startAt",
     "endAt",
     "status",
+    "bannerImageUrl",
   ] as const) {
     if (body[key] !== undefined) patch[key] = body[key]
   }

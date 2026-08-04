@@ -17,6 +17,9 @@ interface CreateBody {
   imageUrl?: string
   linkUrl?: string
   title?: string
+  subtitle?: string
+  buttonText?: string
+  productId?: string
   startAt?: string
   endAt?: string
   order?: number
@@ -36,6 +39,9 @@ export async function POST(request: NextRequest) {
     imageUrl: body.imageUrl.trim(),
     ...(body.linkUrl?.trim() ? { linkUrl: body.linkUrl.trim() } : {}),
     ...(body.title?.trim() ? { title: body.title.trim() } : {}),
+    ...(body.subtitle?.trim() ? { subtitle: body.subtitle.trim() } : {}),
+    ...(body.buttonText?.trim() ? { buttonText: body.buttonText.trim() } : {}),
+    ...(body.productId?.trim() ? { productId: body.productId.trim() } : {}),
     ...(body.startAt ? { startAt: body.startAt } : {}),
     ...(body.endAt ? { endAt: body.endAt } : {}),
     order: body.order ?? 0,

@@ -277,6 +277,56 @@
         { "fieldPath": "sellerId", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "media",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "uploadedBy", "order": "ASCENDING" },
+        { "fieldPath": "uploadedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "media",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "uploadedBy", "order": "ASCENDING" },
+        { "fieldPath": "folder", "order": "ASCENDING" },
+        { "fieldPath": "uploadedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "media",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "folder", "order": "ASCENDING" },
+        { "fieldPath": "uploadedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "sponsoredAds",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sellerId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "sponsoredAds",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "sponsoredAds",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "position", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "priority", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
