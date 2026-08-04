@@ -9,8 +9,9 @@ import {
   type ReactNode,
 } from "react"
 import { toast } from "sonner"
-import { products, type Product } from "@/lib/products"
+import { type Product } from "@/lib/products"
 import { logoutUser, onAuthChange } from "@/services/auth.service"
+import { getProductCatalog } from "@/services/catalog.service"
 
 export type CartItem = {
   id: string
@@ -20,6 +21,7 @@ export type CartItem = {
 }
 
 export type User = {
+  uid: string
   name: string
   email: string
 }
@@ -30,6 +32,7 @@ type StoreContextValue = {
   user: User | null
   cartCount: number
   cartSubtotal: number
+  getProductById: (id: string) => Product | undefined
   addToCart: (product: Product, size: string, color: string, quantity?: number) => void
   updateQuantity: (id: string, size: string, color: string, quantity: number) => void
   removeFromCart: (id: string, size: string, color: string) => void
@@ -59,11 +62,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [wishlist, setWishlist] = useState<string[]>([])
   const [user, setUser] = useState<User | null>(null)
   const [hydrated, setHydrated] = useState(false)
+  const [catalog, setCatalog] = useState<Product[]>([])
 
   useEffect(() => {
     setCart(readStorage<CartItem[]>(CART_KEY, []))
     setWishlist(readStorage<string[]>(WISH_KEY, []))
     setHydrated(true)
+  }, [])
+
+  useEffect(() => {
+    // Firestore-first with automatic fallback to lib/products.ts — see
+    // services/catalog.service.ts. Fetched once per session so cart/wishlist/
+    // profile can resolve an item id to a product regardless of which
+    // source it actually came from.
+    getProductCatalog().then(setCatalog)
   }, [])
 
   useEffect(() => {
@@ -79,6 +91,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setUser(
         firebaseUser
           ? {
+              uid: firebaseUser.uid,
               name: firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "",
               email: firebaseUser.email || "",
             }
@@ -91,7 +104,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const value = useMemo<StoreContextValue>(() => {
     const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0)
     const cartSubtotal = cart.reduce((sum, item) => {
-      const product = products.find((p) => p.id === item.id)
+      const product = catalog.find((p) => p.id === item.id)
       return sum + (product ? product.price * item.quantity : 0)
     }, 0)
 
@@ -101,6 +114,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       user,
       cartCount,
       cartSubtotal,
+      getProductById: (id) => catalog.find((p) => p.id === id),
       addToCart: (product, size, color, quantity = 1) => {
         setCart((prev) => {
           const existing = prev.find(
@@ -148,7 +162,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         toast("Signed out")
       },
     }
-  }, [cart, wishlist, user])
+  }, [cart, wishlist, user, catalog])
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>
 }

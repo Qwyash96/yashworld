@@ -3,37 +3,38 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { loginWithEmail } from "@/services/auth.service"
+import { loginWithGoogle } from "@/services/auth.service"
+import { ensureUserProfile } from "@/services/user.service"
+import { isAdminRole } from "@/lib/admin-roles"
 
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { GoogleIcon } from "@/components/ui/google-icon"
 
 export default function LoginPage() {
   const router = useRouter()
 
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault()
-
-    if (!email.trim() || !password.trim()) {
-      alert("Email aur Password bharo")
-      return
-    }
-
+  async function submit() {
     try {
       setLoading(true)
 
-      await loginWithEmail(email.trim(), password)
+      const user = await loginWithGoogle()
+      const profile = await ensureUserProfile(
+        user.uid,
+        user.displayName || user.email?.split("@")[0] || "",
+        user.email || "",
+      )
 
       alert("Login Successful!")
 
-      router.push("/profile")
+      // Staff/super_admin signing in through the normal Google button still
+      // land in the admin panel, not the buyer profile page — this is the
+      // one and only place that decision gets made, right after the role is
+      // actually known.
+      router.push(isAdminRole(profile.role) ? "/admin" : "/profile")
     } catch (error: any) {
-      alert(error.message)
+      if (error?.code !== "auth/popup-closed-by-user") alert(error.message)
     } finally {
       setLoading(false)
     }
@@ -51,53 +52,18 @@ export default function LoginPage() {
         </p>
       </header>
 
-      <form onSubmit={submit} className="mt-8 space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-
-          <Input
-            id="email"
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            className="h-11"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="password">Password</Label>
-
-            <button
-              type="button"
-              className="text-xs text-muted-foreground hover:text-foreground"
-            >
-              Forgot?
-            </button>
-          </div>
-
-          <Input
-            id="password"
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            className="h-11"
-          />
-        </div>
-
+      <div className="mt-8 space-y-4">
         <Button
-          type="submit"
+          type="button"
           size="lg"
-          className="h-11 w-full"
+          className="h-11 w-full gap-3"
           disabled={loading}
+          onClick={submit}
         >
-          {loading ? "Signing In..." : "Sign In"}
+          <GoogleIcon className="size-5" />
+          {loading ? "Signing In..." : "Sign in with Google"}
         </Button>
-      </form>
+      </div>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         New to YashWorld?{" "}

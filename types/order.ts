@@ -1,21 +1,41 @@
 import type { Address } from "./user"
+import type {
+  OrderStatus,
+  OrderTimelineEvent,
+  PaymentStatus,
+  SellerPayoutStatus,
+} from "./order-lifecycle"
 
-export type OrderStatus =
-  | "pending"
-  | "confirmed"
-  | "processing"
-  | "shipped"
-  | "delivered"
-  | "cancelled"
-  | "returned"
+// Canonical status enums live in ./order-lifecycle — re-exported here so
+// existing imports of these types from "@/types/order" keep working. There
+// is only one definition of each; this is not a duplicate.
+export type { OrderStatus, OrderTimelineEvent, PaymentStatus, SellerPayoutStatus }
 
-export type PaymentStatus = "pending" | "paid" | "refunded" | "failed"
+export type PaymentMethod = "cod" | "razorpay"
+
+export type ShippingMethod = "standard" | "express"
+
+/** Which pricing-engine source won the "best discount wins" comparison for
+ * this line item — see lib/pricing-engine.ts. "none" means the item sold at
+ * its plain listed price. */
+export type DiscountSource =
+  | "none"
+  | "seller_price"
+  | "scheduled_offer"
+  | "campaign"
+  | "seller_coupon"
 
 export interface OrderItem {
   productId: string
   sellerId: string
   quantity: number
+  /** Final unit price actually charged, post-best-discount. */
   price: number
+  /** Pre-discount unit price, set only when discountSource !== "none". */
+  originalPrice?: number
+  discountSource?: DiscountSource
+  /** Set only when discountSource is "seller_coupon". */
+  couponCode?: string
 }
 
 /** One seller's portion of a multi-vendor order — independently fulfillable. */
@@ -23,21 +43,54 @@ export interface SellerOrder {
   sellerId: string
   items: OrderItem[]
   status: OrderStatus
+  timeline?: OrderTimelineEvent[]
+  trackingNumber?: string
+  shippedAt?: string
+  deliveredAt?: string
+  cancelledAt?: string
+  /** Seller-side money flow for this seller's portion of the order. */
+  payoutStatus?: SellerPayoutStatus
+  /** Platform commission on this seller's item revenue, at the rate active when the order was placed. */
+  commissionAmount: number
+  /** itemRevenue - commissionAmount. Computed BEFORE any order-level global
+   * coupon discount — an admin-issued global coupon is platform marketing
+   * spend and never reduces what a seller is owed (see lib/pricing-engine.ts). */
+  payoutAmount: number
 }
 
 /** Firestore `orders/{id}` document shape. */
 export interface Order {
   id: string
   buyerId: string
+  /** Contact email for order communications — may differ from the account email. */
+  contactEmail: string
   sellerOrders: SellerOrder[]
+  /** Denormalized from sellerOrders[].sellerId — lets a seller query their own orders via array-contains. */
+  sellerIds: string[]
   status: OrderStatus
   totals: {
     subtotal: number
+    /** Order-level discount only — i.e. an applied global coupon. Per-item
+     * seller/campaign/seller-coupon discounts are already reflected in each
+     * OrderItem.price and don't appear here separately. */
+    discount: number
     shipping: number
     total: number
   }
+  /** Set only when an admin global coupon was applied at checkout. */
+  appliedCouponCode?: string
+  /** Denormalized set of campaign IDs that discounted at least one item in
+   * this order — Firestore can't query nested array-of-object fields, so
+   * this (array-contains-queryable) is how admin campaign analytics finds
+   * "orders influenced by campaign X" without scanning every order. */
+  campaignIds?: string[]
   shippingAddress: Address
+  shippingMethod: ShippingMethod
+  paymentMethod: PaymentMethod
   paymentStatus: PaymentStatus
+  /** Set only for paymentMethod "razorpay" — the verified gateway order/payment pair, for reconciliation. */
+  razorpayOrderId?: string
+  razorpayPaymentId?: string
   createdAt: string
 }
 

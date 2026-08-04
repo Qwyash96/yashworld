@@ -1,0 +1,43 @@
+rules_version = '2';
+
+// seller-kyc/{uid}/{fileName} — KYC documents (Aadhaar/PAN/selfie/bank proof/
+// GST). Only the owner can read or write their own files; admins never read
+// them directly through these rules — they go through the signed-URL route
+// at app/api/admin/sellers/[uid]/documents/[docKey] (Admin SDK, bypasses
+// Storage rules entirely), same pattern as the staff Admin SDK routes.
+// product-images/{uid}/{uuid}.{ext} — seller-uploaded product photos.
+// Unlike KYC docs these are public storefront assets, so read is open to
+// everyone; write stays owner-only, matching the KYC pattern. Which uid may
+// actually have live products is enforced separately by firestore.rules'
+// isApprovedSeller() on the products collection itself — a non-seller
+// uploading an orphan file to their own uid folder has no cross-user impact.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /seller-kyc/{uid}/{fileName} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if request.auth != null && request.auth.uid == uid
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*|application/pdf');
+    }
+    match /product-images/{uid}/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == uid
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|jpg|png|webp)');
+      allow delete: if request.auth != null && request.auth.uid == uid;
+    }
+    // banner-images/{uid}/{fileName} — admin-uploaded promotional banners.
+    // Same owner-only-write/public-read shape as product-images. The real
+    // access control is at the Firestore layer: banners/{id} is
+    // Admin-SDK-only to write (see firestore.rules), so even if a
+    // non-admin uploaded a file to their own uid folder here, it can never
+    // become a live banner — identical reasoning to product-images above.
+    match /banner-images/{uid}/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == uid
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|jpg|png|webp)');
+      allow delete: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}

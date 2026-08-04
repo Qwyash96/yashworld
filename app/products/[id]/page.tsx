@@ -1,48 +1,26 @@
-import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { ChevronRight } from "lucide-react"
 import { ProductDetail } from "@/components/product-detail"
 import { ProductCard } from "@/components/product-card"
-import { getProduct, getProductsByCategory, products } from "@/lib/products"
+import { getProductCatalog } from "@/services/catalog.service"
 
-export function generateStaticParams() {
-  return products.map((p) => ({ id: p.id }))
-}
+// See app/products/page.tsx for why this is needed on a Firestore-backed page.
+export const revalidate = 60
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}): Promise<Metadata> {
+export default async function ProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const product = getProduct(id)
-  if (!product) return { title: "Product — YashWorld" }
-  return {
-    title: `${product.name} — YashWorld`,
-    description: product.description,
-  }
-}
-
-export default async function ProductPage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
-  const { id } = await params
-  const product = getProduct(id)
+  const products = await getProductCatalog()
+  const product = products.find((p) => p.id === id)
   if (!product) notFound()
 
-  const related = getProductsByCategory(product.category)
-    .filter((p) => p.id !== product.id)
+  const related = products
+    .filter((p) => p.category === product.category && p.id !== product.id)
     .slice(0, 4)
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-      <nav
-        aria-label="Breadcrumb"
-        className="mb-8 flex items-center gap-1 text-xs text-muted-foreground"
-      >
+      <nav aria-label="Breadcrumb" className="mb-8 flex items-center gap-1 text-xs text-muted-foreground">
         <Link href="/" className="hover:text-foreground">
           Home
         </Link>

@@ -2,15 +2,18 @@
 
 import Image from "next/image"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Minus, Plus, ShoppingBag, Trash2, X } from "lucide-react"
-import { toast } from "sonner"
 import { useStore } from "@/components/store-provider"
-import { formatPrice, getProduct } from "@/lib/products"
+import { formatPrice } from "@/lib/products"
+import { Price } from "@/components/price"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 
 export default function CartPage() {
-  const { cart, cartSubtotal, updateQuantity, removeFromCart, clearCart } = useStore()
+  const router = useRouter()
+  const { cart, cartSubtotal, updateQuantity, removeFromCart, clearCart, getProductById } =
+    useStore()
 
   const shipping = cartSubtotal > 250 || cartSubtotal === 0 ? 0 : 15
   const total = cartSubtotal + shipping
@@ -23,7 +26,7 @@ export default function CartPage() {
         </div>
         <h1 className="mt-6 font-serif text-3xl font-semibold tracking-tight">Your bag is empty</h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          Discover premium monochrome essentials made to last.
+          Discover premium plants, pots and gardening essentials.
         </p>
         <Button size="lg" className="mt-8 h-11 px-6" render={<Link href="/products" />}>
           Continue Shopping
@@ -47,7 +50,7 @@ export default function CartPage() {
       <div className="mt-8 grid gap-10 lg:grid-cols-3">
         <ul className="lg:col-span-2 divide-y divide-border border-y border-border">
           {cart.map((item) => {
-            const product = getProduct(item.id)
+            const product = getProductById(item.id)
             if (!product) return null
             return (
               <li key={`${item.id}-${item.size}-${item.color}`} className="flex gap-4 py-5">
@@ -109,9 +112,13 @@ export default function CartPage() {
                         <Plus className="size-3.5" />
                       </Button>
                     </div>
-                    <span className="font-semibold">
-                      {formatPrice(product.price * item.quantity)}
-                    </span>
+                    <Price
+                      price={product.price * item.quantity}
+                      originalPrice={
+                        product.originalPrice ? product.originalPrice * item.quantity : undefined
+                      }
+                      size="sm"
+                    />
                   </div>
                 </div>
               </li>
@@ -149,11 +156,7 @@ export default function CartPage() {
             <Button
               size="lg"
               className="mt-6 h-12 w-full"
-              onClick={() =>
-                toast.success("Checkout", {
-                  description: "This is a demo storefront — checkout is not enabled.",
-                })
-              }
+              onClick={() => router.push("/checkout")}
             >
               Checkout
             </Button>

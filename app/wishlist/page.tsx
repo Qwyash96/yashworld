@@ -4,12 +4,11 @@ import Link from "next/link"
 import { Heart } from "lucide-react"
 import { useStore } from "@/components/store-provider"
 import { ProductCard } from "@/components/product-card"
-import { getProduct } from "@/lib/products"
 import { Button } from "@/components/ui/button"
 
 export default function WishlistPage() {
-  const { wishlist } = useStore()
-  const items = wishlist.map((id) => getProduct(id)).filter((p) => p !== undefined)
+  const { wishlist, getProductById } = useStore()
+  const items = wishlist.map((id) => getProductById(id)).filter((p) => p !== undefined)
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">

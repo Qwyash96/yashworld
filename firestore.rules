@@ -1,0 +1,318 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // Checks the users/{uid} profile doc directly — no custom claims are
+    // ever set on Firebase Auth users anywhere in this app, so this is the
+    // only source of truth for role, not a fallback.
+    function callerRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    // "Seller" isn't a users/{uid}.role value — sellers keep role "buyer"
+    // and their seller status lives in sellerApplications/{uid}.status,
+    // exactly like hooks/use-seller-status.ts reads it client-side. A user
+    // can only ever check their own application (isOwner below), matching
+    // the products rules' `sellerId == request.auth.uid` requirement.
+    function isApprovedSeller(uid) {
+      return isOwner(uid)
+        && get(/databases/$(database)/documents/sellerApplications/$(uid)).data.status == 'approved';
+    }
+
+    function isAdminByProfile() {
+      return isSignedIn()
+        && callerRole() in ['super_admin', 'orders_manager', 'products_manager', 'seller_manager', 'support', 'finance', 'marketing'];
+    }
+
+    function isSuperAdmin() {
+      return isSignedIn() && callerRole() == 'super_admin';
+    }
+
+    // No generic "admin" role exists in this taxonomy — every staff role is
+    // named for what it manages, so this is just the profile check. Kept as
+    // its own function since call sites read better as isAdmin().
+    function isAdmin() {
+      return isAdminByProfile();
+    }
+
+    // Seller KYC review authority — narrower than isAdmin(): only the roles
+    // that actually hold the "seller_management" permission (see
+    // lib/admin-roles.ts ROLE_PERMISSIONS), not every staff role.
+    function canManageSellers() {
+      return isSignedIn() && callerRole() in ['super_admin', 'seller_manager'];
+    }
+
+    // Support ticket review authority — mirrors canManageSellers() above,
+    // narrowed to the roles that hold the "support" permission (see
+    // lib/admin-roles.ts ROLE_PERMISSIONS).
+    function canManageSupport() {
+      return isSignedIn() && callerRole() in ['super_admin', 'support'];
+    }
+
+    // Campaign/coupon/banner authority — the roles holding "coupons_offers"/
+    // "marketing" permission (see lib/admin-roles.ts ROLE_PERMISSIONS).
+    function canManageCampaigns() {
+      return isSignedIn() && callerRole() in ['super_admin', 'marketing'];
+    }
+
+    // users/{uid} — profile document, separate from Firebase Auth itself.
+    // Creation happens exclusively via app/api/auth/bootstrap-profile (first
+    // Google sign-in, consumes a pending staffInvites entry or defaults to
+    // "buyer") and staff accounts are created/edited exclusively through the
+    // server-side Admin SDK API routes (Super Admin only) — both bypass
+    // these rules entirely, so no client write path is opened here at all.
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create: if false;
+      allow update: if (isOwner(uid) && request.resource.data.role == resource.data.role)
+        || isSuperAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
+    // staffInvites/{email} — pending role assignment for a Gmail address
+    // that hasn't signed in yet. Admin-SDK-only: created/edited via
+    // app/api/admin/staff/route.ts (Super Admin), consumed via
+    // app/api/auth/bootstrap-profile on that email's first Google sign-in.
+    match /staffInvites/{email} {
+      allow read, write: if false;
+    }
+
+    // sellers/{uid} — public storefront profile. Only ever written by the
+    // admin approval route (Admin SDK, bypasses these rules), so it can
+    // never contain anything sensitive (bank details, KYC docs) — that
+    // private data lives in sellerApplications/{uid} below instead.
+    match /sellers/{uid} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // sellerApplications/{uid} — private KYC application, source of truth
+    // for the approval workflow. Only the owner (while pending/rejected/
+    // resubmission_requested, to submit or resubmit) or seller_management
+    // staff (read-only; approve/reject/suspend/ban/sellerId-assignment
+    // happens exclusively via the Admin SDK routes in app/api/admin/sellers/,
+    // which bypass these rules) can touch it.
+    match /sellerApplications/{uid} {
+      allow read: if isOwner(uid) || canManageSellers();
+      allow create: if isOwner(uid)
+        && request.resource.data.uid == uid
+        && request.resource.data.status == 'pending'
+        && !('sellerId' in request.resource.data);
+      allow update: if isOwner(uid)
+        && resource.data.status in ['pending', 'rejected', 'resubmission_requested']
+        && request.resource.data.status == 'pending'
+        // .get(key, default) on BOTH sides — direct property access
+        // (request.resource.data.sellerId) throws when the field is absent,
+        // which every first-time-rejected application always is (sellerId
+        // is only ever assigned on approval), silently denying every
+        // resubmission for that (overwhelmingly common) case.
+        && request.resource.data.get('sellerId', null) == resource.data.get('sellerId', null);
+      allow delete: if false;
+    }
+
+    // counters/{id} — e.g. counters/sellerId for the sequential SEL###### ID.
+    // Deliberately has no rule block at all, so every client request is
+    // default-denied; only the Admin SDK (which bypasses rules) can touch it.
+
+    // paymentSettings/{doc} — contains keySecret/webhookSecret, so this is a
+    // hard deny for every client request, not just non-admins. Read/write
+    // exclusively through app/api/admin/payment-settings/* (Admin SDK,
+    // super_admin only). The buyer-facing checkout instead calls the public
+    // app/api/checkout/config route, which strips secrets before responding.
+    match /paymentSettings/{doc} {
+      allow read, write: if false;
+    }
+
+    // newsletterSubscribers/{email} — write-only from the client's
+    // perspective, and even that only goes through the public Admin-SDK
+    // route at app/api/newsletter/subscribe (validates + de-dupes server
+    // side). No client ever reads this list back.
+    match /newsletterSubscribers/{email} {
+      allow read, write: if false;
+    }
+
+    // siteSettings/{doc} — e.g. siteSettings/social. Public URLs only, no
+    // secrets, so it's openly readable (the footer reads it directly).
+    // Writable only via app/api/admin/settings/social (Admin SDK, super_admin).
+    match /siteSettings/{doc} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // products/{productId}
+    match /products/{productId} {
+      allow read: if resource.data.status == 'approved'
+        || isAdmin()
+        || (isSignedIn() && resource.data.sellerId == request.auth.uid);
+      allow create: if isApprovedSeller(request.resource.data.sellerId);
+      allow update: if isAdmin() || isApprovedSeller(resource.data.sellerId);
+      allow delete: if isAdmin() || isApprovedSeller(resource.data.sellerId);
+      // Note: stock decrements at checkout must go through a server-side
+      // order API (Admin SDK, bypasses rules) — buyers have no product
+      // write access here, so a client can never self-serve a decrement.
+    }
+
+    // categories/{categoryId} — admin-managed taxonomy
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // orders/{orderId}
+    match /orders/{orderId} {
+      allow read: if isSignedIn() && (
+        resource.data.buyerId == request.auth.uid
+        || isAdmin()
+        || resource.data.sellerIds.hasAny([request.auth.uid])
+      );
+      // Orders are only ever created by the Admin SDK (app/api/checkout/cod
+      // and app/api/payments/razorpay/verify), after price/stock have been
+      // recomputed from trusted product data and — for Razorpay — the
+      // payment signature has been verified. A client `create` here would
+      // mean anyone could write an order (including paymentStatus: "Paid")
+      // without ever paying, so this is deliberately unconditional.
+      allow create: if false;
+      // A seller listed on the order may update sellerOrders (their status
+      // progression) only — not totals, payment, or the buyer's address.
+      // Note: this doesn't stop a seller from editing another seller's
+      // entry within the same sellerOrders array — real isolation would
+      // need per-seller subdocuments, a bigger change than this milestone.
+      // Everything else (payment status, admin overrides) still requires isAdmin().
+      allow update: if isAdmin()
+        || (isSignedIn() && resource.data.sellerIds.hasAny([request.auth.uid])
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sellerOrders']));
+      allow delete: if false;
+    }
+
+    // carts/{uid} — one document per user
+    match /carts/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // wishlists/{uid} — one document per user
+    match /wishlists/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // reviews/{reviewId} — doc ID convention: `${orderId}_${productId}`,
+    // so a buyer can only ever create one review per purchased item.
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isSignedIn() && request.resource.data.buyerId == request.auth.uid;
+      allow update: if isAdmin()
+        || (isSignedIn() && resource.data.buyerId == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rating', 'text', 'images']))
+        || (isApprovedSeller(request.auth.uid)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sellerReply']));
+      allow delete: if isAdmin();
+    }
+
+    // supportTickets/{id} — submitted by a buyer or an approved seller
+    // during onboarding. Only the submitter can read their own tickets;
+    // only support staff can read/triage the full queue or change status.
+    match /supportTickets/{ticketId} {
+      allow read: if isAdmin()
+        || (isSignedIn() && resource.data.buyerId == request.auth.uid)
+        || (isSignedIn() && resource.data.sellerId == request.auth.uid);
+      allow create: if isSignedIn()
+        && (
+          (('buyerId' in request.resource.data) && request.resource.data.buyerId == request.auth.uid)
+          || (('sellerId' in request.resource.data) && request.resource.data.sellerId == request.auth.uid)
+        )
+        && request.resource.data.status == 'new';
+      allow update: if canManageSupport()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+      allow delete: if false;
+    }
+
+    // campaigns/{id} — admin-run Flash Sale / Festival Sale / Category
+    // Discount promotions. Public read: buyers need to see campaign pricing
+    // while browsing, logged out included, and sellers need to browse open
+    // campaigns to join. Write is Admin-SDK-only (app/api/admin/campaigns/*)
+    // so every mutation goes through one consistently-validated path.
+    match /campaigns/{campaignId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // campaignParticipants/{campaignId}_{sellerId} — a seller's opt-in
+    // status for one campaign. Admin creates "invited" docs (Admin SDK,
+    // app/api/admin/campaigns/[id]/invite) and the ONE trusted-price write
+    // for "open" self-serve joins goes through app/api/seller/campaigns/
+    // [id]/join (Admin SDK) — but a seller may also respond to an
+    // already-invited doc (accept/decline) directly, since that's just a
+    // status flip with no price computation involved.
+    match /campaignParticipants/{participantId} {
+      allow read: if canManageCampaigns()
+        || (isSignedIn() && resource.data.sellerId == request.auth.uid);
+      allow create: if false;
+      allow update: if canManageCampaigns()
+        || (isSignedIn()
+            && resource.data.sellerId == request.auth.uid
+            && resource.data.status == 'invited'
+            && request.resource.data.sellerId == resource.data.sellerId
+            && request.resource.data.campaignId == resource.data.campaignId
+            && request.resource.data.status in ['opted_in', 'declined']
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'respondedAt', 'productIds']));
+      allow delete: if canManageCampaigns();
+    }
+
+    // coupons/{CODE} — doc ID is the uppercased code itself. scope:"global"
+    // (admin/platform-wide) coupons are always Admin-SDK-only
+    // (app/api/admin/coupons/*). scope:"seller" coupons are the seller's
+    // own promotional codes, self-service, same trust level as their own
+    // products — but usedCount is never client-writable, only the trusted
+    // order-finalize transaction (Admin SDK) increments it on redemption.
+    match /coupons/{code} {
+      allow read: if canManageCampaigns()
+        || (isSignedIn() && resource.data.scope == 'seller' && resource.data.sellerId == request.auth.uid);
+      allow create: if request.resource.data.scope == 'seller'
+        && isApprovedSeller(request.resource.data.sellerId)
+        && request.resource.data.code == code
+        && request.resource.data.usedCount == 0;
+      allow update: if canManageCampaigns()
+        || (isSignedIn()
+            && resource.data.scope == 'seller'
+            && resource.data.sellerId == request.auth.uid
+            && request.resource.data.sellerId == resource.data.sellerId
+            && request.resource.data.scope == resource.data.scope
+            && request.resource.data.code == resource.data.code
+            && request.resource.data.usedCount == resource.data.usedCount);
+      allow delete: if canManageCampaigns()
+        || (isSignedIn() && resource.data.scope == 'seller' && resource.data.sellerId == request.auth.uid);
+    }
+
+    // couponRedemptions/{orderId}_{couponId} — audit trail + per-buyer
+    // usage-limit source of truth, written only inside the trusted
+    // order-finalize transaction (Admin SDK). No client ever reads or
+    // writes this directly.
+    match /couponRedemptions/{redemptionId} {
+      allow read, write: if false;
+    }
+
+    // banners/{id} — promotional banners. Public read (shown to every
+    // visitor, logged out included); write is Admin-SDK-only
+    // (app/api/admin/banners/*, super_admin).
+    match /banners/{bannerId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // platformSettings/{doc} — e.g. platformSettings/commission. Same
+    // sensitivity treatment as paymentSettings: a hard deny for every
+    // client request. Read/write exclusively through
+    // app/api/admin/platform-settings (Admin SDK, super_admin only).
+    match /platformSettings/{doc} {
+      allow read, write: if false;
+    }
+  }
+}

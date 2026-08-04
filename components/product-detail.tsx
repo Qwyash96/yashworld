@@ -2,9 +2,11 @@
 
 import Image from "next/image"
 import { useState } from "react"
-import { Heart, Minus, Plus, Star, Truck, RotateCcw, ShieldCheck } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Heart, Minus, Plus, ShoppingCart, Star, Truck, RotateCcw, Leaf, Zap } from "lucide-react"
 import { useStore } from "@/components/store-provider"
 import { formatPrice, type Product } from "@/lib/products"
+import { Price } from "@/components/price"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
@@ -17,11 +19,17 @@ import {
 import { cn } from "@/lib/utils"
 
 export function ProductDetail({ product }: { product: Product }) {
+  const router = useRouter()
   const { addToCart, toggleWishlist, isWishlisted } = useStore()
   const [size, setSize] = useState(product.sizes[0])
   const [color, setColor] = useState(product.colors[0])
   const [quantity, setQuantity] = useState(1)
   const wishlisted = isWishlisted(product.id)
+
+  function handleBuyNow() {
+    addToCart(product, size, color, quantity)
+    router.push("/checkout")
+  }
 
   return (
     <div className="grid gap-10 lg:grid-cols-2">
@@ -73,14 +81,13 @@ export function ProductDetail({ product }: { product: Product }) {
           </span>
         </div>
 
-        <div className="mt-5 flex items-center gap-3">
-          <span className="text-2xl font-semibold">{formatPrice(product.price)}</span>
-          {product.originalPrice && (
-            <span className="text-base text-muted-foreground line-through">
-              {formatPrice(product.originalPrice)}
-            </span>
-          )}
-        </div>
+        <Price
+          price={product.price}
+          originalPrice={product.originalPrice}
+          size="lg"
+          showSavings
+          className="mt-5"
+        />
 
         <p className="mt-5 text-pretty leading-relaxed text-muted-foreground">
           {product.description}
@@ -157,18 +164,27 @@ export function ProductDetail({ product }: { product: Product }) {
           </div>
         </div>
 
-        <div className="mt-4 flex gap-3">
-          <Button
-            size="lg"
-            className="h-12 flex-1"
+        <div className="mt-4 flex flex-nowrap gap-2 sm:gap-3">
+          <button
+            type="button"
             onClick={() => addToCart(product, size, color, quantity)}
+            className="flex h-12 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#16a34a] px-2 text-sm font-semibold text-white transition hover:brightness-110 sm:px-4"
           >
-            Add to Bag — {formatPrice(product.price * quantity)}
-          </Button>
+            <ShoppingCart className="size-4 shrink-0" />
+            <span className="truncate">Add to Cart — {formatPrice(product.price * quantity)}</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleBuyNow}
+            className="flex h-12 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#f97316] px-2 text-sm font-semibold text-white transition hover:brightness-110 sm:px-4"
+          >
+            <Zap className="size-4 shrink-0" />
+            <span className="truncate">Buy Now</span>
+          </button>
           <Button
             size="lg"
             variant="outline"
-            className="h-12 w-12 p-0"
+            className="h-12 w-12 shrink-0 p-0"
             aria-label="Add to wishlist"
             onClick={() => toggleWishlist(product)}
           >
@@ -176,11 +192,11 @@ export function ProductDetail({ product }: { product: Product }) {
           </Button>
         </div>
 
-        {/* Perks */}
-        <div className="mt-6 grid grid-cols-3 gap-3 text-center">
-          <Perk icon={<Truck className="size-5" />} label="Free shipping" />
-          <Perk icon={<RotateCcw className="size-5" />} label="30-day returns" />
-          <Perk icon={<ShieldCheck className="size-5" />} label="2-year warranty" />
+        {/* Perks — no warranty: live plants can't carry one. */}
+        <div className="mt-6 grid grid-cols-3 gap-2 text-center sm:gap-3">
+          <Perk icon={<Truck className="size-5" />} label="Free Delivery" />
+          <Perk icon={<RotateCcw className="size-5" />} label="7-Day Return" />
+          <Perk icon={<Leaf className="size-5" />} label="Healthy Plant Guarantee" />
         </div>
 
         <Accordion className="mt-6 w-full">
@@ -197,10 +213,13 @@ export function ProductDetail({ product }: { product: Product }) {
           <AccordionItem value="shipping">
             <AccordionTrigger>Shipping &amp; Returns</AccordionTrigger>
             <AccordionContent>
-              <p className="text-sm text-muted-foreground">
-                Complimentary carbon-neutral shipping on all orders. Returns accepted within
-                30 days of delivery in original condition.
-              </p>
+              <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
+                <li>Return available within 7 days of delivery.</li>
+                <li>Plant must be unused and in original condition.</li>
+                <li>Refund/replacement only after inspection.</li>
+                <li>Damaged or wrong plant can be replaced.</li>
+                <li>No warranty is provided on live plants.</li>
+              </ul>
             </AccordionContent>
           </AccordionItem>
         </Accordion>
@@ -211,9 +230,9 @@ export function ProductDetail({ product }: { product: Product }) {
 
 function Perk({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
-    <div className="flex flex-col items-center gap-1 rounded-md border border-border p-3">
+    <div className="flex h-full flex-col items-center justify-center gap-1 rounded-md border border-border p-2 sm:p-3">
       <span className="text-foreground">{icon}</span>
-      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="text-[11px] leading-tight text-muted-foreground sm:text-xs">{label}</span>
     </div>
   )
 }

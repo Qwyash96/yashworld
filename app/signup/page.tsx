@@ -4,38 +4,36 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 
-import { signupWithEmail } from "@/services/auth.service"
+import { loginWithGoogle } from "@/services/auth.service"
+import { ensureUserProfile } from "@/services/user.service"
+import { isAdminRole } from "@/lib/admin-roles"
 
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { GoogleIcon } from "@/components/ui/google-icon"
 
 export default function SignupPage() {
   const router = useRouter()
 
-  const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault()
-
-    if (!name.trim() || !email.trim() || !password.trim()) {
-      alert("Please fill all fields")
-      return
-    }
-
+  async function submit() {
     try {
       setLoading(true)
 
-      await signupWithEmail(name.trim(), email.trim(), password)
+      const user = await loginWithGoogle()
+      const profile = await ensureUserProfile(
+        user.uid,
+        user.displayName || user.email?.split("@")[0] || "",
+        user.email || "",
+      )
 
       alert("Account Created Successfully!")
 
-      router.push("/profile")
+      // A newly-invited staff member's very first Google sign-in can land
+      // here too — send them to the admin panel, not the buyer profile.
+      router.push(isAdminRole(profile.role) ? "/admin" : "/profile")
     } catch (error: any) {
-      alert(error.message)
+      if (error?.code !== "auth/popup-closed-by-user") alert(error.message)
     } finally {
       setLoading(false)
     }
@@ -53,59 +51,18 @@ export default function SignupPage() {
         </p>
       </header>
 
-      <form onSubmit={submit} className="mt-8 space-y-4">
-
-        <div className="space-y-2">
-          <Label htmlFor="name">Full Name</Label>
-
-          <Input
-            id="name"
-            required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Yash Raj"
-            className="h-11"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-
-          <Input
-            id="email"
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            className="h-11"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
-
-          <Input
-            id="password"
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Minimum 6 characters"
-            className="h-11"
-          />
-        </div>
-
+      <div className="mt-8 space-y-4">
         <Button
-          type="submit"
+          type="button"
           size="lg"
-          className="h-11 w-full"
+          className="h-11 w-full gap-3"
           disabled={loading}
+          onClick={submit}
         >
-          {loading ? "Creating Account..." : "Create Account"}
+          <GoogleIcon className="size-5" />
+          {loading ? "Creating Account..." : "Sign up with Google"}
         </Button>
-
-      </form>
+      </div>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Already have an account?{" "}

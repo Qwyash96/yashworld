@@ -1,25 +1,36 @@
 import {
   addDoc,
   collection,
+  deleteField,
   deleteDoc,
   doc,
   getDoc,
   getDocs,
+  orderBy,
   query,
   updateDoc,
   where,
 } from "firebase/firestore"
 import { db } from "@/services/firebase/client"
 import { toServiceError } from "@/services/firebase/errors"
-import type { Product, ProductInput } from "@/types/product"
+import { normalizeProductImages } from "@/lib/product-images"
+import type { Product, ProductInput, ScheduledOffer } from "@/types/product"
+import type { QueryDocumentSnapshot, DocumentData } from "firebase/firestore"
 
 const COLLECTION = "products"
+
+/** Every read goes through this so older documents (images as a plain
+ * string[]) are always coerced to the current ProductImage[] shape. */
+function toProduct(snapshot: QueryDocumentSnapshot<DocumentData>): Product {
+  const data = snapshot.data()
+  return { id: snapshot.id, ...data, images: normalizeProductImages(data.images) } as Product
+}
 
 export async function getProductById(id: string): Promise<Product | null> {
   try {
     const snapshot = await getDoc(doc(db, COLLECTION, id))
     if (!snapshot.exists()) return null
-    return { id: snapshot.id, ...snapshot.data() } as Product
+    return toProduct(snapshot)
   } catch (error) {
     throw toServiceError(`Failed to fetch product "${id}"`, error)
   }
@@ -28,7 +39,7 @@ export async function getProductById(id: string): Promise<Product | null> {
 export async function getAllProducts(): Promise<Product[]> {
   try {
     const snapshot = await getDocs(collection(db, COLLECTION))
-    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Product)
+    return snapshot.docs.map(toProduct)
   } catch (error) {
     throw toServiceError("Failed to fetch products", error)
   }
@@ -38,7 +49,7 @@ export async function getProductsByCategory(categoryId: string): Promise<Product
   try {
     const q = query(collection(db, COLLECTION), where("categoryId", "==", categoryId))
     const snapshot = await getDocs(q)
-    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Product)
+    return snapshot.docs.map(toProduct)
   } catch (error) {
     throw toServiceError(`Failed to fetch products for category "${categoryId}"`, error)
   }
@@ -48,7 +59,7 @@ export async function getProductsBySeller(sellerId: string): Promise<Product[]> 
   try {
     const q = query(collection(db, COLLECTION), where("sellerId", "==", sellerId))
     const snapshot = await getDocs(q)
-    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Product)
+    return snapshot.docs.map(toProduct)
   } catch (error) {
     throw toServiceError(`Failed to fetch products for seller "${sellerId}"`, error)
   }
@@ -81,5 +92,59 @@ export async function deleteProduct(id: string): Promise<void> {
     await deleteDoc(doc(db, COLLECTION, id))
   } catch (error) {
     throw toServiceError(`Failed to delete product "${id}"`, error)
+  }
+}
+
+/** Seller-side, direct write — same trust level as any other product field (firestore.rules
+ * lets an approved seller update their own products with no field restriction). */
+export async function setScheduledOffer(id: string, offer: ScheduledOffer): Promise<void> {
+  try {
+    await updateDoc(doc(db, COLLECTION, id), { scheduledOffer: offer })
+  } catch (error) {
+    throw toServiceError(`Failed to set a scheduled offer on product "${id}"`, error)
+  }
+}
+
+export async function clearScheduledOffer(id: string): Promise<void> {
+  try {
+    await updateDoc(doc(db, COLLECTION, id), { scheduledOffer: deleteField() })
+  } catch (error) {
+    throw toServiceError(`Failed to clear the scheduled offer on product "${id}"`, error)
+  }
+}
+
+/** For the admin moderation queue. Matches the products composite index (status + createdAt). */
+export async function getPendingProducts(): Promise<Product[]> {
+  try {
+    const q = query(
+      collection(db, COLLECTION),
+      where("status", "==", "pending"),
+      orderBy("createdAt", "desc"),
+    )
+    const snapshot = await getDocs(q)
+    return snapshot.docs.map(toProduct)
+  } catch (error) {
+    throw toServiceError("Failed to fetch pending products", error)
+  }
+}
+
+/** Admin action: makes a product visible in the customer catalog. */
+export async function approveProduct(id: string): Promise<void> {
+  try {
+    await updateDoc(doc(db, COLLECTION, id), { status: "approved", rejectionReason: deleteField() })
+  } catch (error) {
+    throw toServiceError(`Failed to approve product "${id}"`, error)
+  }
+}
+
+/** Admin action: sends a product back to the seller with a reason — the seller can edit and resubmit as "pending". */
+export async function rejectProduct(id: string, reason?: string): Promise<void> {
+  try {
+    await updateDoc(doc(db, COLLECTION, id), {
+      status: "rejected",
+      ...(reason ? { rejectionReason: reason } : { rejectionReason: deleteField() }),
+    })
+  } catch (error) {
+    throw toServiceError(`Failed to reject product "${id}"`, error)
   }
 }

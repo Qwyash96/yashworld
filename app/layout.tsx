@@ -3,8 +3,7 @@ import type { Metadata, Viewport } from 'next'
 import { Geist, Playfair_Display } from 'next/font/google'
 import { Suspense } from 'react'
 import { StoreProvider } from '@/components/store-provider'
-import { SiteHeader } from '@/components/site-header'
-import { SiteFooter } from '@/components/site-footer'
+import { SiteChrome } from '@/components/site-chrome'
 import { Toaster } from '@/components/ui/sonner'
 import './globals.css'
 
@@ -12,9 +11,9 @@ const geistSans = Geist({ subsets: ['latin'], variable: '--font-geist-sans' })
 const playfair = Playfair_Display({ subsets: ['latin'], variable: '--font-playfair' })
 
 export const metadata: Metadata = {
-  title: 'YashWorld — Premium Monochrome Essentials',
+  title: 'YashWorld — Premium Plant Marketplace',
   description:
-    'YashWorld is a premium black-and-white label of considered apparel, footwear, bags, watches, and accessories.',
+    'YashWorld is a premium marketplace for plants, pots, planters and gardening essentials from verified sellers.',
   generator: 'v0.app',
 }
 
@@ -33,10 +32,8 @@ export default function RootLayout({
       <body className="antialiased font-sans flex min-h-dvh flex-col">
         <StoreProvider>
           <Suspense fallback={null}>
-            <SiteHeader />
+            <SiteChrome>{children}</SiteChrome>
           </Suspense>
-          <main className="flex-1">{children}</main>
-          <SiteFooter />
           <Toaster position="bottom-right" />
         </StoreProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}

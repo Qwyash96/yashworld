@@ -1,21 +1,20 @@
 import {
-  createUserWithEmailAndPassword,
+  browserLocalPersistence,
+  browserSessionPersistence,
+  GoogleAuthProvider,
   onAuthStateChanged,
-  signInWithEmailAndPassword,
+  setPersistence,
+  signInWithPopup,
   signOut,
-  updateProfile,
   type User as FirebaseUser,
 } from "firebase/auth"
 import { auth } from "@/services/firebase/client"
 
-export async function loginWithEmail(email: string, password: string) {
-  const credential = await signInWithEmailAndPassword(auth, email, password)
-  return credential.user
-}
+const googleProvider = new GoogleAuthProvider()
 
-export async function signupWithEmail(name: string, email: string, password: string) {
-  const credential = await createUserWithEmailAndPassword(auth, email, password)
-  await updateProfile(credential.user, { displayName: name })
+export async function loginWithGoogle(remember: boolean = true) {
+  await setPersistence(auth, remember ? browserLocalPersistence : browserSessionPersistence)
+  const credential = await signInWithPopup(auth, googleProvider)
   return credential.user
 }
 
