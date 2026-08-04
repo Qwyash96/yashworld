@@ -4,7 +4,7 @@ import Razorpay from "razorpay"
 import { requireSignedInUser } from "@/lib/api-auth"
 import { computeTrustedTotal, finalizeOrder, InsufficientStockError } from "@/lib/order-finalize"
 import { getRazorpayClient } from "@/lib/razorpay-admin"
-import { getPaymentSettings } from "@/lib/payment-settings"
+import { getDecryptedCredentials, getIntegrationConfig } from "@/lib/integrations/config-store"
 import type { ShippingMethod } from "@/types/order"
 
 interface VerifyBody {
@@ -58,11 +58,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Missing or invalid payment/checkout details." }, { status: 400 })
   }
 
-  const settings = await getPaymentSettings()
-  if (!settings.checkout.razorpayEnabled) {
+  const [config, credentials] = await Promise.all([getIntegrationConfig("razorpay"), getDecryptedCredentials("razorpay")])
+  const settings = config.settings as { razorpayEnabled: boolean }
+  if (!settings.razorpayEnabled) {
     return NextResponse.json({ error: "Razorpay checkout isn't available right now." }, { status: 403 })
   }
-  if (!settings.keyId || !settings.keySecret) {
+  if (!credentials.keyId || !credentials.keySecret) {
     return NextResponse.json({ error: "Razorpay isn't configured." }, { status: 503 })
   }
 
@@ -70,7 +71,7 @@ export async function POST(request: NextRequest) {
   const signatureValid = Razorpay.validateWebhookSignature(
     `${razorpay_order_id}|${razorpay_payment_id}`,
     razorpay_signature,
-    settings.keySecret,
+    credentials.keySecret,
   )
   if (!signatureValid) {
     return NextResponse.json({ error: "Payment signature verification failed." }, { status: 400 })
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
   try {
     // 2. Confirm the payment actually captured, for this order, at the amount we expect —
     //    never trust the client's word for any of this, only Razorpay's own API.
-    const payment = await getRazorpayClient(settings.keyId, settings.keySecret).payments.fetch(razorpay_payment_id)
+    const payment = await getRazorpayClient(credentials.keyId, credentials.keySecret).payments.fetch(razorpay_payment_id)
     if (payment.order_id !== razorpay_order_id) {
       return NextResponse.json({ error: "Payment does not match the order." }, { status: 400 })
     }

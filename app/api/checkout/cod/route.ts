@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { randomUUID } from "crypto"
 import { requireSignedInUser } from "@/lib/api-auth"
 import { finalizeOrder, InsufficientStockError } from "@/lib/order-finalize"
-import { getPaymentSettings } from "@/lib/payment-settings"
+import { getIntegrationConfig } from "@/lib/integrations/config-store"
 import type { ShippingMethod } from "@/types/order"
 
 interface CodCheckoutBody {
@@ -47,8 +47,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Missing or invalid checkout details." }, { status: 400 })
   }
 
-  const settings = await getPaymentSettings()
-  if (!settings.checkout.codEnabled || !settings.methods.cod) {
+  const config = await getIntegrationConfig("razorpay")
+  const settings = config.settings as { codEnabled: boolean; cod: boolean }
+  if (!settings.codEnabled || !settings.cod) {
     return NextResponse.json({ error: "Cash on Delivery isn't available right now." }, { status: 403 })
   }
 

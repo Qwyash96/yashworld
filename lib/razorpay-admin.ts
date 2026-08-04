@@ -4,9 +4,10 @@ import Razorpay from "razorpay"
 /**
  * Server-only Razorpay Node SDK client, built from whatever credentials the
  * caller passes — always the ones currently saved in Firestore
- * (lib/payment-settings.ts's getPaymentSettings()), never env vars. A
- * super_admin can rotate keys from /admin/settings/payments without a
- * redeploy, so this can't cache a single instance keyed by nothing.
+ * (integrations/razorpay, decrypted via lib/integrations/config-store.ts's
+ * getDecryptedCredentials()), never env vars. A super_admin can rotate keys
+ * from /admin/integrations/razorpay without a redeploy, so this can't cache
+ * a single instance keyed by nothing.
  */
 export function getRazorpayClient(keyId: string, keySecret: string): Razorpay {
   if (!keyId || !keySecret) {

@@ -1,6 +1,6 @@
 import { auth } from "@/services/firebase/client"
 import type { ShippingMethod } from "@/types/order"
-import type { PublicCheckoutConfig } from "@/types/payment-settings"
+import type { PublicCheckoutConfig } from "@/types/checkout-config"
 
 export interface CheckoutItemInput {
   productId: string

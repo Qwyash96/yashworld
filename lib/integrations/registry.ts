@@ -1,6 +1,7 @@
 import "server-only"
 import type { IntegrationAdapter } from "@/lib/integrations/types"
 import type { IntegrationCategory } from "@/types/integrations"
+import { razorpayAdapter } from "@/lib/integrations/adapters/razorpay"
 
 /**
  * The single place a new provider gets registered — write the adapter under
@@ -8,7 +9,7 @@ import type { IntegrationCategory } from "@/types/integrations"
  * Nothing else in the framework (routes, admin UI, encryption, logging)
  * needs to change to support it.
  */
-const ADAPTERS: IntegrationAdapter[] = []
+const ADAPTERS: IntegrationAdapter[] = [razorpayAdapter]
 
 export function listAdapters(): IntegrationAdapter[] {
   return ADAPTERS

@@ -86,17 +86,14 @@ export const adminSections: AdminSection[] = [
     ],
   },
   {
+    // Razorpay configuration moved into the generic Plug-and-Play
+    // Integration System (see the "Integrations" section below) —
+    // this section just keeps "payments"-permission roles (finance, admin)
+    // a direct link to it, matching their pre-migration access.
     label: "Payments",
     icon: Wallet,
     permission: "payments",
-    items: [
-      { label: "Razorpay Settings", href: "/admin/settings/payments#razorpay-settings", superAdminOnly: true },
-      { label: "Payment Methods", href: "/admin/settings/payments#payment-methods", superAdminOnly: true },
-      { label: "Checkout Settings", href: "/admin/settings/payments#checkout-settings", superAdminOnly: true },
-      { label: "Payment Link", href: "/admin/settings/payments#payment-link", superAdminOnly: true },
-      { label: "Currency", href: "/admin/settings/payments#currency", superAdminOnly: true },
-      { label: "Webhook Settings", href: "/admin/settings/payments#webhook-settings", superAdminOnly: true },
-    ],
+    items: [{ label: "Razorpay Settings", href: "/admin/integrations/razorpay", superAdminOnly: true }],
   },
   {
     label: "Integrations",

@@ -3,7 +3,7 @@ import { randomUUID } from "crypto"
 import { requireSignedInUser } from "@/lib/api-auth"
 import { computeTrustedTotal, InsufficientStockError } from "@/lib/order-finalize"
 import { getRazorpayClient } from "@/lib/razorpay-admin"
-import { getPaymentSettings } from "@/lib/payment-settings"
+import { getDecryptedCredentials, getIntegrationConfig } from "@/lib/integrations/config-store"
 import type { ShippingMethod } from "@/types/order"
 
 interface CreateOrderBody {
@@ -25,11 +25,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Missing or invalid checkout details." }, { status: 400 })
   }
 
-  const settings = await getPaymentSettings()
-  if (!settings.checkout.razorpayEnabled) {
+  const [config, credentials] = await Promise.all([getIntegrationConfig("razorpay"), getDecryptedCredentials("razorpay")])
+  const settings = config.settings as { razorpayEnabled: boolean } & Record<string, boolean | string>
+  if (!settings.razorpayEnabled) {
     return NextResponse.json({ error: "Razorpay checkout isn't available right now." }, { status: 403 })
   }
-  if (!settings.keyId || !settings.keySecret) {
+  if (!credentials.keyId || !credentials.keySecret) {
     return NextResponse.json({ error: "Razorpay isn't configured." }, { status: 503 })
   }
 
@@ -37,9 +38,9 @@ export async function POST(request: NextRequest) {
     const total = await computeTrustedTotal(items, body.shippingMethod, body.couponCode?.trim())
     const amountPaise = Math.round(total * 100)
 
-    const razorpayOrder = await getRazorpayClient(settings.keyId, settings.keySecret).orders.create({
+    const razorpayOrder = await getRazorpayClient(credentials.keyId, credentials.keySecret).orders.create({
       amount: amountPaise,
-      currency: settings.checkout.currency,
+      currency: "INR",
       receipt: randomUUID(),
       notes: { buyerId: auth.uid },
     })
@@ -47,9 +48,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       razorpayOrderId: razorpayOrder.id,
       amount: amountPaise,
-      currency: settings.checkout.currency,
-      keyId: settings.keyId,
-      methods: settings.methods,
+      currency: "INR",
+      keyId: credentials.keyId,
+      methods: {
+        upi: settings.upi,
+        cards: settings.cards,
+        netbanking: settings.netbanking,
+        wallet: settings.wallet,
+        emi: settings.emi,
+        cod: settings.cod,
+      },
     })
   } catch (error) {
     if (error instanceof InsufficientStockError) {
