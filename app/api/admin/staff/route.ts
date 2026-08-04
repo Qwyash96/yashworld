@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { requireSuperAdmin } from "@/lib/admin-api-auth"
 import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin"
 import { upsertInvite, listPendingInvites } from "@/lib/staff-invites"
+import { writeAuditLog } from "@/lib/audit-log"
 import { ADMIN_ROLES, type AdminRole } from "@/lib/admin-roles"
 import type { UserProfile } from "@/types/user"
 
@@ -66,10 +67,31 @@ export async function POST(request: NextRequest) {
       }
       await docRef.set(profile, { merge: true })
 
+      await writeAuditLog({
+        actorUid: auth.uid,
+        actorEmail: auth.email,
+        actorRole: auth.role,
+        action: "staff.invite",
+        targetType: "user",
+        targetId: existingAuthUser.uid,
+        after: { role, email: trimmedEmail },
+      })
+
       return NextResponse.json({ status: "activated", staff: profile }, { status: 200 })
     }
 
     const invite = await upsertInvite({ email: trimmedEmail, role, mobile, department, invitedBy: auth.uid })
+
+    await writeAuditLog({
+      actorUid: auth.uid,
+      actorEmail: auth.email,
+      actorRole: auth.role,
+      action: "staff.invite",
+      targetType: "staffInvite",
+      targetId: trimmedEmail,
+      after: { role, email: trimmedEmail },
+    })
+
     return NextResponse.json({ status: "invited", invite }, { status: 201 })
   } catch {
     return NextResponse.json({ error: "Could not invite this staff member." }, { status: 500 })

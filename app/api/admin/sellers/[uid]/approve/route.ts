@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { FieldValue } from "firebase-admin/firestore"
 import { requireAdminPermission } from "@/lib/admin-api-auth"
 import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin"
+import { writeAuditLog } from "@/lib/audit-log"
 
 type RouteContext = { params: Promise<{ uid: string }> }
 
@@ -66,6 +67,16 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     if (result.wasBanned) {
       await getAdminAuth().updateUser(uid, { disabled: false }).catch(() => {})
     }
+
+    await writeAuditLog({
+      actorUid: auth.uid,
+      actorEmail: auth.email,
+      actorRole: auth.role,
+      action: "seller.approve",
+      targetType: "sellerApplication",
+      targetId: uid,
+      after: { status: "approved", sellerId: result.sellerId },
+    })
 
     return NextResponse.json({ sellerId: result.sellerId })
   } catch (error) {

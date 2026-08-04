@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { requireSuperAdmin } from "@/lib/admin-api-auth"
 import { getPlatformSettings, savePlatformSettings } from "@/lib/platform-settings"
+import { writeAuditLog } from "@/lib/audit-log"
 
 export async function GET(request: NextRequest) {
   const auth = await requireSuperAdmin(request)
@@ -28,5 +29,16 @@ export async function POST(request: NextRequest) {
   }
 
   const saved = await savePlatformSettings({ defaultCommissionPercent: body.defaultCommissionPercent })
+
+  await writeAuditLog({
+    actorUid: auth.uid,
+    actorEmail: auth.email,
+    actorRole: auth.role,
+    action: "settings.commission_update",
+    targetType: "settings",
+    targetId: "commission",
+    after: { defaultCommissionPercent: body.defaultCommissionPercent },
+  })
+
   return NextResponse.json(saved)
 }

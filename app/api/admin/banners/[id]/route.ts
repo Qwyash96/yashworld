@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { requireAdminPermission } from "@/lib/admin-api-auth"
 import { getAdminDb } from "@/lib/firebase-admin"
+import { writeAuditLog } from "@/lib/audit-log"
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -37,6 +38,17 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
   await ref.update(patch)
   const updated = await ref.get()
+
+  await writeAuditLog({
+    actorUid: auth.uid,
+    actorEmail: auth.email,
+    actorRole: auth.role,
+    action: "banner.update",
+    targetType: "banner",
+    targetId: id,
+    after: patch,
+  })
+
   return NextResponse.json({ banner: { id: updated.id, ...updated.data() } })
 }
 
@@ -46,5 +58,15 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
 
   const { id } = await params
   await getAdminDb().collection("banners").doc(id).delete()
+
+  await writeAuditLog({
+    actorUid: auth.uid,
+    actorEmail: auth.email,
+    actorRole: auth.role,
+    action: "banner.delete",
+    targetType: "banner",
+    targetId: id,
+  })
+
   return NextResponse.json({ ok: true })
 }

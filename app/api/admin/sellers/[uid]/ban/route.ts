@@ -18,7 +18,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     return NextResponse.json({ error: "A ban reason is required." }, { status: 400 })
   }
 
-  const result = await applyModerationAction(uid, "banned", reason, auth.uid)
+  const result = await applyModerationAction(uid, "banned", reason, auth.uid, { email: auth.email, role: auth.role })
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status })
   return NextResponse.json({ ok: true })
 }

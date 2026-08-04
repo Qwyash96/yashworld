@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { requireSuperAdmin } from "@/lib/admin-api-auth"
 import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin"
+import { writeAuditLog } from "@/lib/audit-log"
 import { ADMIN_ROLES, type AdminRole } from "@/lib/admin-roles"
 import type { Firestore } from "firebase-admin/firestore"
 
@@ -70,6 +71,16 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
   await docRef.update(update)
 
+  await writeAuditLog({
+    actorUid: auth.uid,
+    actorEmail: auth.email,
+    actorRole: auth.role,
+    action: "staff.update",
+    targetType: "user",
+    targetId: uid,
+    after: update,
+  })
+
   return NextResponse.json({ ok: true })
 }
 
@@ -96,6 +107,15 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
 
   await getAdminAuth().deleteUser(uid)
   await docRef.delete()
+
+  await writeAuditLog({
+    actorUid: auth.uid,
+    actorEmail: auth.email,
+    actorRole: auth.role,
+    action: "staff.delete",
+    targetType: "user",
+    targetId: uid,
+  })
 
   return NextResponse.json({ ok: true })
 }

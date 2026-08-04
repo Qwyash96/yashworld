@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { requireAdminPermission } from "@/lib/admin-api-auth"
 import { getAdminDb } from "@/lib/firebase-admin"
 import { getCoupon } from "@/lib/coupons"
+import { writeAuditLog } from "@/lib/audit-log"
 import type { CouponStatus } from "@/types/coupon"
 
 type RouteContext = { params: Promise<{ code: string }> }
@@ -63,6 +64,17 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
   await getAdminDb().collection("coupons").doc(code.toUpperCase()).update(patch)
   const updated = await getCoupon(code)
+
+  await writeAuditLog({
+    actorUid: auth.uid,
+    actorEmail: auth.email,
+    actorRole: auth.role,
+    action: "coupon.update",
+    targetType: "coupon",
+    targetId: code,
+    after: patch,
+  })
+
   return NextResponse.json({ coupon: updated })
 }
 
@@ -77,5 +89,15 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
   }
 
   await getAdminDb().collection("coupons").doc(code.toUpperCase()).delete()
+
+  await writeAuditLog({
+    actorUid: auth.uid,
+    actorEmail: auth.email,
+    actorRole: auth.role,
+    action: "coupon.delete",
+    targetType: "coupon",
+    targetId: code,
+  })
+
   return NextResponse.json({ ok: true })
 }

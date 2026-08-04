@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { requireAdminPermission } from "@/lib/admin-api-auth"
 import { getAdminDb } from "@/lib/firebase-admin"
 import { listCoupons } from "@/lib/coupons"
+import { writeAuditLog } from "@/lib/audit-log"
 import type { CouponInput } from "@/types/coupon"
 import type { DiscountType } from "@/types/campaign"
 
@@ -74,5 +75,16 @@ export async function POST(request: NextRequest) {
   }
 
   await ref.set({ ...input, usedCount: 0, totalDiscountGiven: 0, totalRevenue: 0, createdAt: now, updatedAt: now })
+
+  await writeAuditLog({
+    actorUid: auth.uid,
+    actorEmail: auth.email,
+    actorRole: auth.role,
+    action: "coupon.create",
+    targetType: "coupon",
+    targetId: code,
+    after: { discountType: input.discountType, discountValue: input.discountValue },
+  })
+
   return NextResponse.json({ code })
 }

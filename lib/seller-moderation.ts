@@ -1,7 +1,9 @@
 import "server-only"
 import { FieldValue } from "firebase-admin/firestore"
 import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin"
+import { writeAuditLog } from "@/lib/audit-log"
 import type { SellerApplicationStatus, SellerModerationEvent } from "@/types/seller"
+import type { AdminRole } from "@/lib/admin-roles"
 
 export type ModerationAction = "rejected" | "resubmission_requested" | "suspended" | "banned"
 
@@ -35,6 +37,7 @@ export async function applyModerationAction(
   action: ModerationAction,
   reason: string,
   byUid: string,
+  actor?: { email: string; role: AdminRole },
 ): Promise<ModerationResult> {
   const db = getAdminDb()
   const applicationRef = db.collection("sellerApplications").doc(uid)
@@ -76,6 +79,18 @@ export async function applyModerationAction(
     await getAdminAuth()
       .updateUser(uid, { disabled: true })
       .catch(() => {})
+  }
+
+  if (actor) {
+    await writeAuditLog({
+      actorUid: byUid,
+      actorEmail: actor.email,
+      actorRole: actor.role,
+      action: `seller.${action}`,
+      targetType: "sellerApplication",
+      targetId: uid,
+      after: { status, reason },
+    })
   }
 
   return { ok: true }

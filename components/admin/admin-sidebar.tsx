@@ -14,6 +14,7 @@ import {
   BarChart3,
   Settings,
   LifeBuoy,
+  ShieldCheck,
   LogOut,
   type LucideIcon,
 } from "lucide-react"
@@ -142,6 +143,15 @@ export const adminSections: AdminSection[] = [
       { label: "Contact Messages", href: "#" },
       { label: "FAQ", href: "#" },
     ],
+  },
+  {
+    // "security" is held by no non-super_admin role (see
+    // lib/admin-roles.ts ROLE_PERMISSIONS) — same gate as the route's own
+    // requireSuperAdmin, so the sidebar and the route guard agree, no drift.
+    label: "Security",
+    icon: ShieldCheck,
+    permission: "security",
+    items: [{ label: "Audit Logs", href: "/admin/audit-logs" }],
   },
 ]
 

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { requireAdminPermission } from "@/lib/admin-api-auth"
 import { getAdminDb } from "@/lib/firebase-admin"
 import { getCampaign, participantId } from "@/lib/campaigns"
+import { writeAuditLog } from "@/lib/audit-log"
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -48,6 +49,16 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     invitedCount++
   })
   await batch.commit()
+
+  await writeAuditLog({
+    actorUid: auth.uid,
+    actorEmail: auth.email,
+    actorRole: auth.role,
+    action: "campaign.invite",
+    targetType: "campaign",
+    targetId: campaignId,
+    after: { invitedCount, sellerIds },
+  })
 
   return NextResponse.json({ invited: invitedCount })
 }

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { requireSuperAdmin } from "@/lib/admin-api-auth"
 import { getInvite, upsertInvite, deleteInvite } from "@/lib/staff-invites"
+import { writeAuditLog } from "@/lib/audit-log"
 import { ADMIN_ROLES, type AdminRole } from "@/lib/admin-roles"
 
 type RouteContext = { params: Promise<{ email: string }> }
@@ -30,6 +31,16 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     invitedBy: auth.uid,
   })
 
+  await writeAuditLog({
+    actorUid: auth.uid,
+    actorEmail: auth.email,
+    actorRole: auth.role,
+    action: "staff.invite_update",
+    targetType: "staffInvite",
+    targetId: email,
+    after: { role: updated.role },
+  })
+
   return NextResponse.json({ invite: updated })
 }
 
@@ -45,5 +56,15 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
   }
 
   await deleteInvite(email)
+
+  await writeAuditLog({
+    actorUid: auth.uid,
+    actorEmail: auth.email,
+    actorRole: auth.role,
+    action: "staff.invite_cancel",
+    targetType: "staffInvite",
+    targetId: email,
+  })
+
   return NextResponse.json({ ok: true })
 }

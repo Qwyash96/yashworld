@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { requireAdminPermission } from "@/lib/admin-api-auth"
 import { getAdminDb } from "@/lib/firebase-admin"
 import { recomputeSellerWallet } from "@/lib/wallet-service"
+import { writeAuditLog } from "@/lib/audit-log"
 import { RETURN_WINDOW_DAYS } from "@/types/order-lifecycle"
 import type { Order } from "@/types/order"
 
@@ -51,6 +52,18 @@ export async function POST(request: NextRequest) {
   }
 
   await Promise.all(Array.from(affectedSellerIds).map((sellerId) => recomputeSellerWallet(sellerId)))
+
+  if (releasedCount > 0) {
+    await writeAuditLog({
+      actorUid: auth.uid,
+      actorEmail: auth.email,
+      actorRole: auth.role,
+      action: "wallet.release_holds",
+      targetType: "sellerWallet",
+      targetId: "bulk",
+      after: { releasedCount, sellersAffected: affectedSellerIds.size },
+    })
+  }
 
   return NextResponse.json({ releasedCount, sellersAffected: affectedSellerIds.size })
 }

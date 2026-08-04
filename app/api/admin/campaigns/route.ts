@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { requireAdminPermission } from "@/lib/admin-api-auth"
 import { getAdminDb } from "@/lib/firebase-admin"
 import { listCampaigns } from "@/lib/campaigns"
+import { writeAuditLog } from "@/lib/audit-log"
 import type { CampaignInput, CampaignType, CampaignEnrollmentMode, DiscountType } from "@/types/campaign"
 
 export async function GET(request: NextRequest) {
@@ -79,6 +80,16 @@ export async function POST(request: NextRequest) {
   const ref = await getAdminDb()
     .collection("campaigns")
     .add({ ...input, stats: { ordersCount: 0, revenue: 0, discountGiven: 0 }, createdAt: nowIso, updatedAt: nowIso })
+
+  await writeAuditLog({
+    actorUid: auth.uid,
+    actorEmail: auth.email,
+    actorRole: auth.role,
+    action: "campaign.create",
+    targetType: "campaign",
+    targetId: ref.id,
+    after: { name: input.name, type: input.type },
+  })
 
   return NextResponse.json({ id: ref.id })
 }

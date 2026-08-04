@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { requireSuperAdmin } from "@/lib/admin-api-auth"
 import { getSocialLinks, saveSocialLinks } from "@/lib/site-settings"
+import { writeAuditLog } from "@/lib/audit-log"
 import type { SocialLinks } from "@/types/site-settings"
 
 const URL_PATTERN = /^https?:\/\/.+/i
@@ -41,5 +42,16 @@ export async function POST(request: NextRequest) {
   }
 
   const saved = await saveSocialLinks(patch)
+
+  await writeAuditLog({
+    actorUid: auth.uid,
+    actorEmail: auth.email,
+    actorRole: auth.role,
+    action: "settings.social_update",
+    targetType: "settings",
+    targetId: "social",
+    after: patch,
+  })
+
   return NextResponse.json(saved)
 }

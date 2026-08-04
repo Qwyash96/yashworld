@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { requireAdminPermission } from "@/lib/admin-api-auth"
 import { getAdminDb } from "@/lib/firebase-admin"
 import { getCampaign, clearCampaignOfferFromProducts } from "@/lib/campaigns"
+import { writeAuditLog } from "@/lib/audit-log"
 import type { CampaignStatus, CampaignEnrollmentMode, DiscountType } from "@/types/campaign"
 
 type RouteContext = { params: Promise<{ id: string }> }
@@ -76,6 +77,17 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   }
 
   const updated = await getCampaign(id)
+
+  await writeAuditLog({
+    actorUid: auth.uid,
+    actorEmail: auth.email,
+    actorRole: auth.role,
+    action: "campaign.update",
+    targetType: "campaign",
+    targetId: id,
+    after: patch,
+  })
+
   return NextResponse.json({ campaign: updated })
 }
 
@@ -89,5 +101,16 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
 
   await clearCampaignOfferFromProducts(id)
   await getAdminDb().collection("campaigns").doc(id).delete()
+
+  await writeAuditLog({
+    actorUid: auth.uid,
+    actorEmail: auth.email,
+    actorRole: auth.role,
+    action: "campaign.delete",
+    targetType: "campaign",
+    targetId: id,
+    before: { name: campaign.name },
+  })
+
   return NextResponse.json({ ok: true })
 }

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { requireSuperAdmin } from "@/lib/admin-api-auth"
 import { getPaymentSettings, savePaymentSettings } from "@/lib/payment-settings"
 import { getRazorpayClient } from "@/lib/razorpay-admin"
+import { writeAuditLog } from "@/lib/audit-log"
 import type { MaskedPaymentSettings, PaymentSettings } from "@/types/payment-settings"
 
 function mask(settings: PaymentSettings): MaskedPaymentSettings {
@@ -97,5 +98,17 @@ export async function POST(request: NextRequest) {
   }
 
   const saved = await savePaymentSettings(patch)
+
+  // Never log the actual secret values — just which fields changed.
+  await writeAuditLog({
+    actorUid: auth.uid,
+    actorEmail: auth.email,
+    actorRole: auth.role,
+    action: "settings.payment_update",
+    targetType: "settings",
+    targetId: "payments",
+    after: { fieldsChanged: Object.keys(patch) },
+  })
+
   return NextResponse.json(mask(saved))
 }

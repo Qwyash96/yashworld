@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { requireAdminPermission } from "@/lib/admin-api-auth"
 import { getAdminDb } from "@/lib/firebase-admin"
+import { writeAuditLog } from "@/lib/audit-log"
 import type { Banner, BannerInput } from "@/types/banner"
 
 export async function GET(request: NextRequest) {
@@ -44,6 +45,15 @@ export async function POST(request: NextRequest) {
   const ref = await getAdminDb()
     .collection("banners")
     .add({ ...input, createdAt: new Date().toISOString() })
+
+  await writeAuditLog({
+    actorUid: auth.uid,
+    actorEmail: auth.email,
+    actorRole: auth.role,
+    action: "banner.create",
+    targetType: "banner",
+    targetId: ref.id,
+  })
 
   return NextResponse.json({ id: ref.id })
 }
