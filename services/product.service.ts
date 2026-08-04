@@ -71,6 +71,7 @@ export async function createProduct(input: ProductInput): Promise<string> {
       ...input,
       ratingAvg: 0,
       ratingCount: 0,
+      unitsSold: 0,
       createdAt: new Date().toISOString(),
     })
     return docRef.id

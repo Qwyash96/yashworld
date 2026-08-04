@@ -25,12 +25,21 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
  * "buyer" (a seller is a buyer whose /sell/register application was later
  * approved — that flow promotes the role separately).
  */
+/** Fire-and-forget — records a loginHistory entry + UserProfile.lastLoginAt.
+ * Must never block or fail the actual login. */
+function recordLogin(token: string): void {
+  fetch("/api/auth/record-login", { method: "POST", headers: { Authorization: `Bearer ${token}` } }).catch(() => {})
+}
+
 export async function ensureUserProfile(uid: string, _name: string, _email: string): Promise<UserProfile> {
   const existing = await getUserProfile(uid)
-  if (existing) return existing
-
   const token = await auth.currentUser?.getIdToken()
   if (!token) throw new Error("Not signed in.")
+
+  if (existing) {
+    recordLogin(token)
+    return existing
+  }
 
   const response = await fetch("/api/auth/bootstrap-profile", {
     method: "POST",
@@ -41,6 +50,7 @@ export async function ensureUserProfile(uid: string, _name: string, _email: stri
     throw new Error(body.error ?? "Failed to set up your account.")
   }
   const { profile } = (await response.json()) as { profile: UserProfile }
+  recordLogin(token)
   return profile
 }
 

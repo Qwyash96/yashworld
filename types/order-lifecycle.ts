@@ -108,22 +108,11 @@ export type SellerPayoutStatus = "Pending" | "Hold" | "Released" | "Withdraw Req
  */
 export type DisputeStatus = "Open" | "Seller Replied" | "Admin Reviewing" | "Resolved"
 
-export interface PayoutRequest {
-  id: string
-  sellerId: string
-  amount: number
-  status: SellerPayoutStatus
-  requestedAt: string
-  paidAt?: string
-}
-
-export interface SellerWallet {
-  sellerId: string
-  /** Released funds not yet withdrawn — available to request payout for. */
-  balance: number
-  /** Funds still on Hold (delivered, inside the return window). */
-  pendingBalance: number
-}
+// SellerWallet and the withdrawal-request workflow live in types/wallet.ts —
+// a withdrawal request's approval status (requested/approved/paid/rejected)
+// is a different concept from SellerPayoutStatus above (which describes a
+// SellerOrder's money state, not a withdrawal request), so it gets its own
+// status type there rather than reusing this one.
 
 /** Return request metadata — the authoritative status lives on the Order/SellerOrder. */
 export interface ReturnRequestRecord {

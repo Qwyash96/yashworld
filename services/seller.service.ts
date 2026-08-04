@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, orderBy, query, setDoc, where } from "firebase/firestore"
+import { collection, doc, getDoc, getDocs, orderBy, query, where, writeBatch } from "firebase/firestore"
 import { db } from "@/services/firebase/client"
 import { toServiceError } from "@/services/firebase/errors"
 import type {
@@ -8,6 +8,7 @@ import type {
   SellerApplicationStatus,
   SellerKycDocs,
 } from "@/types/seller"
+import type { AdminNotificationInput } from "@/types/notification"
 
 const SELLERS_COLLECTION = "sellers"
 const APPLICATIONS_COLLECTION = "sellerApplications"
@@ -37,14 +38,31 @@ export async function getSellerApplication(uid: string): Promise<SellerApplicati
 /** Submits or resubmits a seller application — always resets status to "pending". */
 export async function submitSellerApplication(input: SellerApplicationInput, kyc: SellerKycDocs): Promise<void> {
   try {
+    const now = new Date().toISOString()
     const application: SellerApplication = {
       ...input,
-      kyc: { ...kyc, submittedAt: new Date().toISOString() },
+      kyc: { ...kyc, submittedAt: now },
       status: "pending",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: now,
+      updatedAt: now,
     }
-    await setDoc(doc(db, APPLICATIONS_COLLECTION, input.uid), application)
+
+    // Atomic with a notification doc — see firestore.rules' narrowly-scoped
+    // notifications create rule, which only allows this exact event type,
+    // bound to the caller's own uid.
+    const notification: AdminNotificationInput = {
+      type: "seller_application_submitted",
+      targetPermission: "seller_management",
+      title: "New seller application",
+      message: `${input.shopName} (${input.fullName}) applied to sell.`,
+      relatedType: "sellerApplication",
+      relatedId: input.uid,
+    }
+
+    const batch = writeBatch(db)
+    batch.set(doc(db, APPLICATIONS_COLLECTION, input.uid), application)
+    batch.set(doc(collection(db, "notifications")), { ...notification, createdAt: now })
+    await batch.commit()
   } catch (error) {
     throw toServiceError(`Failed to submit seller application for "${input.uid}"`, error)
   }

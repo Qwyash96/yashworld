@@ -30,16 +30,16 @@ service cloud.firestore {
 
     function isAdminByProfile() {
       return isSignedIn()
-        && callerRole() in ['super_admin', 'orders_manager', 'products_manager', 'seller_manager', 'support', 'finance', 'marketing'];
+        && callerRole() in ['super_admin', 'admin', 'operations', 'catalog_manager', 'support', 'finance', 'marketing'];
     }
 
     function isSuperAdmin() {
       return isSignedIn() && callerRole() == 'super_admin';
     }
 
-    // No generic "admin" role exists in this taxonomy — every staff role is
-    // named for what it manages, so this is just the profile check. Kept as
-    // its own function since call sites read better as isAdmin().
+    // "admin" is a broad, non-super_admin elevated role (see
+    // lib/admin-roles.ts ROLE_PERMISSIONS) — kept as its own function since
+    // call sites read better as isAdmin().
     function isAdmin() {
       return isAdminByProfile();
     }
@@ -48,20 +48,32 @@ service cloud.firestore {
     // that actually hold the "seller_management" permission (see
     // lib/admin-roles.ts ROLE_PERMISSIONS), not every staff role.
     function canManageSellers() {
-      return isSignedIn() && callerRole() in ['super_admin', 'seller_manager'];
+      return isSignedIn() && callerRole() in ['super_admin', 'admin', 'operations'];
     }
 
     // Support ticket review authority — mirrors canManageSellers() above,
     // narrowed to the roles that hold the "support" permission (see
     // lib/admin-roles.ts ROLE_PERMISSIONS).
     function canManageSupport() {
-      return isSignedIn() && callerRole() in ['super_admin', 'support'];
+      return isSignedIn() && callerRole() in ['super_admin', 'admin', 'support'];
     }
 
     // Campaign/coupon/banner authority — the roles holding "coupons_offers"/
     // "marketing" permission (see lib/admin-roles.ts ROLE_PERMISSIONS).
     function canManageCampaigns() {
-      return isSignedIn() && callerRole() in ['super_admin', 'marketing'];
+      return isSignedIn() && callerRole() in ['super_admin', 'admin', 'marketing'];
+    }
+
+    // Order fulfilment authority — the roles holding "order_management"
+    // permission (see lib/admin-roles.ts ROLE_PERMISSIONS).
+    function canManageOrders() {
+      return isSignedIn() && callerRole() in ['super_admin', 'admin', 'operations'];
+    }
+
+    // Payments/wallet/withdrawal authority — the roles holding "payments"
+    // permission (see lib/admin-roles.ts ROLE_PERMISSIONS).
+    function canManagePayments() {
+      return isSignedIn() && callerRole() in ['super_admin', 'admin', 'finance'];
     }
 
     // users/{uid} — profile document, separate from Firebase Auth itself.
@@ -181,15 +193,15 @@ service cloud.firestore {
       // mean anyone could write an order (including paymentStatus: "Paid")
       // without ever paying, so this is deliberately unconditional.
       allow create: if false;
-      // A seller listed on the order may update sellerOrders (their status
-      // progression) only — not totals, payment, or the buyer's address.
-      // Note: this doesn't stop a seller from editing another seller's
-      // entry within the same sellerOrders array — real isolation would
-      // need per-seller subdocuments, a bigger change than this milestone.
-      // Everything else (payment status, admin overrides) still requires isAdmin().
-      allow update: if isAdmin()
-        || (isSignedIn() && resource.data.sellerIds.hasAny([request.auth.uid])
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sellerOrders']));
+      // A seller no longer writes orders/{id} directly — the old rule here
+      // let them rewrite the WHOLE sellerOrders array via a plain client
+      // update, including commissionAmount/payoutAmount, which was harmless
+      // before sellerWallets existed to read those fields as real money.
+      // Seller status progression now goes through
+      // app/api/seller/orders/[id]/status (Admin SDK), which preserves
+      // commission/payout server-side and never accepts them from the
+      // client. Only admin overrides remain.
+      allow update: if isAdmin();
       allow delete: if false;
     }
 
@@ -307,12 +319,77 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // platformSettings/{doc} — e.g. platformSettings/commission. Same
-    // sensitivity treatment as paymentSettings: a hard deny for every
-    // client request. Read/write exclusively through
-    // app/api/admin/platform-settings (Admin SDK, super_admin only).
+    // platformSettings/{doc} — e.g. platformSettings/commission,
+    // platformSettings/general, platformSettings/shipping. Same sensitivity
+    // treatment for every doc in this collection: a hard deny for every
+    // client request. Read/write exclusively through Admin-SDK routes.
     match /platformSettings/{doc} {
       allow read, write: if false;
+    }
+
+    // presence/{uid} — one document per signed-in user (buyer, seller, or
+    // admin), heartbeat-updated by hooks/use-presence-heartbeat.ts. Powers
+    // the admin dashboard's Online/Active Users tiles. Only ever the
+    // caller's own doc, and only the three heartbeat fields.
+    match /presence/{uid} {
+      allow read: if isAdmin();
+      allow create, update: if isOwner(uid)
+        && request.resource.data.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uid', 'role', 'lastSeenAt', 'currentPath']);
+      allow delete: if false;
+    }
+
+    // auditLogs/{id} — one entry per admin mutation, written by
+    // lib/audit-log.ts from inside the mutating API route (Admin SDK only).
+    // Read exclusively through app/api/admin/audit-logs (super_admin only).
+    match /auditLogs/{id} {
+      allow read, write: if false;
+    }
+
+    // notifications/{id} — the admin alert bell feed. Most events are
+    // written from inside a trusted Admin-SDK transaction/route (order
+    // placed/paid inside lib/order-finalize.ts, buyer registered inside
+    // bootstrap-profile, refund/withdrawal from their own admin routes).
+    // Two events (a seller submitting their application, a buyer/seller
+    // submitting a support ticket) are today direct client writes at the
+    // sibling doc — this narrowly-scoped create rule lets ONLY those two
+    // notification types through, bound to the caller's own uid, with every
+    // other field fixed by the batch write at the call site.
+    match /notifications/{id} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn()
+        && request.resource.data.type in ['seller_application_submitted', 'support_ticket_created']
+        && request.resource.data.relatedId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['id', 'type', 'targetPermission', 'title', 'message', 'relatedType', 'relatedId', 'createdAt']);
+      allow update, delete: if false;
+    }
+
+    // sellerWallets/{sellerId} — a read-through cache recomputed by
+    // lib/wallet-service.ts from that seller's own orders. Never
+    // client-writable — always trust the Admin-SDK recompute, never a
+    // client-supplied balance.
+    match /sellerWallets/{sellerId} {
+      allow read: if isOwner(sellerId) || canManagePayments();
+      allow write: if false;
+    }
+
+    // withdrawalRequests/{id} — a seller requests, an admin approves/
+    // rejects/marks paid. Both directions go through Admin-SDK routes
+    // (app/api/seller/wallet/withdraw, app/api/admin/withdrawals/[id]/*) so
+    // the requested amount can be validated against the wallet balance
+    // inside a transaction — never a direct client write.
+    match /withdrawalRequests/{id} {
+      allow read: if (isSignedIn() && resource.data.sellerId == request.auth.uid) || canManagePayments();
+      allow write: if false;
+    }
+
+    // loginHistory/{id} — one entry per successful sign-in, written by
+    // app/api/auth/record-login (Admin SDK) from every login, not just the
+    // first. Never client-writable.
+    match /loginHistory/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
     }
   }
 }

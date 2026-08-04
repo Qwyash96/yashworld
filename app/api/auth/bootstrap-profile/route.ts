@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin"
 import { getInvite, consumeInvite } from "@/lib/staff-invites"
 import type { UserProfile } from "@/types/user"
+import type { AdminNotificationInput } from "@/types/notification"
 
 /**
  * Called once right after any Google sign-in (buyer, seller, or staff). Uses
@@ -71,6 +72,21 @@ export async function POST(request: NextRequest) {
 
   await docRef.set(profile)
   if (invite) await consumeInvite(email, uid)
+
+  // A fresh buyer signup (not a staff member consuming an invite) is the
+  // one "buyer registered" moment — write it here, the only trusted
+  // server-side choke point for account creation.
+  if (!invite) {
+    const notification: AdminNotificationInput = {
+      type: "buyer_registered",
+      targetPermission: "user_management",
+      title: "New buyer registered",
+      message: `${displayName} (${email}) just signed up.`,
+      relatedType: "user",
+      relatedId: uid,
+    }
+    await db.collection("notifications").add({ ...notification, createdAt: profile.createdAt })
+  }
 
   return NextResponse.json({ profile })
 }

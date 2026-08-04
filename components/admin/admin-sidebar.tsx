@@ -36,7 +36,7 @@ type AdminSectionItem = {
   /** Overrides the parent section's permission for this one item — lets a
    * section mix sub-items that belong to different roles (e.g. "Users"
    * holds both Buyers/Staff, which only super_admin manages, and Sellers,
-   * which seller_manager also needs to reach). Falls back to the section's
+   * which operations also needs to reach). Falls back to the section's
    * permission when unset. */
   permission?: AdminPermission
 }

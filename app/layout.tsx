@@ -4,6 +4,7 @@ import { Geist, Playfair_Display } from 'next/font/google'
 import { Suspense } from 'react'
 import { StoreProvider } from '@/components/store-provider'
 import { SiteChrome } from '@/components/site-chrome'
+import { PresenceHeartbeat } from '@/components/presence-heartbeat'
 import { Toaster } from '@/components/ui/sonner'
 import './globals.css'
 
@@ -31,6 +32,7 @@ export default function RootLayout({
     <html lang="en" className={`bg-background ${geistSans.variable} ${playfair.variable}`}>
       <body className="antialiased font-sans flex min-h-dvh flex-col">
         <StoreProvider>
+          <PresenceHeartbeat />
           <Suspense fallback={null}>
             <SiteChrome>{children}</SiteChrome>
           </Suspense>

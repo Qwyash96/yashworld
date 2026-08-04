@@ -13,6 +13,7 @@ import type { Address } from "@/types/user"
 import type { Product } from "@/types/product"
 import type { Order, PaymentMethod, PaymentStatus, SellerOrder, ShippingMethod } from "@/types/order"
 import type { Coupon } from "@/types/coupon"
+import type { AdminNotificationInput } from "@/types/notification"
 
 // Re-exported so existing importers (app/api/payments/razorpay/create-order,
 // app/api/payments/razorpay/verify) don't need to change their import path —
@@ -120,7 +121,10 @@ export async function finalizeOrder(input: FinalizeOrderInput): Promise<Finalize
     const pricing = computeOrderPricingFromData(lineInputs, commissionPercent, coupon, now)
 
     for (let i = 0; i < lineInputs.length; i++) {
-      tx.update(productRefs[i], { stock: lineInputs[i].product.stock - lineInputs[i].quantity })
+      tx.update(productRefs[i], {
+        stock: lineInputs[i].product.stock - lineInputs[i].quantity,
+        unitsSold: FieldValue.increment(lineInputs[i].quantity),
+      })
     }
 
     const bySeller = new Map<string, typeof pricing.items>()
@@ -210,6 +214,34 @@ export async function finalizeOrder(input: FinalizeOrderInput): Promise<Finalize
     }
 
     tx.set(orderRef, order)
+
+    // Admin bell notifications — written inside this same trusted
+    // transaction (the only "an order was just placed/paid" choke point in
+    // the app, no Cloud Functions exist anywhere) rather than a listener.
+    const notifications: AdminNotificationInput[] = [
+      {
+        type: "order_placed",
+        targetPermission: "order_management",
+        title: "New order placed",
+        message: `Order #${orderRef.id.slice(0, 8)} — ${round2(total)} — ${sellerIds.length} seller(s).`,
+        relatedType: "order",
+        relatedId: orderRef.id,
+      },
+    ]
+    if (input.paymentMethod === "razorpay" && input.paymentStatus === "Paid") {
+      notifications.push({
+        type: "payment_received",
+        targetPermission: "payments",
+        title: "Payment received",
+        message: `Razorpay payment of ${round2(total)} received for order #${orderRef.id.slice(0, 8)}.`,
+        relatedType: "order",
+        relatedId: orderRef.id,
+      })
+    }
+    for (const notification of notifications) {
+      tx.set(db.collection("notifications").doc(), { ...notification, createdAt: now.toISOString() })
+    }
+
     return total
   })
 

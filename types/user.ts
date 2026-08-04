@@ -2,9 +2,9 @@ export type UserRole =
   | "buyer"
   | "seller"
   | "super_admin"
-  | "orders_manager"
-  | "products_manager"
-  | "seller_manager"
+  | "admin"
+  | "operations"
+  | "catalog_manager"
   | "support"
   | "finance"
   | "marketing"
@@ -37,6 +37,10 @@ export interface UserProfile {
   department?: string
   mobile?: string
   status?: "active" | "suspended"
+  /** Set by services/user.service.ts's ensureUserProfile() on every login, not just the first. */
+  lastLoginAt?: string
+  /** The last time this admin marked their notification bell as read — see types/notification.ts. */
+  notificationsReadAt?: string
 }
 
 export type UserProfileInput = Omit<UserProfile, "createdAt">

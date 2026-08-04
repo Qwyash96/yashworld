@@ -1,5 +1,5 @@
 import { collection, doc, getDoc, getDocs, orderBy, query, updateDoc, where } from "firebase/firestore"
-import { db } from "@/services/firebase/client"
+import { auth, db } from "@/services/firebase/client"
 import { toServiceError } from "@/services/firebase/errors"
 import type { Order, OrderStatus, PaymentStatus } from "@/types/order"
 
@@ -52,22 +52,31 @@ export async function updateOrderStatus(id: string, status: OrderStatus): Promis
   }
 }
 
-/** Seller action: updates only their own entry within sellerOrders. */
+/**
+ * Seller action: updates only their own entry within sellerOrders. Goes
+ * through app/api/seller/orders/[id]/status (Admin SDK) rather than a
+ * direct Firestore write — firestore.rules no longer lets a seller write
+ * orders/{id} at all, since a direct write let them rewrite the whole
+ * sellerOrders array including commissionAmount/payoutAmount. The route
+ * derives the caller's own sellerId from their auth token; the `sellerId`
+ * parameter here is kept only so existing call sites don't need to change.
+ */
 export async function updateSellerOrderStatus(
   orderId: string,
-  sellerId: string,
+  _sellerId: string,
   status: OrderStatus,
 ): Promise<void> {
-  try {
-    const snapshot = await getDoc(doc(db, COLLECTION, orderId))
-    if (!snapshot.exists()) throw new Error("Order not found")
-    const order = snapshot.data() as Order
-    const sellerOrders = order.sellerOrders.map((so) =>
-      so.sellerId === sellerId ? { ...so, status } : so,
-    )
-    await updateDoc(doc(db, COLLECTION, orderId), { sellerOrders })
-  } catch (error) {
-    throw toServiceError(`Failed to update seller order status for order "${orderId}"`, error)
+  const token = await auth.currentUser?.getIdToken()
+  if (!token) throw new Error("Not signed in.")
+
+  const response = await fetch(`/api/seller/orders/${orderId}/status`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  })
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}))
+    throw new Error(body.error ?? `Failed to update seller order status for order "${orderId}"`)
   }
 }
 

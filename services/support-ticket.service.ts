@@ -1,18 +1,35 @@
-import { addDoc, collection, doc, getDocs, orderBy, query, updateDoc, where } from "firebase/firestore"
+import { collection, doc, getDocs, orderBy, query, updateDoc, where, writeBatch } from "firebase/firestore"
 import { db } from "@/services/firebase/client"
 import { toServiceError } from "@/services/firebase/errors"
 import type { SupportTicket, SupportTicketInput, TicketStatus } from "@/types/support-ticket"
+import type { AdminNotificationInput } from "@/types/notification"
 
 const COLLECTION = "supportTickets"
 
 export async function createSupportTicket(input: SupportTicketInput): Promise<string> {
   try {
-    const docRef = await addDoc(collection(db, COLLECTION), {
-      ...input,
-      status: "new" as TicketStatus,
-      createdAt: new Date().toISOString(),
-    })
-    return docRef.id
+    const now = new Date().toISOString()
+    const ticketRef = doc(collection(db, COLLECTION))
+
+    // Whichever of buyerId/sellerId is set must equal the caller's own uid
+    // (enforced by firestore.rules' supportTickets create rule) — reused
+    // here as the notification's relatedId, per the same rule on notifications.
+    const relatedId = input.buyerId ?? input.sellerId
+    const notification: AdminNotificationInput = {
+      type: "support_ticket_created",
+      targetPermission: "support",
+      title: "New support ticket",
+      message: `${input.sellerName} — ${input.subject}`,
+      relatedType: "supportTicket",
+      relatedId: relatedId ?? "",
+    }
+
+    const batch = writeBatch(db)
+    batch.set(ticketRef, { ...input, status: "new" as TicketStatus, createdAt: now })
+    batch.set(doc(collection(db, "notifications")), { ...notification, createdAt: now })
+    await batch.commit()
+
+    return ticketRef.id
   } catch (error) {
     throw toServiceError("Failed to submit support ticket", error)
   }

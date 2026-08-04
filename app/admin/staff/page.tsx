@@ -32,9 +32,9 @@ import {
 
 const roleBadgeStyles: Record<AdminRole, string> = {
   super_admin: "bg-green-700 text-white",
-  orders_manager: "bg-blue-100 text-blue-700",
-  products_manager: "bg-teal-100 text-teal-700",
-  seller_manager: "bg-purple-100 text-purple-700",
+  admin: "bg-indigo-100 text-indigo-700",
+  operations: "bg-blue-100 text-blue-700",
+  catalog_manager: "bg-teal-100 text-teal-700",
   support: "bg-cyan-100 text-cyan-700",
   finance: "bg-yellow-100 text-yellow-800",
   marketing: "bg-orange-100 text-orange-700",
@@ -60,6 +60,7 @@ export default function AdminStaffPage() {
   const [staff, setStaff] = useState<UserProfile[]>([])
   const [invites, setInvites] = useState<StaffInvite[]>([])
   const [loading, setLoading] = useState(true)
+  const [roleFilter, setRoleFilter] = useState<AdminRole | "all">("all")
 
   const [inviteSheetOpen, setInviteSheetOpen] = useState(false)
   const [inviteForm, setInviteForm] = useState(emptyInviteForm)
@@ -271,12 +272,32 @@ export default function AdminStaffPage() {
         </div>
       )}
 
-      <div className="mt-6 flex flex-col gap-4">
+      <div className="mt-6 flex items-center gap-3">
+        <span className="text-sm font-medium text-black">Filter by role</span>
+        <Select value={roleFilter} onValueChange={(v) => v && setRoleFilter(v as AdminRole | "all")}>
+          <SelectTrigger className="h-9 w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Roles</SelectItem>
+            {ADMIN_ROLES.map((role) => (
+              <SelectItem key={role} value={role}>
+                {ROLE_LABELS[role]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="mt-4 flex flex-col gap-4">
         {loading && <p className="text-sm text-[#444444]">Loading staff accounts...</p>}
         {!loading && staff.length === 0 && (
           <p className="text-sm text-[#444444]">No staff accounts found.</p>
         )}
-        {staff.map((member) => (
+        {!loading && staff.length > 0 && staff.filter((m) => roleFilter === "all" || m.role === roleFilter).length === 0 && (
+          <p className="text-sm text-[#444444]">No staff accounts with this role.</p>
+        )}
+        {staff.filter((m) => roleFilter === "all" || m.role === roleFilter).map((member) => (
           <div
             key={member.uid}
             className="flex flex-col gap-3 rounded-2xl border border-border bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between"

@@ -68,7 +68,12 @@ export interface Product {
   campaignOffer?: CampaignOffer
   ratingAvg: number
   ratingCount: number
+  /** Cumulative units sold, incremented inside lib/order-finalize.ts's
+   * checkout transaction — never decremented on cancellation (mirrors
+   * `stock`'s existing behavior). Powers the admin dashboard's Top Selling
+   * Products tile. */
+  unitsSold: number
   createdAt: string
 }
 
-export type ProductInput = Omit<Product, "id" | "ratingAvg" | "ratingCount" | "createdAt">
+export type ProductInput = Omit<Product, "id" | "ratingAvg" | "ratingCount" | "unitsSold" | "createdAt">

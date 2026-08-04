@@ -2,18 +2,18 @@ import type { UserRole } from "@/types/user"
 
 export type AdminRole =
   | "super_admin"
-  | "orders_manager"
-  | "products_manager"
-  | "seller_manager"
+  | "admin"
+  | "operations"
+  | "catalog_manager"
   | "support"
   | "finance"
   | "marketing"
 
 export const ADMIN_ROLES: AdminRole[] = [
   "super_admin",
-  "orders_manager",
-  "products_manager",
-  "seller_manager",
+  "admin",
+  "operations",
+  "catalog_manager",
   "support",
   "finance",
   "marketing",
@@ -25,9 +25,9 @@ export function isAdminRole(role: UserRole | string | undefined | null): role is
 
 export const ROLE_LABELS: Record<AdminRole, string> = {
   super_admin: "Super Admin",
-  orders_manager: "Orders Manager",
-  products_manager: "Products Manager",
-  seller_manager: "Seller Manager",
+  admin: "Admin",
+  operations: "Operations",
+  catalog_manager: "Catalog Manager",
   support: "Support",
   finance: "Finance",
   marketing: "Marketing",
@@ -51,18 +51,32 @@ export type AdminPermission =
 
 /**
  * Which sidebar sections (see components/admin/admin-sidebar.tsx) each role
- * can see. Permission slugs are unchanged from before this role taxonomy —
- * only the role→permission mapping did. This reuses existing sections rather
- * than inventing new ones: Products Management already has Categories/
- * Inventory items, Seller Management already has KYC/Approve-Reject, Payments
- * already has Refunds, etc.
+ * can see. `admin` is a broad, non-super_admin elevated role — every
+ * permission except admin_management/settings/security, which stay
+ * super_admin-exclusive (staff management, platform-wide settings, and
+ * security/audit are deliberately reserved). `operations` merges what used
+ * to be two separate roles (orders_manager + seller_manager) since order
+ * fulfilment and seller oversight are commonly one job in practice.
+ * `catalog_manager` is a rename of the old products_manager — same scope.
  */
 export const ROLE_PERMISSIONS: Record<Exclude<AdminRole, "super_admin">, AdminPermission[]> = {
-  finance: ["payments", "reports_analytics"], // Payments, Refunds, Reports
-  orders_manager: ["order_management"], // Orders, Shipping, Returns
-  products_manager: ["product_management"], // Products, Categories, Inventory
-  seller_manager: ["seller_management"], // Seller KYC, Approve/Reject Sellers, Seller Profiles
+  admin: [
+    "user_management",
+    "seller_management",
+    "product_management",
+    "order_management",
+    "payments",
+    "reviews",
+    "coupons_offers",
+    "reports_analytics",
+    "marketing",
+    "website_management",
+    "support",
+  ],
+  operations: ["order_management", "seller_management"], // Orders, Shipping, Returns, Seller KYC, Approve/Reject Sellers
+  catalog_manager: ["product_management"], // Products, Categories, Inventory
   support: ["support"], // Customer Tickets, Complaints
+  finance: ["payments", "reports_analytics"], // Payments, Refunds, Reports
   marketing: ["coupons_offers", "marketing"], // Coupons, Banners, Campaigns
 }
 

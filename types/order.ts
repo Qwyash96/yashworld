@@ -84,6 +84,12 @@ export interface Order {
    * this (array-contains-queryable) is how admin campaign analytics finds
    * "orders influenced by campaign X" without scanning every order. */
   campaignIds?: string[]
+  /** True while any sellerOrders[].payoutStatus == "Hold" — same
+   * "Firestore can't query inside an array of objects" reason as
+   * campaignIds above. Lets app/api/admin/wallets/release-holds find
+   * candidates without scanning every order. Set/cleared by
+   * app/api/seller/orders/[id]/status/route.ts. */
+  hasHeldPayouts?: boolean
   shippingAddress: Address
   shippingMethod: ShippingMethod
   paymentMethod: PaymentMethod
