@@ -112,11 +112,11 @@ export const adminSections: AdminSection[] = [
     icon: BarChart3,
     permission: "reports_analytics",
     items: [
-      { label: "Sales", href: "#" },
-      { label: "Revenue", href: "#" },
-      { label: "Sellers", href: "#" },
-      { label: "Products", href: "#" },
-      { label: "Customers", href: "#" },
+      { label: "Sales", href: "/admin/reports/sales" },
+      { label: "Revenue", href: "/admin/reports/revenue" },
+      { label: "Sellers", href: "/admin/reports/sellers" },
+      { label: "Products", href: "/admin/reports/products" },
+      { label: "Customers", href: "/admin/reports/customers" },
     ],
   },
   {
