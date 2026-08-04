@@ -25,9 +25,19 @@ import { metaPixelAdapter } from "@/lib/integrations/adapters/meta-pixel"
 
 /**
  * The single place a new provider gets registered — write the adapter under
- * lib/integrations/adapters/, import it here, and add it to ADAPTERS.
+ * lib/integrations/adapters/ (implement the IntegrationAdapter interface
+ * from lib/integrations/types.ts), import it here, and add it to ADAPTERS.
  * Nothing else in the framework (routes, admin UI, encryption, logging)
- * needs to change to support it.
+ * needs to change to support it — run
+ * `npx tsx scripts/verify-integrations-registry.ts` afterward to sanity-check
+ * the new adapter's shape.
+ *
+ * Every credential this framework stores is AES-256-GCM encrypted with the
+ * server-only INTEGRATIONS_ENCRYPTION_KEY env var (see
+ * lib/integrations/crypto.ts) — it must be set (32 random bytes, base64:
+ * `openssl rand -base64 32`) in every environment that reads or writes
+ * integrations/{providerId}, local and deployed alike, or every
+ * encrypt/decrypt call throws.
  */
 const ADAPTERS: IntegrationAdapter[] = [
   razorpayAdapter,
