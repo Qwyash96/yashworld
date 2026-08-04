@@ -16,6 +16,7 @@ import {
   Heart,
   ShoppingBag,
   ShoppingCart,
+  GitCompareArrows,
   type LucideIcon,
 } from "lucide-react"
 import { useStore } from "@/components/store-provider"
@@ -57,7 +58,7 @@ const supportGroup: MenuGroup = {
 }
 
 export function SiteHeader() {
-  const { user, wishlist, cartCount } = useStore()
+  const { user, wishlist, cartCount, compare } = useStore()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [pendingOrders, setPendingOrders] = useState(0)
 
@@ -79,6 +80,7 @@ export function SiteHeader() {
 
   const quickActions: { label: string; href: string; icon: LucideIcon; count: number }[] = [
     { label: "Wishlist", href: "/wishlist", icon: Heart, count: wishlist.length },
+    { label: "Compare", href: "/compare", icon: GitCompareArrows, count: compare.length },
     { label: "Cart", href: "/cart", icon: ShoppingCart, count: cartCount },
     { label: "Orders", href: "/orders", icon: Package, count: pendingOrders },
     { label: "Profile", href: "/profile", icon: User, count: 0 },

@@ -2,23 +2,27 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { Heart, Star } from "lucide-react"
+import { useState } from "react"
+import { Heart, Star, Eye, GitCompareArrows, Truck, Store } from "lucide-react"
 import { useStore } from "@/components/store-provider"
 import { type Product } from "@/lib/products"
 import { calculateDiscountPercent } from "@/lib/discount"
 import { Price, DiscountBadge } from "@/components/price"
 import { ProductCardActions } from "@/components/product-card-actions"
+import { QuickView } from "@/components/quick-view"
+import { getDeliveryEstimate } from "@/lib/delivery-estimate"
 import { cn } from "@/lib/utils"
 
 export function ProductCard({ product }: { product: Product }) {
-  const { toggleWishlist, isWishlisted } = useStore()
+  const { toggleWishlist, isWishlisted, toggleCompare, isCompared } = useStore()
+  const [quickViewOpen, setQuickViewOpen] = useState(false)
 
   const wishlisted = isWishlisted(product.id)
+  const compared = isCompared(product.id)
   const discountPercent = calculateDiscountPercent(product.price, product.originalPrice)
 
   return (
     <div className="group overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-xl">
-
       <Link
         href={`/products/${product.id}`}
         className="relative block h-72 overflow-hidden bg-gray-100"
@@ -34,26 +38,41 @@ export function ProductCard({ product }: { product: Product }) {
           <DiscountBadge percent={discountPercent} className="absolute left-4 top-4 shadow" />
         )}
 
-        <button
-          onClick={(e) => {
-            e.preventDefault()
-            toggleWishlist(product)
-          }}
-          className="absolute right-4 top-4 rounded-full bg-white p-2 shadow"
-        >
-          <Heart
-            className={cn(
-              "h-5 w-5",
-              wishlisted
-                ? "fill-red-500 text-red-500"
-                : "text-gray-600"
-            )}
-          />
-        </button>
+        <div className="absolute right-4 top-4 flex flex-col gap-2">
+          <button
+            onClick={(e) => {
+              e.preventDefault()
+              toggleWishlist(product)
+            }}
+            aria-label={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
+            className="rounded-full bg-white p-2 shadow transition hover:scale-110"
+          >
+            <Heart className={cn("h-5 w-5", wishlisted ? "fill-red-500 text-red-500" : "text-gray-600")} />
+          </button>
+          <button
+            onClick={(e) => {
+              e.preventDefault()
+              toggleCompare(product)
+            }}
+            aria-label={compared ? "Remove from compare" : "Add to compare"}
+            className="rounded-full bg-white p-2 shadow transition hover:scale-110"
+          >
+            <GitCompareArrows className={cn("h-5 w-5", compared ? "text-green-600" : "text-gray-600")} />
+          </button>
+          <button
+            onClick={(e) => {
+              e.preventDefault()
+              setQuickViewOpen(true)
+            }}
+            aria-label="Quick view"
+            className="rounded-full bg-white p-2 shadow transition hover:scale-110"
+          >
+            <Eye className="h-5 w-5 text-gray-600" />
+          </button>
+        </div>
       </Link>
 
       <div className="p-5">
-
         <p className="text-sm text-green-600 font-semibold uppercase">
           {product.category}
         </p>
@@ -72,9 +91,23 @@ export function ProductCard({ product }: { product: Product }) {
 
         <Price price={product.price} originalPrice={product.originalPrice} size="md" className="mt-4" />
 
-        <ProductCardActions product={product} />
+        <div className="mt-3 flex flex-col gap-1 text-xs text-[#444444]">
+          <span className="flex items-center gap-1.5">
+            <Truck className="size-3.5 shrink-0 text-green-700" />
+            {getDeliveryEstimate()}
+          </span>
+          {product.sellerName && (
+            <span className="flex items-center gap-1.5 truncate">
+              <Store className="size-3.5 shrink-0 text-green-700" />
+              Sold by {product.sellerName}
+            </span>
+          )}
+        </div>
 
+        <ProductCardActions product={product} />
       </div>
+
+      <QuickView product={product} open={quickViewOpen} onOpenChange={setQuickViewOpen} />
     </div>
   )
 }

@@ -30,6 +30,7 @@ export type User = {
 type StoreContextValue = {
   cart: CartItem[]
   wishlist: string[]
+  compare: string[]
   user: User | null
   cartCount: number
   cartSubtotal: number
@@ -40,6 +41,9 @@ type StoreContextValue = {
   clearCart: () => void
   toggleWishlist: (product: Product) => void
   isWishlisted: (id: string) => boolean
+  toggleCompare: (product: Product) => void
+  isCompared: (id: string) => boolean
+  clearCompare: () => void
   logout: () => void
 }
 
@@ -47,6 +51,8 @@ const StoreContext = createContext<StoreContextValue | null>(null)
 
 const CART_KEY = "yashworld.cart"
 const WISH_KEY = "yashworld.wishlist"
+const COMPARE_KEY = "yashworld.compare"
+const MAX_COMPARE = 4
 
 function readStorage<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback
@@ -61,6 +67,7 @@ function readStorage<T>(key: string, fallback: T): T {
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([])
   const [wishlist, setWishlist] = useState<string[]>([])
+  const [compare, setCompare] = useState<string[]>([])
   const [user, setUser] = useState<User | null>(null)
   const [hydrated, setHydrated] = useState(false)
   const [catalog, setCatalog] = useState<Product[]>([])
@@ -68,6 +75,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setCart(readStorage<CartItem[]>(CART_KEY, []))
     setWishlist(readStorage<string[]>(WISH_KEY, []))
+    setCompare(readStorage<string[]>(COMPARE_KEY, []))
     setHydrated(true)
   }, [])
 
@@ -86,6 +94,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (hydrated) window.localStorage.setItem(WISH_KEY, JSON.stringify(wishlist))
   }, [wishlist, hydrated])
+
+  useEffect(() => {
+    if (hydrated) window.localStorage.setItem(COMPARE_KEY, JSON.stringify(compare))
+  }, [compare, hydrated])
 
   useEffect(() => {
     const unsubscribe = onAuthChange((firebaseUser) => {
@@ -128,6 +140,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return {
       cart,
       wishlist,
+      compare,
       user,
       cartCount,
       cartSubtotal,
@@ -174,12 +187,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         })
       },
       isWishlisted: (id) => wishlist.includes(id),
+      toggleCompare: (product) => {
+        setCompare((prev) => {
+          if (prev.includes(product.id)) {
+            return prev.filter((id) => id !== product.id)
+          }
+          if (prev.length >= MAX_COMPARE) {
+            toast.error(`You can compare up to ${MAX_COMPARE} products at a time.`)
+            return prev
+          }
+          toast.success("Added to compare", { description: product.name })
+          return [...prev, product.id]
+        })
+      },
+      isCompared: (id) => compare.includes(id),
+      clearCompare: () => setCompare([]),
       logout: async () => {
         await logoutUser()
         toast("Signed out")
       },
     }
-  }, [cart, wishlist, user, catalog])
+  }, [cart, wishlist, compare, user, catalog])
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>
 }

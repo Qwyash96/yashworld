@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
+import { CompareTray } from "@/components/compare-tray"
 
 /**
  * /admin and /seller each own their own navigation (AdminSidebar via
@@ -29,6 +30,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
       <SiteHeader />
       <main className="flex-1">{children}</main>
       <SiteFooter />
+      <CompareTray />
     </>
   )
 }
