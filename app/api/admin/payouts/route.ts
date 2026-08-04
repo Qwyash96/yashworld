@@ -15,29 +15,34 @@ export async function GET(request: NextRequest) {
   const auth = await requireAdminPermission(request, "payments")
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
-  const { searchParams } = new URL(request.url)
-  const status = searchParams.get("status") as WithdrawalRequestStatus | null
-  const cursor = searchParams.get("cursor")
+  try {
+    const { searchParams } = new URL(request.url)
+    const status = searchParams.get("status") as WithdrawalRequestStatus | null
+    const cursor = searchParams.get("cursor")
 
-  const db = getAdminDb()
-  let query: FirebaseFirestore.Query = db.collection("withdrawalRequests")
-  if (status) query = query.where("status", "==", status)
-  query = query.orderBy("requestedAt", "desc")
-  if (cursor) query = query.startAfter(cursor)
+    const db = getAdminDb()
+    let query: FirebaseFirestore.Query = db.collection("withdrawalRequests")
+    if (status) query = query.where("status", "==", status)
+    query = query.orderBy("requestedAt", "desc")
+    if (cursor) query = query.startAfter(cursor)
 
-  const snap = await query.limit(PAGE_SIZE).get()
-  const withdrawals = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as WithdrawalRequest)
+    const snap = await query.limit(PAGE_SIZE).get()
+    const withdrawals = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as WithdrawalRequest)
 
-  const sellerIds = Array.from(new Set(withdrawals.map((w) => w.sellerId)))
-  const sellerDocs = await Promise.all(sellerIds.map((id) => db.collection("sellers").doc(id).get()))
-  const shopNames = new Map(sellerDocs.map((doc) => [doc.id, (doc.data() as Seller | undefined)?.shopName ?? doc.id]))
+    const sellerIds = Array.from(new Set(withdrawals.map((w) => w.sellerId)))
+    const sellerDocs = await Promise.all(sellerIds.map((id) => db.collection("sellers").doc(id).get()))
+    const shopNames = new Map(sellerDocs.map((doc) => [doc.id, (doc.data() as Seller | undefined)?.shopName ?? doc.id]))
 
-  const payouts: PayoutRow[] = withdrawals.map((w) => ({ ...w, sellerShopName: shopNames.get(w.sellerId) ?? w.sellerId }))
-  const lastDoc = snap.docs[snap.docs.length - 1]
+    const payouts: PayoutRow[] = withdrawals.map((w) => ({ ...w, sellerShopName: shopNames.get(w.sellerId) ?? w.sellerId }))
+    const lastDoc = snap.docs[snap.docs.length - 1]
 
-  return NextResponse.json({
-    payouts,
-    nextCursor: lastDoc ? lastDoc.data().requestedAt : null,
-    hasMore: snap.docs.length === PAGE_SIZE,
-  })
+    return NextResponse.json({
+      payouts,
+      nextCursor: lastDoc ? lastDoc.data().requestedAt : null,
+      hasMore: snap.docs.length === PAGE_SIZE,
+    })
+  } catch (error) {
+    console.error("[admin/payouts] failed:", error)
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to load payouts." }, { status: 500 })
+  }
 }

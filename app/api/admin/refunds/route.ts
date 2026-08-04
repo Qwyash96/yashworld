@@ -14,21 +14,26 @@ export async function GET(request: NextRequest) {
   const auth = await requireAdminPermission(request, "payments")
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
-  const { searchParams } = new URL(request.url)
-  const paymentStatus = (searchParams.get("paymentStatus") as PaymentStatus | null) ?? "Paid"
-  const cursor = searchParams.get("cursor")
+  try {
+    const { searchParams } = new URL(request.url)
+    const paymentStatus = (searchParams.get("paymentStatus") as PaymentStatus | null) ?? "Paid"
+    const cursor = searchParams.get("cursor")
 
-  const db = getAdminDb()
-  let query: FirebaseFirestore.Query = db.collection("orders").where("paymentStatus", "==", paymentStatus).orderBy("createdAt", "desc")
-  if (cursor) query = query.startAfter(cursor)
+    const db = getAdminDb()
+    let query: FirebaseFirestore.Query = db.collection("orders").where("paymentStatus", "==", paymentStatus).orderBy("createdAt", "desc")
+    if (cursor) query = query.startAfter(cursor)
 
-  const snap = await query.limit(PAGE_SIZE).get()
-  const orders = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Order)
-  const lastDoc = snap.docs[snap.docs.length - 1]
+    const snap = await query.limit(PAGE_SIZE).get()
+    const orders = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Order)
+    const lastDoc = snap.docs[snap.docs.length - 1]
 
-  return NextResponse.json({
-    orders,
-    nextCursor: lastDoc ? lastDoc.data().createdAt : null,
-    hasMore: snap.docs.length === PAGE_SIZE,
-  })
+    return NextResponse.json({
+      orders,
+      nextCursor: lastDoc ? lastDoc.data().createdAt : null,
+      hasMore: snap.docs.length === PAGE_SIZE,
+    })
+  } catch (error) {
+    console.error("[admin/refunds] failed:", error)
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to load refunds." }, { status: 500 })
+  }
 }
