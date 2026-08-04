@@ -18,6 +18,8 @@ import { twilioWhatsappAdapter } from "@/lib/integrations/adapters/twilio-whatsa
 import { resendAdapter } from "@/lib/integrations/adapters/resend"
 import { sendgridAdapter } from "@/lib/integrations/adapters/sendgrid"
 import { smtpAdapter } from "@/lib/integrations/adapters/smtp"
+import { msg91Adapter } from "@/lib/integrations/adapters/msg91"
+import { twilioSmsAdapter } from "@/lib/integrations/adapters/twilio-sms"
 
 /**
  * The single place a new provider gets registered — write the adapter under
@@ -43,6 +45,8 @@ const ADAPTERS: IntegrationAdapter[] = [
   resendAdapter,
   sendgridAdapter,
   smtpAdapter,
+  msg91Adapter,
+  twilioSmsAdapter,
 ]
 
 export function listAdapters(): IntegrationAdapter[] {
