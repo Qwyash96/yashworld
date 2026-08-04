@@ -2,11 +2,14 @@
 
 import Link from "next/link"
 import { useEffect, useState } from "react"
+import { toast } from "sonner"
 import { useSellerGate } from "@/hooks/use-seller-status"
 import { useStore } from "@/components/store-provider"
 import { getOrdersBySeller, updateSellerOrderStatus } from "@/services/order.service"
+import { fetchMyWallet, requestWithdrawal } from "@/lib/seller-wallet-client"
 import { formatPrice } from "@/lib/products"
 import type { Order, OrderStatus } from "@/types/order"
+import type { SellerWallet, WithdrawalRequest } from "@/types/wallet"
 import { OrderStatusBadge } from "@/components/orders/order-status-badge"
 import {
   Select,
@@ -15,6 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import type { DiscountSource } from "@/types/order"
 
 const DISCOUNT_SOURCE_LABELS: Partial<Record<DiscountSource, string>> = {
@@ -39,11 +44,43 @@ export default function SellerOrdersPage() {
   const { getProductById } = useStore()
   const sellerUid = gate.state === "approved" ? gate.uid : null
   const [orders, setOrders] = useState<Order[] | null>(null)
+  const [wallet, setWallet] = useState<SellerWallet | null>(null)
+  const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[] | null>(null)
+  const [withdrawAmount, setWithdrawAmount] = useState("")
+  const [requesting, setRequesting] = useState(false)
+
+  function refreshWallet() {
+    fetchMyWallet().then((result) => {
+      if (result.ok) {
+        setWallet(result.wallet)
+        setWithdrawals(result.withdrawals)
+      }
+    })
+  }
 
   useEffect(() => {
     if (!sellerUid) return
     getOrdersBySeller(sellerUid).then(setOrders)
+    refreshWallet()
   }, [sellerUid])
+
+  async function handleRequestWithdrawal() {
+    const amount = Number(withdrawAmount)
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast.error("Enter a valid amount.")
+      return
+    }
+    setRequesting(true)
+    const result = await requestWithdrawal(amount)
+    setRequesting(false)
+    if (!result.ok) {
+      toast.error(result.error)
+      return
+    }
+    toast.success("Withdrawal requested.")
+    setWithdrawAmount("")
+    refreshWallet()
+  }
 
   async function handleStatusChange(orderId: string, status: OrderStatus) {
     if (!sellerUid) return
@@ -103,6 +140,47 @@ export default function SellerOrdersPage() {
       <p className="mt-2 text-sm text-muted-foreground">
         Only your own items within each order are shown here.
       </p>
+
+      {wallet && (
+        <div className="mt-6 rounded-md border border-border p-4">
+          <h2 className="font-medium">Wallet</h2>
+          <div className="mt-2 grid grid-cols-3 gap-4 text-sm">
+            <div>
+              <p className="text-muted-foreground">Available</p>
+              <p className="text-lg font-semibold">{formatPrice(wallet.balance)}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">On Hold</p>
+              <p className="text-lg font-semibold">{formatPrice(wallet.pendingBalance)}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Lifetime Withdrawn</p>
+              <p className="text-lg font-semibold">{formatPrice(wallet.lifetimeWithdrawn)}</p>
+            </div>
+          </div>
+          <div className="mt-4 flex gap-2">
+            <Input
+              value={withdrawAmount}
+              onChange={(e) => setWithdrawAmount(e.target.value.replace(/[^0-9.]/g, ""))}
+              placeholder="Amount to withdraw"
+              className="h-9 w-48"
+            />
+            <Button size="sm" className="h-9" disabled={requesting || wallet.balance <= 0} onClick={handleRequestWithdrawal}>
+              {requesting ? "Requesting..." : "Request Withdrawal"}
+            </Button>
+          </div>
+          {withdrawals && withdrawals.length > 0 && (
+            <div className="mt-4 space-y-1 text-sm text-muted-foreground">
+              {withdrawals.slice(0, 5).map((w) => (
+                <div key={w.id} className="flex justify-between">
+                  <span>{formatPrice(w.amount)} — {new Date(w.requestedAt).toLocaleDateString()}</span>
+                  <span className="capitalize">{w.status}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {orders === null ? (
         <p className="mt-8 text-sm text-muted-foreground">Loading orders...</p>

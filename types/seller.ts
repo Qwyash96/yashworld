@@ -51,6 +51,8 @@ export interface SellerApplication {
   city: string
   state: string
   pincode: string
+  /** Structured GST number — distinct from kyc.gstPath (the uploaded certificate document). */
+  gstNumber?: string
   payoutInfo: PayoutInfo
   /** True when payoutInfo.accountHolder doesn't match fullName — surfaced to admin, doesn't block submission. */
   accountHolderNameMismatch?: boolean
