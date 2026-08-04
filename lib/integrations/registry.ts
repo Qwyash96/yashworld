@@ -8,6 +8,11 @@ import { payuAdapter } from "@/lib/integrations/adapters/payu"
 import { stripeAdapter } from "@/lib/integrations/adapters/stripe"
 import { paypalAdapter } from "@/lib/integrations/adapters/paypal"
 import { gokwikAdapter } from "@/lib/integrations/adapters/gokwik"
+import { shiprocketAdapter } from "@/lib/integrations/adapters/shiprocket"
+import { delhiveryAdapter } from "@/lib/integrations/adapters/delhivery"
+import { bluedartAdapter } from "@/lib/integrations/adapters/bluedart"
+import { xpressbeesAdapter } from "@/lib/integrations/adapters/xpressbees"
+import { dtdcAdapter } from "@/lib/integrations/adapters/dtdc"
 
 /**
  * The single place a new provider gets registered — write the adapter under
@@ -23,6 +28,11 @@ const ADAPTERS: IntegrationAdapter[] = [
   stripeAdapter,
   paypalAdapter,
   gokwikAdapter,
+  shiprocketAdapter,
+  delhiveryAdapter,
+  bluedartAdapter,
+  xpressbeesAdapter,
+  dtdcAdapter,
 ]
 
 export function listAdapters(): IntegrationAdapter[] {
