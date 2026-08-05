@@ -8,8 +8,8 @@ import { getProductCatalog } from "@/services/catalog.service"
 export const revalidate = 60
 
 export const metadata: Metadata = {
-  title: "Shop All | YashWorld",
-  description: "Discover premium products from every category at YashWorld.",
+  title: "Shop All | IXOFLORA",
+  description: "Discover premium products from every category at IXOFLORA.",
 }
 
 export default async function ProductsPage() {
@@ -23,7 +23,7 @@ export default async function ProductsPage() {
         <div className="text-center">
 
           <span className="text-green-600 font-semibold uppercase tracking-[0.25em]">
-            YashWorld Store
+            IXOFLORA Store
           </span>
 
           <h1 className="mt-4 text-5xl font-bold text-gray-900">

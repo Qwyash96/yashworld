@@ -1,12 +1,12 @@
 import { Leaf, ShieldCheck, Truck, Users } from "lucide-react"
 
-export const metadata = { title: "About Us | YashWorld" }
+export const metadata = { title: "About Us | IXOFLORA" }
 
 const values = [
   {
     icon: Leaf,
     title: "Curated Plants",
-    text: "Every plant listed on YashWorld comes from verified sellers who care for their stock the way we'd want it cared for.",
+    text: "Every plant listed on IXOFLORA comes from verified sellers who care for their stock the way we'd want it cared for.",
   },
   {
     icon: ShieldCheck,
@@ -29,9 +29,9 @@ export default function AboutPage() {
   return (
     <main className="min-h-screen bg-white">
       <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
-        <h1 className="text-2xl font-bold text-black sm:text-3xl">About YashWorld</h1>
+        <h1 className="text-2xl font-bold text-black sm:text-3xl">About IXOFLORA</h1>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#444444]">
-          YashWorld is a plant-first marketplace connecting buyers with verified nurseries and independent sellers
+          IXOFLORA is a plant-first marketplace connecting buyers with verified nurseries and independent sellers
           across India. From indoor plants and pots to seeds, fertilizers and gardening tools, we bring everything
           a plant lover needs into one dependable place — with real order tracking, secure payments and a genuine
           returns process.

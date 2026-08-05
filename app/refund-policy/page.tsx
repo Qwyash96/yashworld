@@ -1,13 +1,13 @@
 import { PolicyPageLayout, PolicySection } from "@/components/marketplace/policy-page-layout"
 
-export const metadata = { title: "Refund Policy | YashWorld" }
+export const metadata = { title: "Refund Policy | IXOFLORA" }
 
 export default function RefundPolicyPage() {
   return (
     <PolicyPageLayout title="Refund &amp; Returns Policy" updated="3 August 2026">
       <PolicySection heading="7-Day Return Window">
         <p>
-          Most items on YashWorld — including live plants, pots, tools and accessories — can be returned within{" "}
+          Most items on IXOFLORA — including live plants, pots, tools and accessories — can be returned within{" "}
           <strong>7 days of delivery</strong>. The return request must be raised from your Orders page within this
           window; requests raised after 7 days from delivery cannot be accepted.
         </p>

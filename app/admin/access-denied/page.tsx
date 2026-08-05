@@ -42,7 +42,7 @@ export default function AdminAccessDeniedPage() {
         </div>
         <h1 className="mt-6 text-xl font-bold text-black">Access Denied</h1>
         <p className="mt-3 text-sm text-[#444444]">
-          This account does not have permission to access the YashWorld admin panel. If you
+          This account does not have permission to access the IXOFLORA admin panel. If you
           believe this is a mistake, contact a Super Admin.
         </p>
 

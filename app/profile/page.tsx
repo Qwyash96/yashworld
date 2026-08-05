@@ -105,7 +105,7 @@ export default function ProfilePage() {
               <User className="h-10 w-10" />
             </AvatarFallback>
           </Avatar>
-          <h1 className="mt-6 text-3xl font-bold text-black">Welcome to YashWorld</h1>
+          <h1 className="mt-6 text-3xl font-bold text-black">Welcome to IXOFLORA</h1>
           <p className="mt-3 text-[#444444]">
             Login to view your profile, wishlist, orders and saved addresses.
           </p>
@@ -423,7 +423,7 @@ export default function ProfilePage() {
         )}
 
         {/* SELLER */}
-        <SectionHeader title="Sell on YashWorld" />
+        <SectionHeader title="Sell on IXOFLORA" />
         <Link
           href={isApprovedSeller ? "/seller/products" : "/sell"}
           className="flex items-center justify-between rounded-2xl border border-green-600 bg-green-50 p-6 shadow-sm transition hover:shadow-md"
@@ -437,7 +437,7 @@ export default function ProfilePage() {
               <p className="text-sm text-[#444444]">
                 {isApprovedSeller
                   ? "Manage your products, orders and earnings."
-                  : "Start selling plants and gardening essentials on YashWorld."}
+                  : "Start selling plants and gardening essentials on IXOFLORA."}
               </p>
             </div>
           </div>

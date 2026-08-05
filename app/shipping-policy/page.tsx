@@ -1,13 +1,13 @@
 import { PolicyPageLayout, PolicySection } from "@/components/marketplace/policy-page-layout"
 
-export const metadata = { title: "Shipping Policy | YashWorld" }
+export const metadata = { title: "Shipping Policy | IXOFLORA" }
 
 export default function ShippingPolicyPage() {
   return (
     <PolicyPageLayout title="Shipping Policy" updated="3 August 2026">
       <PolicySection heading="Delivery Coverage">
         <p>
-          YashWorld sellers ship across India through partnered courier services. Delivery timelines depend on the
+          IXOFLORA sellers ship across India through partnered courier services. Delivery timelines depend on the
           seller's location and your delivery address, and are shown at checkout before you place an order.
         </p>
       </PolicySection>

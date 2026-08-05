@@ -9,6 +9,7 @@ import { ensureUserProfile } from "@/services/user.service"
 import { isAdminRole } from "@/lib/admin-roles"
 import { Button } from "@/components/ui/button"
 import { GoogleIcon } from "@/components/ui/google-icon"
+import { BrandMark } from "@/components/brand-mark"
 
 function humanizeAuthError(error: unknown): string {
   if (error instanceof FirebaseError) {
@@ -68,14 +69,14 @@ export default function AdminLoginPage() {
     <div className="flex min-h-[80vh] items-center justify-center bg-[#f3f5f2] px-4 py-16">
       <div className="w-full max-w-md rounded-3xl border border-border bg-white p-8 shadow-xl sm:p-10">
         <div className="flex flex-col items-center text-center">
-          <span className="text-3xl font-bold text-green-700">YashWorld</span>
+          <BrandMark size="hero" href={null} />
           <div className="mt-4 flex items-center gap-2 rounded-full bg-green-50 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-green-700">
             <ShieldAlert className="size-4" />
             Authorized Personnel Only
           </div>
           <h1 className="mt-6 text-2xl font-bold text-black">Admin Login</h1>
           <p className="mt-2 text-sm text-[#444444]">
-            Sign in with your Google account to access the YashWorld admin panel.
+            Sign in with your Google account to access the IXOFLORA admin panel.
           </p>
         </div>
 

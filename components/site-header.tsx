@@ -18,13 +18,12 @@ import {
   ShoppingBag,
   ShoppingCart,
   GitCompareArrows,
-  Leaf,
   type LucideIcon,
 } from "lucide-react"
 import { useStore } from "@/components/store-provider"
 import { getOrdersByBuyer } from "@/services/order.service"
-import { getPublicSiteBranding } from "@/services/site-settings.service"
 import { DEV_SHOW_ADMIN_MENU_TO_ALL } from "@/lib/dev-flags"
+import { BrandMark } from "@/components/brand-mark"
 import { HeaderSearchBar } from "@/components/marketplace/header-search-bar"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -69,11 +68,6 @@ export function SiteHeader() {
   const { user, wishlist, cartCount } = useStore()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [pendingOrders, setPendingOrders] = useState(0)
-  const [logoUrl, setLogoUrl] = useState<string | undefined>(undefined)
-
-  useEffect(() => {
-    getPublicSiteBranding().then((b) => setLogoUrl(b.logoUrl))
-  }, [])
 
   useEffect(() => {
     if (!user) {
@@ -148,7 +142,9 @@ export function SiteHeader() {
           />
           <SheetContent side="left" className="w-80 max-w-[85vw] overflow-y-auto p-0">
             <SheetHeader className="border-b border-border px-5 py-4">
-              <SheetTitle className="text-xl font-bold text-green-700">YashWorld</SheetTitle>
+              <SheetTitle>
+                <BrandMark size="header" href={null} />
+              </SheetTitle>
             </SheetHeader>
             <nav className="flex flex-col gap-6 p-4">
               {renderFlatGroup(shopGroup)}
@@ -182,20 +178,7 @@ export function SiteHeader() {
           </SheetContent>
         </Sheet>
 
-        {/* Logo — a custom uploaded logo (Admin -> Settings -> Branding) takes
-            over here when set; otherwise the default Leaf+text lockup. */}
-        <Link href="/" className="flex shrink-0 items-center gap-1 text-lg font-bold text-green-700 sm:text-xl">
-          {logoUrl ? (
-            <span className="relative block h-7 w-24 shrink-0 sm:h-8 sm:w-28">
-              <Image src={logoUrl} alt="YashWorld" fill className="object-contain object-left" priority />
-            </span>
-          ) : (
-            <>
-              <Leaf className="size-5 shrink-0" />
-              <span className="hidden sm:inline">YashWorld</span>
-            </>
-          )}
-        </Link>
+        <BrandMark size="header" compact />
 
         {/* Search */}
         <div className="min-w-0 flex-1">

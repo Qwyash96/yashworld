@@ -30,6 +30,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { SupportTicketForm } from "@/components/seller/support-ticket-form"
 import { KycUploadField } from "@/components/seller/kyc-upload-field"
 import { LiveSelfieCapture } from "@/components/seller/live-selfie-capture"
+import { BrandMark } from "@/components/brand-mark"
 
 const businessTypes = [
   { value: "individual", label: "Individual" },
@@ -313,7 +314,7 @@ export default function SellerApplicationWizard() {
       <div className="w-full max-w-2xl rounded-3xl border border-border bg-white p-8 shadow-xl sm:p-10">
         <div className="flex items-start justify-between">
           <div>
-            <span className="text-2xl font-bold text-green-700">YashWorld</span>
+            <BrandMark size="hero" href={null} />
             <h1 className="mt-2 text-2xl font-bold text-black">
               {existing ? "Update Your Seller Application" : "Become a Seller"}
             </h1>

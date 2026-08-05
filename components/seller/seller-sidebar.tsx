@@ -2,7 +2,8 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Leaf, Package, ShoppingBag, Tag, Megaphone, Store, Truck } from "lucide-react"
+import { Package, ShoppingBag, Tag, Megaphone, Store, Truck } from "lucide-react"
+import { BrandMark } from "@/components/brand-mark"
 import { cn } from "@/lib/utils"
 
 const NAV_ITEMS = [
@@ -19,8 +20,7 @@ export function SellerSidebarContent() {
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-20 items-center gap-2 border-b border-gray-200 px-6">
-        <Leaf className="h-7 w-7 text-green-700" />
-        <span className="text-xl font-bold text-green-800">YashWorld</span>
+        <BrandMark size="header" />
       </div>
       <nav className="flex-1 space-y-1 p-4">
         {NAV_ITEMS.map((item) => {

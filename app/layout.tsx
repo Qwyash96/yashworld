@@ -13,9 +13,9 @@ const geistSans = Geist({ subsets: ['latin'], variable: '--font-geist-sans' })
 const playfair = Playfair_Display({ subsets: ['latin'], variable: '--font-playfair' })
 
 export const metadata: Metadata = {
-  title: 'YashWorld — Premium Plant Marketplace',
+  title: 'IXOFLORA — Premium Plant Marketplace',
   description:
-    'YashWorld is a premium marketplace for plants, pots, planters and gardening essentials from verified sellers.',
+    'IXOFLORA is a premium marketplace for plants, pots, planters and gardening essentials from verified sellers.',
   generator: 'v0.app',
 }
 

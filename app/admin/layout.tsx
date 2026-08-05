@@ -210,7 +210,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <AdminSidebarContent onNavigate={() => setMobileNavOpen(false)} />
           </SheetContent>
         </Sheet>
-        <span className="flex-1 text-sm font-bold text-green-700">YashWorld Admin</span>
+        <span className="flex-1 text-sm font-bold text-green-700">IXOFLORA Admin</span>
         <AdminNotificationBell />
       </div>
 

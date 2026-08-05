@@ -301,7 +301,7 @@ export default function CheckoutPage() {
       amount: created.amount,
       currency: created.currency,
       order_id: created.razorpayOrderId,
-      name: "YashWorld",
+      name: "IXOFLORA",
       description: "Order payment",
       // Driven entirely by admin-controlled settings (Payment Methods in
       // /admin/settings/payments) — toggling those is enough, no code or

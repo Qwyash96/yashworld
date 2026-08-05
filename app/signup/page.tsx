@@ -47,7 +47,7 @@ export default function SignupPage() {
         </h1>
 
         <p className="mt-2 text-sm text-muted-foreground">
-          Join YashWorld for early access and saved favorites.
+          Join IXOFLORA for early access and saved favorites.
         </p>
       </header>
 

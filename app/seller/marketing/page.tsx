@@ -77,7 +77,7 @@ export default function SellerMarketingPage() {
             </Sheet>
             <div>
               <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Marketing</h1>
-              <p className="text-sm text-gray-500">Promote your products on the YashWorld homepage</p>
+              <p className="text-sm text-gray-500">Promote your products on the IXOFLORA homepage</p>
             </div>
           </div>
 

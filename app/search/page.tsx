@@ -4,8 +4,8 @@ import { SearchResults } from "@/components/search-results"
 import { getProductCatalog } from "@/services/catalog.service"
 
 export const metadata: Metadata = {
-  title: "Search — YashWorld",
-  description: "Search the YashWorld collection.",
+  title: "Search — IXOFLORA",
+  description: "Search the IXOFLORA collection.",
 }
 
 export default async function SearchPage({

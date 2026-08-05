@@ -22,9 +22,9 @@ export async function generateMetadata({
   const { slug } = await params
   const categories = await getCategoryCatalog()
   const category = categories.find((c) => c.slug === slug)
-  if (!category) return { title: "Category — YashWorld" }
+  if (!category) return { title: "Category — IXOFLORA" }
   return {
-    title: `${category.name} — YashWorld`,
+    title: `${category.name} — IXOFLORA`,
     description: category.description,
   }
 }

@@ -1,12 +1,12 @@
 import { PolicyPageLayout, PolicySection } from "@/components/marketplace/policy-page-layout"
 
-export const metadata = { title: "Privacy Policy | YashWorld" }
+export const metadata = { title: "Privacy Policy | IXOFLORA" }
 
 export default function PrivacyPage() {
   return (
     <PolicyPageLayout title="Privacy Policy" updated="3 August 2026">
       <p>
-        YashWorld ("we", "us") operates the marketplace at yashworld.shop. This policy explains what information we
+        IXOFLORA ("we", "us") operates the marketplace at yashworld.shop. This policy explains what information we
         collect from buyers and sellers, why we collect it, and how it's used.
       </p>
 
@@ -29,7 +29,7 @@ export default function PrivacyPage() {
 
       <PolicySection heading="Payment Information">
         <p>
-          Card and UPI payments are processed by our payment partner (Razorpay); YashWorld does not store your full
+          Card and UPI payments are processed by our payment partner (Razorpay); IXOFLORA does not store your full
           card or bank details on its own servers. Cash on Delivery orders are settled at the time of delivery.
         </p>
       </PolicySection>

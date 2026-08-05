@@ -30,7 +30,7 @@ export async function savePlatformSettings(patch: Partial<PlatformSettings>): Pr
 }
 
 const DEFAULT_GENERAL_SETTINGS: GeneralSettings = {
-  siteName: "YashWorld",
+  siteName: "IXOFLORA",
   supportEmail: "",
   supportPhone: "",
   maintenanceMode: false,

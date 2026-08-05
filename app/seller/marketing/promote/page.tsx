@@ -73,7 +73,7 @@ export default function PromoteProductPage() {
       amount: created.amount,
       currency: created.currency,
       order_id: created.razorpayOrderId,
-      name: "YashWorld",
+      name: "IXOFLORA",
       description: `Sponsored Ad — ${duration} day${duration > 1 ? "s" : ""}`,
       handler: async (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
         const result = await verifyAdPayment({ adId: created.adId, ...response })

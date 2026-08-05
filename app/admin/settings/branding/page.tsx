@@ -61,7 +61,7 @@ export default function BrandingSettingsPage() {
       <div>
         <h1 className="text-2xl font-bold text-black">Branding</h1>
         <p className="mt-1 text-sm text-[#444444]">
-          Upload a custom logo for the site header and footer. Leave empty to use the default YashWorld logo.
+          Upload a custom logo for the site header and footer. Leave empty to use the default IXOFLORA logo.
         </p>
       </div>
 

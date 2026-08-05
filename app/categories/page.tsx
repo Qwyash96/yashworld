@@ -9,8 +9,8 @@ import { getCategoryCatalog, getProductCatalog } from "@/services/catalog.servic
 export const revalidate = 60
 
 export const metadata: Metadata = {
-  title: "Categories | YashWorld",
-  description: "Explore all shopping categories at YashWorld.",
+  title: "Categories | IXOFLORA",
+  description: "Explore all shopping categories at IXOFLORA.",
 }
 
 export default async function CategoriesPage() {

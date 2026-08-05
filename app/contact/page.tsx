@@ -59,7 +59,7 @@ export default function ContactPage() {
           <div className="text-center">
 
             <span className="font-semibold uppercase tracking-[0.3em] text-green-700">
-              Contact YashWorld
+              Contact IXOFLORA
             </span>
 
             <h1 className="mt-5 text-5xl font-bold text-gray-900">

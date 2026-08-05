@@ -79,7 +79,7 @@ export default function OrderDetailPage() {
       {confirmed && (
         <div className="mb-8 flex items-center gap-3 rounded-md border border-green-600/30 bg-green-50 p-4 text-green-800">
           <CheckCircle2 className="size-5 shrink-0" />
-          <p className="text-sm font-medium">Order confirmed — thank you for shopping with YashWorld!</p>
+          <p className="text-sm font-medium">Order confirmed — thank you for shopping with IXOFLORA!</p>
         </div>
       )}
       <div className="flex items-center justify-between">
@@ -131,7 +131,7 @@ export default function OrderDetailPage() {
           <div key={sellerOrder.sellerId} className="rounded-md border border-border p-4">
             <div className="flex items-center justify-between">
               <p className="text-xs uppercase tracking-widest text-muted-foreground">
-                Sold by {sellerOrder.sellerId === "yashworld" ? "YashWorld" : sellerOrder.sellerId}
+                Sold by {sellerOrder.sellerId === "yashworld" ? "IXOFLORA" : sellerOrder.sellerId}
               </p>
               <OrderStatusBadge status={sellerOrder.status} />
             </div>

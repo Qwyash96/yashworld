@@ -49,13 +49,13 @@ export default function BecomeASellerPage() {
       <section className="bg-[#f3f5f2] px-4 py-20 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-4xl text-center">
           <span className="inline-block rounded-full bg-green-100 px-5 py-2 text-sm font-semibold uppercase tracking-widest text-green-700">
-            Sell on YashWorld
+            Sell on IXOFLORA
           </span>
           <h1 className="mt-6 text-4xl font-bold text-black sm:text-5xl">
             Grow Your Plant Business With Us
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-lg text-[#444444]">
-            Join YashWorld&apos;s seller community and bring your plants, pots and gardening
+            Join IXOFLORA&apos;s seller community and bring your plants, pots and gardening
             essentials to customers across the country.
           </p>
           <div className="mt-10 flex flex-wrap justify-center gap-4">
@@ -68,11 +68,11 @@ export default function BecomeASellerPage() {
           </div>
           {!user && (
             <p className="mt-4 text-sm text-[#444444]">
-              New to YashWorld?{" "}
+              New to IXOFLORA?{" "}
               <Link href="/signup" className="font-medium text-green-700 hover:underline">
                 Create a buyer account
               </Link>{" "}
-              first — every seller starts as a YashWorld buyer.
+              first — every seller starts as an IXOFLORA buyer.
             </p>
           )}
         </div>
@@ -80,7 +80,7 @@ export default function BecomeASellerPage() {
 
       <section className="px-4 py-20 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl">
-          <h2 className="text-center text-3xl font-bold text-black">Why Sell on YashWorld?</h2>
+          <h2 className="text-center text-3xl font-bold text-black">Why Sell on IXOFLORA?</h2>
           <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {benefits.map((benefit) => {
               const Icon = benefit.icon

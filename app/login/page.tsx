@@ -48,7 +48,7 @@ export default function LoginPage() {
         </h1>
 
         <p className="mt-2 text-sm text-muted-foreground">
-          Welcome back to YashWorld.
+          Welcome back to IXOFLORA.
         </p>
       </header>
 
@@ -66,7 +66,7 @@ export default function LoginPage() {
       </div>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
-        New to YashWorld?{" "}
+        New to IXOFLORA?{" "}
         <Link
           href="/signup"
           className="font-medium text-foreground underline underline-offset-4"
