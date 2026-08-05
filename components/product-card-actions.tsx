@@ -42,7 +42,7 @@ export function ProductCardActions({ product }: { product: Product }) {
         className="flex h-7 min-w-0 flex-1 items-center justify-center gap-1 rounded-lg bg-[#f97316] px-1 text-[11px] font-semibold text-white transition hover:brightness-110"
       >
         <Zap className="size-3 shrink-0" />
-        <span className="truncate">Buy Now</span>
+        <span className="truncate">Buy</span>
       </button>
     </div>
   )

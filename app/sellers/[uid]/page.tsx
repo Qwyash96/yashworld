@@ -49,7 +49,7 @@ export default async function SellerStorefrontPage({ params }: { params: Promise
         {products.length === 0 ? (
           <p className="mt-4 text-sm text-[#444444]">This seller has no live products right now.</p>
         ) : (
-          <div className="mt-4 grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-4 lg:grid-cols-6">
+          <div className="mt-4 grid grid-cols-3 gap-1.5 sm:gap-2.5 md:grid-cols-4 lg:grid-cols-6">
             {products.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
