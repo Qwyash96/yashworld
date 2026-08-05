@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useParams, useRouter } from "next/navigation"
+import { useParams } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import {
@@ -13,7 +13,6 @@ import {
   QrCode,
   Barcode as BarcodeIcon,
   CheckCircle2,
-  Circle,
   RefreshCw,
   StickyNote,
   type LucideIcon,
@@ -26,7 +25,7 @@ import { getSellerProfile } from "@/services/seller.service"
 import { OrderStatusBadge } from "@/components/orders/order-status-badge"
 import { OrderTrackingTimeline } from "@/components/orders/order-tracking-timeline"
 import { ProductImage } from "@/components/product-image"
-import { ORDER_FULFILMENT_SEQUENCE, isCancellable, isReturnable } from "@/types/order-lifecycle"
+import { isCancellable, isReturnable } from "@/types/order-lifecycle"
 import { formatPrice } from "@/lib/products"
 import { getDeliveryEstimate } from "@/lib/delivery-estimate"
 import { buildOrderDocumentContext } from "@/lib/documents/order-document-context"
@@ -44,23 +43,19 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 
 const COURIER_OPTIONS = ["Shiprocket", "Delhivery", "Blue Dart", "Xpressbees", "DTDC", "Other"]
 
-/** The seller-actionable steps, in fulfilment order — drives the Action
- * Panel checklist. Document-generation actions live in the header instead
- * since they're not sequential (always available, any status). */
-const ACTION_STEPS: { status: OrderStatus; label: string }[] = [
-  { status: "Accepted", label: "Accept Order" },
-  { status: "Ready To Pack", label: "Mark Ready to Pack" },
-  { status: "Packed", label: "Pack Order" },
-  { status: "Pickup Requested", label: "Ready for Pickup" },
-  { status: "Picked Up", label: "Handed to Courier" },
-  { status: "In Transit", label: "Mark In Transit" },
-  { status: "Out For Delivery", label: "Mark Out For Delivery" },
-  { status: "Delivered", label: "Mark Delivered" },
-]
+/** From Pickup Requested onward, a Shiprocket shipment advances on its own
+ * via handleSyncTracking (the courier's real tracking API) — this map is
+ * only consulted for every OTHER courier, where there's no API to poll, so
+ * the seller needs one manual "mark it done" action per stage instead. */
+const MANUAL_ADVANCE: Partial<Record<OrderStatus, { next: OrderStatus; label: string }>> = {
+  "Pickup Requested": { next: "Picked Up", label: "Mark Picked Up" },
+  "Picked Up": { next: "In Transit", label: "Mark In Transit" },
+  "In Transit": { next: "Out For Delivery", label: "Mark Out For Delivery" },
+  "Out For Delivery": { next: "Delivered", label: "Mark Delivered" },
+}
 
 export default function SellerOrderDetailPage() {
   const params = useParams<{ id: string }>()
-  const router = useRouter()
   const gate = useSellerGate()
   const { getProductById } = useStore()
   const sellerUid = gate.state === "approved" ? gate.uid : null
@@ -237,7 +232,6 @@ export default function SellerOrderDetailPage() {
 
   const status = mine.status
   const isTerminal = status === "Cancelled" || status === "Returned"
-  const currentIndex = ORDER_FULFILMENT_SEQUENCE.indexOf(status)
 
   return (
     <div className="mx-auto max-w-6xl px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
@@ -261,48 +255,20 @@ export default function SellerOrderDetailPage() {
           <OrderStatusBadge status={status} />
         </div>
 
-        <div className="-mx-3 mt-4 flex flex-nowrap gap-2 overflow-x-auto border-t border-border px-3 pt-3 sm:mx-0 sm:flex-wrap sm:px-0">
-          {status === "Pending" && (
-            <>
-              <Button size="sm" className="h-9 shrink-0" onClick={handleAccept} disabled={busy}>
-                Accept Order
+        {(isReturnable(status) || (isCancellable(status) && status !== "Pending")) && (
+          <div className="-mx-3 mt-4 flex flex-nowrap gap-2 overflow-x-auto border-t border-border px-3 pt-3 sm:mx-0 sm:flex-wrap sm:px-0">
+            {isReturnable(status) && (
+              <Button size="sm" variant="outline" className="h-9 shrink-0" onClick={handleReturn} disabled={busy}>
+                Mark Returned
               </Button>
-              <Button size="sm" variant="destructive" className="h-9 shrink-0" onClick={() => setRejectOpen(true)} disabled={busy}>
-                Reject Order
+            )}
+            {isCancellable(status) && status !== "Pending" && (
+              <Button size="sm" variant="outline" className="h-9 shrink-0 text-red-600" onClick={handleCancel} disabled={busy}>
+                Cancel Order
               </Button>
-            </>
-          )}
-          <Button size="sm" variant="outline" className="h-9 shrink-0" onClick={() => documentContext && generateShippingLabelPdf(documentContext)}>
-            <FileDown className="size-3.5" />
-            Shipping Label
-          </Button>
-          <Button size="sm" variant="outline" className="h-9 shrink-0" onClick={() => documentContext && generateInvoicePdf(documentContext)}>
-            <FileText className="size-3.5" />
-            Invoice
-          </Button>
-          <Button size="sm" variant="outline" className="h-9 shrink-0" onClick={() => documentContext && generatePackingSlipPdf(documentContext)}>
-            <Package className="size-3.5" />
-            Packing Slip
-          </Button>
-          <Button size="sm" variant="outline" className="h-9 shrink-0" onClick={handleGenerateQr}>
-            <QrCode className="size-3.5" />
-            QR
-          </Button>
-          <Button size="sm" variant="outline" className="h-9 shrink-0" onClick={handleGenerateBarcode}>
-            <BarcodeIcon className="size-3.5" />
-            Barcode
-          </Button>
-          {isReturnable(status) && (
-            <Button size="sm" variant="outline" className="h-9 shrink-0 sm:ml-auto" onClick={handleReturn} disabled={busy}>
-              Mark Returned
-            </Button>
-          )}
-          {isCancellable(status) && status !== "Pending" && (
-            <Button size="sm" variant="outline" className="h-9 shrink-0 text-red-600" onClick={handleCancel} disabled={busy}>
-              Cancel Order
-            </Button>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </section>
 
       <div className="mt-3 grid gap-3 sm:mt-4 sm:gap-4 lg:grid-cols-3">
@@ -355,43 +321,90 @@ export default function SellerOrderDetailPage() {
             <OrderTrackingTimeline status={status} timeline={mine.timeline} />
           </Card>
 
-          {/* Action Panel */}
+          {/* Action Panel — exactly one primary action for the order's
+              current stage: Pending -> Accepted -> Ready To Pack -> Packed
+              -> Pickup Requested -> Picked Up -> In Transit -> Out For
+              Delivery -> Delivered. A Shiprocket shipment advances itself
+              from Pickup Requested onward via the courier's tracking API
+              (handleSyncTracking); every other courier falls back to
+              MANUAL_ADVANCE's one-button-per-stage so it's never stuck. */}
           <Card title="Action Panel">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {ACTION_STEPS.map((step) => {
-                const stepIndex = ORDER_FULFILMENT_SEQUENCE.indexOf(step.status)
-                const isDone = stepIndex <= currentIndex
-                const isCurrentAction = stepIndex === currentIndex + 1
-                const isPickupStep = step.status === "Pickup Requested"
-                return (
-                  <Button
-                    key={step.status}
-                    size="sm"
-                    variant={isCurrentAction ? "default" : "outline"}
-                    className="h-9 justify-start"
-                    disabled={busy || isTerminal || (!isCurrentAction && !isDone)}
-                    onClick={() => {
-                      if (isPickupStep) setPickupOpen(true)
-                      else if (step.status === "Accepted") handleAccept()
-                      else handleAdvance(step.status)
-                    }}
-                  >
-                    {isDone ? <CheckCircle2 className="size-3.5 shrink-0" /> : <Circle className="size-3.5 shrink-0" />}
-                    <span className="truncate">{step.label}</span>
+            {status !== "Pending" && (
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                <Button size="sm" variant="outline" className="h-9" onClick={() => documentContext && generateInvoicePdf(documentContext)}>
+                  <FileText className="size-3.5" />
+                  Print Invoice
+                </Button>
+                <Button size="sm" variant="outline" className="h-9" onClick={() => documentContext && generatePackingSlipPdf(documentContext)}>
+                  <Package className="size-3.5" />
+                  Packing Slip
+                </Button>
+                <Button size="sm" variant="outline" className="h-9" onClick={() => documentContext && generateShippingLabelPdf(documentContext)}>
+                  <FileDown className="size-3.5" />
+                  Generate Label
+                </Button>
+                <Button size="sm" variant="outline" className="h-9" onClick={handleGenerateQr}>
+                  <QrCode className="size-3.5" />
+                  QR
+                </Button>
+                <Button size="sm" variant="outline" className="h-9" onClick={handleGenerateBarcode}>
+                  <BarcodeIcon className="size-3.5" />
+                  Barcode
+                </Button>
+              </div>
+            )}
+
+            <div className={status !== "Pending" ? "mt-3 border-t border-border pt-3" : ""}>
+              {status === "Pending" && (
+                <div className="flex gap-2">
+                  <Button className="h-10 flex-1" onClick={handleAccept} disabled={busy}>
+                    Accept Order
                   </Button>
-                )
-              })}
-            </div>
-            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <Button size="sm" variant="outline" className="h-9" onClick={() => documentContext && generateShippingLabelPdf(documentContext)}>
-                Generate Label
-              </Button>
-              <Button size="sm" variant="outline" className="h-9" onClick={() => documentContext && generateInvoicePdf(documentContext)}>
-                Print Invoice
-              </Button>
-              <Button size="sm" variant="outline" className="h-9" onClick={() => documentContext && generatePackingSlipPdf(documentContext)}>
-                Print Packing Slip
-              </Button>
+                  <Button variant="destructive" className="h-10 flex-1" onClick={() => setRejectOpen(true)} disabled={busy}>
+                    Reject Order
+                  </Button>
+                </div>
+              )}
+              {status === "Accepted" && (
+                <Button className="h-10 w-full sm:w-auto" onClick={() => handleAdvance("Ready To Pack")} disabled={busy}>
+                  Ready to Pack
+                </Button>
+              )}
+              {status === "Ready To Pack" && (
+                <Button className="h-10 w-full sm:w-auto" onClick={() => handleAdvance("Packed")} disabled={busy}>
+                  Pack Order
+                </Button>
+              )}
+              {status === "Packed" && (
+                <Button className="h-10 w-full sm:w-auto" onClick={() => setPickupOpen(true)} disabled={busy}>
+                  Request Pickup
+                </Button>
+              )}
+              {MANUAL_ADVANCE[status] &&
+                (mine.shippingProvider === "shiprocket" ? (
+                  <div className="flex flex-wrap items-center gap-3">
+                    <p className="text-sm text-[#444444]">Updates automatically from the courier&apos;s tracking API.</p>
+                    <Button size="sm" variant="outline" className="h-9" onClick={handleSyncTracking} disabled={syncing}>
+                      <RefreshCw className={syncing ? "size-3.5 animate-spin" : "size-3.5"} />
+                      Sync Now
+                    </Button>
+                  </div>
+                ) : (
+                  <Button className="h-10 w-full sm:w-auto" onClick={() => handleAdvance(MANUAL_ADVANCE[status]!.next)} disabled={busy}>
+                    {MANUAL_ADVANCE[status]!.label}
+                  </Button>
+                ))}
+              {status === "Delivered" && (
+                <p className="flex items-center gap-2 text-sm font-medium text-green-700">
+                  <CheckCircle2 className="size-4" />
+                  Delivered
+                </p>
+              )}
+              {isTerminal && (
+                <p className="text-sm text-[#444444]">
+                  {status === "Cancelled" ? "This order was cancelled." : "This order was returned."}
+                </p>
+              )}
             </div>
           </Card>
         </div>
@@ -436,24 +449,13 @@ export default function SellerOrderDetailPage() {
                 <Row label="Shipping Status" value={status} />
               </div>
             )}
-            <div className="mt-3 flex flex-wrap gap-2">
-              {status === "Packed" && (
-                <Button size="sm" className="h-9" onClick={() => setPickupOpen(true)} disabled={busy}>
-                  Request Pickup
-                </Button>
-              )}
-              {status === "Pickup Requested" && (
+            {status === "Pickup Requested" && (
+              <div className="mt-3">
                 <Button size="sm" variant="outline" className="h-9" onClick={handleCancelPickup} disabled={busy}>
                   Cancel Pickup
                 </Button>
-              )}
-              {mine.shippingProvider === "shiprocket" && !isTerminal && status !== "Packed" && (
-                <Button size="sm" variant="outline" className="h-9" onClick={handleSyncTracking} disabled={syncing}>
-                  <RefreshCw className={syncing ? "size-3.5 animate-spin" : "size-3.5"} />
-                  Track Shipment
-                </Button>
-              )}
-            </div>
+              </div>
+            )}
           </Card>
 
           {/* Notes */}

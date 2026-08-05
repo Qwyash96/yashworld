@@ -31,7 +31,6 @@ const STATUS_STYLES: Record<SponsoredAdStatus, string> = {
 
 export default function AdminSponsoredAdsPage() {
   const [ads, setAds] = useState<SponsoredAd[] | null>(null)
-  const [pricing, setPricing] = useState<Record<string, number> | null>(null)
   const [pricingOpen, setPricingOpen] = useState(false)
   const [pricingForm, setPricingForm] = useState<Record<string, string>>({})
   const [savingPricing, setSavingPricing] = useState(false)
@@ -51,7 +50,6 @@ export default function AdminSponsoredAdsPage() {
     refresh()
     fetchAdPricing().then((result) => {
       if (!result.ok) return
-      setPricing(result.pricing.feeByDurationDays)
       setPricingForm(
         Object.fromEntries(Object.entries(result.pricing.feeByDurationDays).map(([k, v]) => [k, String(v)])),
       )
@@ -101,7 +99,6 @@ export default function AdminSponsoredAdsPage() {
       toast.error(result.error)
       return
     }
-    setPricing(result.pricing.feeByDurationDays)
     toast.success("Ad pricing updated.")
   }
 

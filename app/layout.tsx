@@ -12,11 +12,36 @@ import './globals.css'
 const geistSans = Geist({ subsets: ['latin'], variable: '--font-geist-sans' })
 const playfair = Playfair_Display({ subsets: ['latin'], variable: '--font-playfair' })
 
+const SITE_URL = 'https://www.yashworld.shop'
+const SITE_TITLE = 'IXOFLORA — Premium Plant Marketplace'
+const SITE_DESCRIPTION =
+  'IXOFLORA is a premium marketplace for plants, pots, planters and gardening essentials from verified sellers.'
+
 export const metadata: Metadata = {
-  title: 'IXOFLORA — Premium Plant Marketplace',
-  description:
-    'IXOFLORA is a premium marketplace for plants, pots, planters and gardening essentials from verified sellers.',
-  generator: 'v0.app',
+  metadataBase: new URL(SITE_URL),
+  title: { default: SITE_TITLE, template: '%s' },
+  description: SITE_DESCRIPTION,
+  openGraph: {
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    url: SITE_URL,
+    siteName: 'IXOFLORA',
+    type: 'website',
+    locale: 'en_IN',
+  },
+  icons: {
+    icon: [
+      { url: '/icon-light-32x32.png', media: '(prefers-color-scheme: light)' },
+      { url: '/icon-dark-32x32.png', media: '(prefers-color-scheme: dark)' },
+      { url: '/icon.svg', type: 'image/svg+xml' },
+    ],
+    apple: '/apple-icon.png',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+  },
 }
 
 export const viewport: Viewport = {

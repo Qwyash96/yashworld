@@ -2,6 +2,7 @@ import { getProductCatalog, getCategoryCatalog } from "@/services/catalog.servic
 import { getActiveBanners } from "@/services/banner.service"
 import { getActiveFlashSales } from "@/services/campaign.service"
 import { getFeaturedSellers } from "@/services/seller.service"
+import { getRunningAdsByPosition } from "@/services/sponsored-ad.service"
 import { getTrustBadgesSettings } from "@/lib/platform-settings"
 import { calculateDiscountPercent } from "@/lib/discount"
 import { HeroSlider } from "@/components/marketplace/hero-slider"
@@ -13,6 +14,7 @@ import { ProductRail } from "@/components/marketplace/product-rail"
 import { RecentlyViewedSection } from "@/components/marketplace/recently-viewed-section"
 import { FullCatalogBrowser } from "@/components/marketplace/full-catalog-browser"
 import { NewsletterSection } from "@/components/marketplace/newsletter-section"
+import { SponsoredAdSlot } from "@/components/marketplace/sponsored-ad-slot"
 
 // Otherwise statically baked at build time with no refresh at all (no
 // dynamic input on this route) — a deleted/edited banner, or any other
@@ -34,18 +36,24 @@ export const revalidate = 60
  * Structure: Header/Search (site chrome) → Category Bar → ONE hero banner
  * slider → Best Sellers → New Arrivals → Today's Deals → Featured
  * (Indoor/Outdoor) → Trending → Recently Viewed → everything else. The
- * hero banner never repeats anywhere else on the page — no promo strips,
- * no ad strips scattered between rails (see git history if that's ever
- * wanted back as a proper native "Sponsored" card in a rail instead).
+ * hero banner never repeats anywhere else on the page — no promo strips
+ * between every rail.
+ *
+ * The one exception is SponsoredAdSlot, at its four fixed real positions
+ * (hero/after-trending/middle/bottom) — this is paid seller inventory
+ * (app/seller/marketing/promote charges real money via Razorpay for a
+ * placement an admin then approves), not decorative promo clutter, and
+ * each slot renders nothing at all when no ad is currently running there.
  */
 export default async function HomePage() {
-  const [products, categories, banners, flashSales, featuredSellers, trustBadgesSettings] = await Promise.all([
+  const [products, categories, banners, flashSales, featuredSellers, trustBadgesSettings, sponsoredAds] = await Promise.all([
     getProductCatalog(),
     getCategoryCatalog(),
     getActiveBanners(),
     getActiveFlashSales(),
     getFeaturedSellers(),
     getTrustBadgesSettings(),
+    getRunningAdsByPosition(),
   ])
 
   // Best Sellers only shows real sales — a marketplace with zero sales yet
@@ -80,6 +88,7 @@ export default async function HomePage() {
       <CategoryPillBar categories={categories} />
 
       <HeroSlider banners={banners} />
+      <SponsoredAdSlot ads={sponsoredAds.hero} />
 
       <FlashDeals campaigns={flashSales} />
 
@@ -105,14 +114,17 @@ export default async function HomePage() {
       <ProductRail id="outdoor-plants" title="Featured: Outdoor Plants" subtitle="Hardy plants for gardens & terraces" products={outdoorPlants} />
 
       <ProductRail id="trending" title="Trending Plants" subtitle="Popular with our shoppers right now" products={trending} />
+      <SponsoredAdSlot ads={sponsoredAds["after-trending"]} />
 
       <RecentlyViewedSection />
 
       <FeaturedSellers sellers={featuredSellers} />
+      <SponsoredAdSlot ads={sponsoredAds.middle} />
 
       <FullCatalogBrowser categories={categories} />
 
       <TrustBadges badges={trustBadgesSettings.badges} />
+      <SponsoredAdSlot ads={sponsoredAds.bottom} />
       <NewsletterSection />
     </div>
   )

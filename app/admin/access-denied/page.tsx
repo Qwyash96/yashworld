@@ -24,7 +24,6 @@ export default function AdminAccessDeniedPage() {
 
   useEffect(() => {
     if (uid) {
-      // eslint-disable-next-line no-console
       console.log("[admin-access-denied] uid:", uid, "email:", email, "docPath:", docPath, "role:", role, "reason:", reason)
     }
   }, [uid, email, docPath, role, reason])

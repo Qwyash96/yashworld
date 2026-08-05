@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { ChevronRight } from "lucide-react"
@@ -8,6 +9,34 @@ import { getProductCatalog } from "@/services/catalog.service"
 
 // See app/products/page.tsx for why this is needed on a Firestore-backed page.
 export const revalidate = 60
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params
+  const products = await getProductCatalog()
+  const product = products.find((p) => p.id === id)
+  if (!product) return { title: "Product — IXOFLORA" }
+
+  const cover = product.image
+  const title = `${product.name} — IXOFLORA`
+  const description = product.description?.slice(0, 160) || `Buy ${product.name} on IXOFLORA — India's premium plant marketplace.`
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      ...(cover ? { images: [{ url: cover }] } : {}),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      ...(cover ? { images: [cover] } : {}),
+    },
+  }
+}
 
 export default async function ProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params

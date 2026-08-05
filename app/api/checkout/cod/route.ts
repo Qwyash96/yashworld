@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { randomUUID } from "crypto"
 import { requireSignedInUser } from "@/lib/api-auth"
-import { finalizeOrder, InsufficientStockError } from "@/lib/order-finalize"
+import { finalizeOrder, InsufficientStockError, DuplicatePaymentError } from "@/lib/order-finalize"
 import { getIntegrationConfig } from "@/lib/integrations/config-store"
 import type { ShippingMethod } from "@/types/order"
 
@@ -14,6 +14,7 @@ interface CodCheckoutBody {
     fullName?: string
     line1?: string
     line2?: string
+    landmark?: string
     city?: string
     state?: string
     postalCode?: string
@@ -63,6 +64,7 @@ export async function POST(request: NextRequest) {
         fullName: address.fullName.trim(),
         line1: address.line1.trim(),
         ...(address.line2?.trim() ? { line2: address.line2.trim() } : {}),
+        ...(address.landmark?.trim() ? { landmark: address.landmark.trim() } : {}),
         city: address.city.trim(),
         state: address.state.trim(),
         postalCode: address.postalCode.trim(),
@@ -78,6 +80,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ orderId })
   } catch (error) {
+    if (error instanceof DuplicatePaymentError) {
+      // Idempotent retry — this exact cart was just submitted a moment ago
+      // (double-click, retry). Return the same order instead of placing it twice.
+      return NextResponse.json({ orderId: error.existingOrderId })
+    }
     if (error instanceof InsufficientStockError) {
       return NextResponse.json({ error: error.message }, { status: 409 })
     }

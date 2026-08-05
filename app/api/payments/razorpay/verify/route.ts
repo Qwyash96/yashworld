@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { randomUUID } from "crypto"
 import Razorpay from "razorpay"
 import { requireSignedInUser } from "@/lib/api-auth"
-import { computeTrustedTotal, finalizeOrder, InsufficientStockError } from "@/lib/order-finalize"
+import { computeTrustedTotal, finalizeOrder, InsufficientStockError, DuplicatePaymentError } from "@/lib/order-finalize"
 import { getRazorpayClient } from "@/lib/razorpay-admin"
 import { getDecryptedCredentials, getIntegrationConfig } from "@/lib/integrations/config-store"
 import type { ShippingMethod } from "@/types/order"
@@ -20,6 +20,7 @@ interface VerifyBody {
     fullName?: string
     line1?: string
     line2?: string
+    landmark?: string
     city?: string
     state?: string
     postalCode?: string
@@ -104,6 +105,7 @@ export async function POST(request: NextRequest) {
         fullName: address!.fullName!.trim(),
         line1: address!.line1!.trim(),
         ...(address!.line2?.trim() ? { line2: address!.line2.trim() } : {}),
+        ...(address!.landmark?.trim() ? { landmark: address!.landmark.trim() } : {}),
         city: address!.city!.trim(),
         state: address!.state!.trim(),
         postalCode: address!.postalCode!.trim(),
@@ -121,6 +123,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ orderId })
   } catch (error) {
+    if (error instanceof DuplicatePaymentError) {
+      // Idempotent retry — this exact Razorpay payment already created an
+      // order (the checkout handler firing twice, a network retry resending
+      // the same POST). Return the same order instead of creating a second
+      // one for a single real payment.
+      return NextResponse.json({ orderId: error.existingOrderId })
+    }
     if (error instanceof InsufficientStockError) {
       return NextResponse.json({ error: error.message }, { status: 409 })
     }

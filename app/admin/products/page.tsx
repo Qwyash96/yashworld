@@ -12,7 +12,6 @@ import {
 } from "@/services/product.service"
 import { getCoverImageUrl } from "@/lib/product-images"
 import { ProductImage } from "@/components/product-image"
-import { formatPrice } from "@/lib/products"
 import { Price } from "@/components/price"
 import type { Product, ProductStatus } from "@/types/product"
 import {

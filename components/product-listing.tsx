@@ -4,7 +4,6 @@ import { useMemo, useState } from "react"
 import { SlidersHorizontal } from "lucide-react"
 import { ProductCard } from "@/components/product-card"
 import { categories, type Product } from "@/lib/products"
-import { Button } from "@/components/ui/button"
 import {
   Select,
   SelectContent,

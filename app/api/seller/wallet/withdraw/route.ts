@@ -2,11 +2,16 @@ import { NextResponse, type NextRequest } from "next/server"
 import { requireSignedInUser } from "@/lib/api-auth"
 import { getAdminDb } from "@/lib/firebase-admin"
 import { recomputeSellerWallet } from "@/lib/wallet-service"
+import type { Order } from "@/types/order"
 import type { WithdrawalRequest } from "@/types/wallet"
 import type { AdminNotificationInput } from "@/types/notification"
 
 interface WithdrawBody {
   amount?: number
+}
+
+function round2(value: number): number {
+  return Math.round(value * 100) / 100
 }
 
 export async function POST(request: NextRequest) {
@@ -25,20 +30,57 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Enter a valid withdrawal amount." }, { status: 400 })
   }
 
-  const wallet = await recomputeSellerWallet(auth.uid)
-  if (amount > wallet.balance) {
-    return NextResponse.json({ error: `You can withdraw up to ${wallet.balance}.` }, { status: 400 })
-  }
-
   const now = new Date().toISOString()
   const ref = db.collection("withdrawalRequests").doc()
-  const withdrawalRequest: Omit<WithdrawalRequest, "id"> = {
-    sellerId: auth.uid,
-    amount,
-    status: "requested",
-    requestedAt: now,
+
+  try {
+    // Balance-check-then-write, inside one transaction — otherwise two
+    // near-simultaneous requests (double-click, two tabs) could both read
+    // the same available balance before either write commits, and both
+    // pass, letting a seller request more than they actually have
+    // available. Re-derives just the "available now" figure
+    // recomputeSellerWallet also computes (released - reserved - withdrawn),
+    // reading transactionally so it's atomic against a concurrent request.
+    await db.runTransaction(async (tx) => {
+      const [ordersSnap, withdrawalsSnap] = await Promise.all([
+        tx.get(db.collection("orders").where("sellerIds", "array-contains", auth.uid)),
+        tx.get(db.collection("withdrawalRequests").where("sellerId", "==", auth.uid)),
+      ])
+
+      let releasedTotal = 0
+      for (const doc of ordersSnap.docs) {
+        const order = doc.data() as Order
+        const sellerOrder = order.sellerOrders.find((so) => so.sellerId === auth.uid)
+        if (sellerOrder?.payoutStatus === "Released") releasedTotal += sellerOrder.payoutAmount
+      }
+
+      let reservedTotal = 0
+      let withdrawnTotal = 0
+      for (const doc of withdrawalsSnap.docs) {
+        const wr = doc.data() as WithdrawalRequest
+        if (wr.status === "requested" || wr.status === "approved") reservedTotal += wr.amount
+        else if (wr.status === "paid") withdrawnTotal += wr.amount
+      }
+
+      const available = round2(Math.max(0, releasedTotal - reservedTotal - withdrawnTotal))
+      if (amount > available) {
+        throw new Error(`You can withdraw up to ${available}.`)
+      }
+
+      const withdrawalRequest: Omit<WithdrawalRequest, "id"> = {
+        sellerId: auth.uid,
+        amount,
+        status: "requested",
+        requestedAt: now,
+      }
+      tx.set(ref, withdrawalRequest)
+    })
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to request withdrawal." },
+      { status: 400 },
+    )
   }
-  await ref.set(withdrawalRequest)
 
   const notification: AdminNotificationInput = {
     type: "withdrawal_requested",

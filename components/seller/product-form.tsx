@@ -35,13 +35,11 @@ export type ProductFormValues = {
   indoor: boolean
 }
 
-const NUMERIC_DRAFT_KEYS = ["price", "originalPrice", "stock", "wateringFrequencyDays"] as const
-
 /** Internal editing shape — the four numeric fields are plain strings while
  * the user is typing, so the input can be genuinely blank (not "0") and
  * never round-trips through Number() on every keystroke, which is what
  * causes a value like "05" to appear when typing "5" after a stray zero. */
-type ProductFormDraft = Omit<ProductFormValues, (typeof NUMERIC_DRAFT_KEYS)[number]> & {
+type ProductFormDraft = Omit<ProductFormValues, "price" | "originalPrice" | "stock" | "wateringFrequencyDays"> & {
   price: string
   originalPrice: string
   stock: string

@@ -1,4 +1,5 @@
 import "server-only"
+import { createHash } from "crypto"
 import { FieldValue } from "firebase-admin/firestore"
 import { getAdminDb } from "@/lib/firebase-admin"
 import { getShippingRate } from "@/lib/shipping"
@@ -21,6 +22,17 @@ import type { SellerNotificationInput } from "@/types/seller-notification"
 // the class itself now lives in lib/pricing-engine.ts, next to the stock
 // check that throws it.
 export { InsufficientStockError }
+
+/** Thrown when finalizeOrder detects this exact payment/attempt already
+ * created an order — a double-click, a network retry re-sending the same
+ * request, or (for Razorpay) the checkout handler firing twice. Callers
+ * should treat this as success, not an error: return `existingOrderId`
+ * instead of the error. */
+export class DuplicatePaymentError extends Error {
+  constructor(public existingOrderId: string) {
+    super("This payment has already been processed.")
+  }
+}
 
 export interface FinalizeOrderInput {
   buyerId: string
@@ -67,14 +79,40 @@ export async function finalizeOrder(input: FinalizeOrderInput): Promise<Finalize
   const couponCode = input.couponCode?.trim().toUpperCase()
   const couponRef = couponCode ? db.collection("coupons").doc(couponCode) : null
 
+  // Idempotency guard against a double-submit creating two orders for one
+  // real checkout attempt (double-click, a network retry re-sending the
+  // same request, the Razorpay handler firing twice). Razorpay's payment id
+  // is already a unique, gateway-verified key. COD has no such external id,
+  // so it gets a content hash of buyer+cart+a coarse time bucket instead —
+  // not a perfect guarantee (a genuine repeat order of the identical cart
+  // within the window would also be caught), but it eliminates the common
+  // double-click case without a new composite query/index.
+  const idempotencyKey = input.razorpayPaymentId
+    ? `razorpay:${input.razorpayPaymentId}`
+    : `cod:${createHash("sha256")
+        .update(
+          [
+            input.buyerId,
+            ...input.items.map((i) => `${i.productId}:${i.quantity}`).sort(),
+            Math.floor(Date.now() / 10_000),
+          ].join("|"),
+        )
+        .digest("hex")}`
+  const idempotencyRef = db.collection("processedPayments").doc(idempotencyKey)
+
   const total = await db.runTransaction(async (tx) => {
     const now = new Date()
 
-    const [productSnaps, commissionSnap, couponSnap] = await Promise.all([
+    const [productSnaps, commissionSnap, couponSnap, idempotencySnap] = await Promise.all([
       tx.getAll(...productRefs),
       tx.get(commissionRef),
       couponRef ? tx.get(couponRef) : Promise.resolve(null),
+      tx.get(idempotencyRef),
     ])
+
+    if (idempotencySnap.exists) {
+      throw new DuplicatePaymentError(idempotencySnap.data()!.orderId as string)
+    }
 
     const lineInputs: PricingLineInput[] = []
     for (let i = 0; i < input.items.length; i++) {
@@ -215,6 +253,7 @@ export async function finalizeOrder(input: FinalizeOrderInput): Promise<Finalize
     }
 
     tx.set(orderRef, order)
+    tx.set(idempotencyRef, { orderId: orderRef.id, createdAt: now.toISOString() })
 
     // Admin bell notifications — written inside this same trusted
     // transaction (the only "an order was just placed/paid" choke point in

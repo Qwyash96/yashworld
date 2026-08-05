@@ -237,6 +237,15 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // processedPayments/{idempotencyKey} — an internal dedup guard
+    // (lib/order-finalize.ts) that stops a double-submitted checkout from
+    // creating two orders for one real payment/attempt. Written and read
+    // only by the Admin SDK inside the same transaction that creates the
+    // order; a client has no legitimate reason to touch this at all.
+    match /processedPayments/{key} {
+      allow read, write: if false;
+    }
+
     // carts/{uid} — one document per user
     match /carts/{uid} {
       allow read, write: if isOwner(uid);

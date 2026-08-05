@@ -64,7 +64,6 @@ export default function AdminIntegrationDetailPage() {
   }
 
   useEffect(refresh, [providerId])
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(loadLogs, [providerId, logLevel])
 
   // AdminLayout's route guard is the authoritative gate here (see
