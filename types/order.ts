@@ -50,13 +50,18 @@ export interface SellerOrder {
   trackingNumber?: string
   /** Set once a courier is assigned via Schedule Pickup. */
   courierPartner?: string
-  /** Set only when Schedule Pickup went through Shiprocket's live API (Auto
+  /** Set only when Schedule Pickup went through a courier's live API (Auto
    * AWB Generation) rather than manual entry — the machine-readable flag
    * app/api/seller/orders/[id]/track checks before attempting a live
    * tracking pull, since `courierPartner` itself is just a display string
    * (and for Shiprocket shipments names the actual assigned sub-carrier,
-   * e.g. "Delhivery Surface", not "Shiprocket"). */
-  shippingProvider?: "shiprocket"
+   * e.g. "Delhivery Surface", not "Shiprocket"). See lib/shipping-service.ts
+   * for the common interface every auto-AWB-capable provider implements. */
+  shippingProvider?: "shiprocket" | "amazon-shipping" | "ekart" | "shift-logistics"
+  /** The provider's own internal shipment id (distinct from trackingNumber,
+   * the AWB) — some couriers' cancel/label endpoints operate on this rather
+   * than the AWB. Only set alongside shippingProvider. */
+  providerShipmentId?: string
   pickupDate?: string
   pickupTime?: string
   shippedAt?: string

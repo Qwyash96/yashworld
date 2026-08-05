@@ -41,7 +41,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 
-const COURIER_OPTIONS = ["Shiprocket", "Delhivery", "Blue Dart", "Xpressbees", "DTDC", "Other"]
+const COURIER_OPTIONS = ["Shiprocket", "Delhivery", "Blue Dart", "Xpressbees", "DTDC", "Amazon Shipping", "Ekart Logistics", "Shift Logistics", "Other"]
 
 /** From Pickup Requested onward, a Shiprocket shipment advances on its own
  * via handleSyncTracking (the courier's real tracking API) — this map is
@@ -381,7 +381,7 @@ export default function SellerOrderDetailPage() {
                 </Button>
               )}
               {MANUAL_ADVANCE[status] &&
-                (mine.shippingProvider === "shiprocket" ? (
+                (mine.shippingProvider ? (
                   <div className="flex flex-wrap items-center gap-3">
                     <p className="text-sm text-[#444444]">Updates automatically from the courier&apos;s tracking API.</p>
                     <Button size="sm" variant="outline" className="h-9" onClick={handleSyncTracking} disabled={syncing}>

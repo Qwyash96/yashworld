@@ -39,7 +39,7 @@ const registeredNames = (arrayMatch?.[1] ?? "")
   .filter(Boolean)
 
 console.log(`\n=== ${registeredNames.length} adapters registered ===`)
-assert(registeredNames.length === 21, `expected 21 adapters, found ${registeredNames.length}`)
+assert(registeredNames.length === 24, `expected 24 adapters, found ${registeredNames.length}`)
 
 const files = readdirSync(ADAPTERS_DIR).filter((f) => f.endsWith(".ts") && f !== "twilio-shared.ts")
 assert(files.length === registeredNames.length, `one adapter file per registered adapter (${files.length} files, ${registeredNames.length} registered)`)
@@ -69,10 +69,10 @@ for (const file of files) {
   if (supportsWebhook) assert(/async handleWebhook/.test(source), `${file} declares supportsWebhook and implements handleWebhook`)
 }
 
-console.log("\n=== Category counts match the plan (Payment 6, Shipping 5, Checkout 1, WhatsApp 2, Email 3, SMS 2, Analytics 2) ===")
+console.log("\n=== Category counts match the plan (Payment 6, Shipping 8, Checkout 1, WhatsApp 2, Email 3, SMS 2, Analytics 2) ===")
 const EXPECTED_COUNTS: Record<string, number> = {
   payment: 6,
-  shipping: 5,
+  shipping: 8,
   checkout: 1,
   whatsapp: 2,
   email: 3,

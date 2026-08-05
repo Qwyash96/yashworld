@@ -1,8 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { requireApprovedSeller } from "@/lib/seller-auth"
 import { getAdminDb } from "@/lib/firebase-admin"
-import { getDecryptedCredentials, getIntegrationConfig } from "@/lib/integrations/config-store"
-import { createShiprocketShipment, assignShiprocketAwb } from "@/lib/shiprocket-client"
+import { tryAutoGenerateAwb as tryAutoGenerateAwbCommon, cancelShipment as cancelShipmentCommon, type AutoAwbResult } from "@/lib/shipping-service"
 import {
   buildTransitionedSellerOrder,
   notifySellerOrderTransition,
@@ -16,44 +15,29 @@ interface StatusBody {
   status?: OrderStatus
   /** Required when rejecting/cancelling — stored as SellerOrder.rejectionReason and as the timeline note. */
   reason?: string
-  /** Required exactly when transitioning to "Pickup Requested" (the Schedule Pickup action), unless Shiprocket Auto AWB Generation is on — then this route assigns it live instead. */
+  /** Required exactly when transitioning to "Pickup Requested" (the Schedule Pickup action), unless a shipping provider's Auto AWB Generation is on — then this route assigns it live instead. */
   courierPartner?: string
   pickupDate?: string
   pickupTime?: string
   trackingNumber?: string
 }
 
-interface ShiprocketAutoResult {
-  courierPartner: string
-  trackingNumber: string
-}
-
 /**
- * When Shiprocket's "Auto AWB Generation" setting is on, creates the real
- * shipment and assigns a real AWB via lib/shiprocket-client.ts instead of
- * requiring the seller to type in a courier name and tracking number by
- * hand. Deliberately called BEFORE the Firestore transaction below (a
- * transaction should never wrap an external network call — Firestore may
- * retry it on contention) using a plain, non-transactional read of the
- * order; the transaction re-reads and re-validates the transition itself,
- * so a stale read here just fails safely rather than corrupting state.
- * Returns null when Auto AWB isn't configured, so the caller falls back to
- * the existing manual flow untouched.
+ * When a shipping provider's "Auto AWB Generation" setting is on, creates
+ * the real shipment and assigns a real AWB through that provider's own API
+ * (see lib/shipping-service.ts — the common interface every auto-AWB-
+ * capable courier implements: Shiprocket, Amazon Shipping, Ekart, Shift
+ * Logistics) instead of requiring the seller to type in a courier name and
+ * tracking number by hand. Deliberately called BEFORE the Firestore
+ * transaction below (a transaction should never wrap an external network
+ * call — Firestore may retry it on contention) using a plain,
+ * non-transactional read of the order; the transaction re-reads and
+ * re-validates the transition itself, so a stale read here just fails
+ * safely rather than corrupting state. Returns null when no provider has
+ * Auto AWB configured, so the caller falls back to the existing manual flow
+ * untouched.
  */
-async function tryAutoGenerateAwb(order: Order, sellerId: string): Promise<ShiprocketAutoResult | null> {
-  const [config, credentials] = await Promise.all([
-    getIntegrationConfig("shiprocket"),
-    getDecryptedCredentials("shiprocket"),
-  ])
-  const settings = config.settings as { autoAwb?: boolean; pickupLocationName?: string }
-  if (!config.enabled || !settings.autoAwb) return null
-  if (!credentials.email || !credentials.password) {
-    throw new Error("Shiprocket Auto AWB is on, but Shiprocket isn't connected. Fix this in Admin → Integrations → Shiprocket.")
-  }
-  if (!settings.pickupLocationName?.trim()) {
-    throw new Error("Shiprocket Auto AWB is on, but no Pickup Location Nickname is set. Fix this in Admin → Integrations → Shiprocket.")
-  }
-
+async function tryAutoGenerateAwb(order: Order, sellerId: string): Promise<AutoAwbResult | null> {
   const sellerOrder = order.sellerOrders.find((so) => so.sellerId === sellerId)
   if (!sellerOrder) throw new Error("You don't have any items on this order.")
 
@@ -67,12 +51,11 @@ async function tryAutoGenerateAwb(order: Order, sellerId: string): Promise<Shipr
   }))
   const subTotal = items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
 
-  const credentialPair = { email: credentials.email, password: credentials.password }
-  const shipment = await createShiprocketShipment(credentialPair, {
-    // One order can hold several sellers' shipments — Shiprocket needs a
+  return tryAutoGenerateAwbCommon({
+    // One order can hold several sellers' shipments — each courier needs a
     // unique order_id per shipment, so this seller's uid is appended.
     orderId: `${order.id}-${sellerId}`,
-    pickupLocationName: settings.pickupLocationName.trim(),
+    pickupLocationName: "",
     paymentMethod: order.paymentMethod,
     subTotal,
     customerName: order.shippingAddress.fullName,
@@ -85,9 +68,6 @@ async function tryAutoGenerateAwb(order: Order, sellerId: string): Promise<Shipr
     postalCode: order.shippingAddress.postalCode,
     items,
   })
-  const awb = await assignShiprocketAwb(credentialPair, shipment.shipmentId)
-
-  return { courierPartner: `${awb.courierName} (Shiprocket)`, trackingNumber: awb.awbCode }
 }
 
 /**
@@ -120,7 +100,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     return NextResponse.json({ error: "A reason is required to reject/cancel an order." }, { status: 400 })
   }
 
-  let autoAwb: ShiprocketAutoResult | null = null
+  let autoAwb: AutoAwbResult | null = null
   if (nextStatus === "Pickup Requested") {
     try {
       const orderSnap = await db.collection("orders").doc(orderId).get()
@@ -128,12 +108,32 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       autoAwb = await tryAutoGenerateAwb(orderSnap.data() as Order, auth.uid)
     } catch (error) {
       return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Failed to auto-generate the AWB with Shiprocket." },
+        { error: error instanceof Error ? error.message : "Failed to auto-generate the AWB with the configured shipping provider." },
         { status: 502 },
       )
     }
     if (!autoAwb && !body.courierPartner?.trim()) {
       return NextResponse.json({ error: "Courier partner is required to schedule a pickup." }, { status: 400 })
+    }
+  }
+
+  // Cancel Pickup on an auto-shipped order (Pickup Requested -> Packed) —
+  // actually cancels the real shipment with whichever provider created it,
+  // not just the local status. Best-effort in the sense that a courier that
+  // already picked up the package will legitimately reject the cancel; a
+  // seller in that position needs to know, not have this silently ignored.
+  if (nextStatus === "Packed") {
+    const orderSnap = await db.collection("orders").doc(orderId).get()
+    const currentSellerOrder = (orderSnap.data() as Order | undefined)?.sellerOrders.find((so) => so.sellerId === auth.uid)
+    if (currentSellerOrder?.status === "Pickup Requested" && currentSellerOrder.shippingProvider && currentSellerOrder.providerShipmentId) {
+      try {
+        await cancelShipmentCommon(currentSellerOrder.shippingProvider, currentSellerOrder.providerShipmentId)
+      } catch (error) {
+        return NextResponse.json(
+          { error: error instanceof Error ? error.message : "Failed to cancel the shipment with the shipping provider." },
+          { status: 502 },
+        )
+      }
     }
   }
 
@@ -156,7 +156,9 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           pickupTime: body.pickupTime,
           trackingNumber: autoAwb?.trackingNumber ?? body.trackingNumber,
         }),
-        ...(autoAwb && nextStatus === "Pickup Requested" ? { shippingProvider: "shiprocket" as const } : {}),
+        ...(autoAwb && nextStatus === "Pickup Requested"
+          ? { shippingProvider: autoAwb.shippingProvider, providerShipmentId: autoAwb.providerShipmentId }
+          : {}),
       }
 
       const sellerOrders = [...order.sellerOrders]

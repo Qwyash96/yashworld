@@ -177,6 +177,15 @@ export async function trackShiprocketAwb(
   return { rawStatus }
 }
 
+/** Cancels a shipment by Shiprocket's internal order id (not the AWB) — used by lib/shipping-service.ts's common cancelShipment(). */
+export async function cancelShiprocketShipment(
+  credentials: { email: string; password: string },
+  shiprocketOrderId: number,
+): Promise<void> {
+  const token = await getToken(credentials.email, credentials.password)
+  await shiprocketFetch("/orders/cancel", token, { method: "POST", body: { ids: [shiprocketOrderId] } })
+}
+
 /** Maps Shiprocket's free-text courier status onto this app's OrderStatus pipeline. Unrecognized/earlier statuses return null (no transition). */
 export function mapShiprocketStatusToOrderStatus(rawStatus: string): "Picked Up" | "In Transit" | "Out For Delivery" | "Delivered" | null {
   const normalized = rawStatus.toUpperCase()

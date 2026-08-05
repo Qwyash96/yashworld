@@ -13,6 +13,9 @@ import { delhiveryAdapter } from "@/lib/integrations/adapters/delhivery"
 import { bluedartAdapter } from "@/lib/integrations/adapters/bluedart"
 import { xpressbeesAdapter } from "@/lib/integrations/adapters/xpressbees"
 import { dtdcAdapter } from "@/lib/integrations/adapters/dtdc"
+import { amazonShippingAdapter } from "@/lib/integrations/adapters/amazon-shipping"
+import { ekartAdapter } from "@/lib/integrations/adapters/ekart"
+import { shiftLogisticsAdapter } from "@/lib/integrations/adapters/shift-logistics"
 import { metaWhatsappAdapter } from "@/lib/integrations/adapters/meta-whatsapp"
 import { twilioWhatsappAdapter } from "@/lib/integrations/adapters/twilio-whatsapp"
 import { resendAdapter } from "@/lib/integrations/adapters/resend"
@@ -52,6 +55,9 @@ const ADAPTERS: IntegrationAdapter[] = [
   bluedartAdapter,
   xpressbeesAdapter,
   dtdcAdapter,
+  amazonShippingAdapter,
+  ekartAdapter,
+  shiftLogisticsAdapter,
   metaWhatsappAdapter,
   twilioWhatsappAdapter,
   resendAdapter,

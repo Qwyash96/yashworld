@@ -1,8 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { requireApprovedSeller } from "@/lib/seller-auth"
 import { getAdminDb } from "@/lib/firebase-admin"
-import { getDecryptedCredentials } from "@/lib/integrations/config-store"
-import { trackShiprocketAwb, mapShiprocketStatusToOrderStatus } from "@/lib/shiprocket-client"
+import { trackShipment, getShippingProviderDisplayName, type CommonTrackingResult } from "@/lib/shipping-service"
 import { buildTransitionedSellerOrder, notifySellerOrderTransition } from "@/lib/order-status-transition"
 import { ORDER_FULFILMENT_SEQUENCE } from "@/types/order-lifecycle"
 import type { Order, SellerOrder } from "@/types/order"
@@ -12,11 +11,13 @@ type RouteContext = { params: Promise<{ id: string }> }
 /**
  * Live pull, not a passive webhook (see lib/integrations/adapters/shiprocket.ts's
  * doc comment for why) — the seller clicks "Sync Tracking" and this fetches
- * the AWB's current status straight from Shiprocket, then walks the
- * sellerOrder forward through the SAME validated fulfilment sequence a
- * manual update uses (one hop per intermediate stage, so a courier update
- * that skipped straight from "Picked Up" to "Delivered" between syncs still
- * produces a complete, honest timeline instead of a single jump).
+ * the AWB's current status straight from whichever provider auto-shipped
+ * this order (see lib/shipping-service.ts — the common interface every
+ * auto-AWB-capable courier implements), then walks the sellerOrder forward
+ * through the SAME validated fulfilment sequence a manual update uses (one
+ * hop per intermediate stage, so a courier update that skipped straight
+ * from "Picked Up" to "Delivered" between syncs still produces a complete,
+ * honest timeline instead of a single jump).
  */
 export async function POST(request: NextRequest, { params }: RouteContext) {
   const auth = await requireApprovedSeller(request)
@@ -31,27 +32,23 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
   const sellerOrder = order.sellerOrders.find((so) => so.sellerId === auth.uid)
   if (!sellerOrder) return NextResponse.json({ error: "You don't have any items on this order." }, { status: 403 })
-  if (sellerOrder.shippingProvider !== "shiprocket" || !sellerOrder.trackingNumber) {
-    return NextResponse.json({ error: "This shipment isn't tracked via Shiprocket." }, { status: 400 })
-  }
-
-  const credentials = await getDecryptedCredentials("shiprocket")
-  if (!credentials.email || !credentials.password) {
-    return NextResponse.json({ error: "Shiprocket isn't connected." }, { status: 503 })
+  if (!sellerOrder.shippingProvider || !sellerOrder.trackingNumber) {
+    return NextResponse.json({ error: "This shipment isn't tracked via a connected shipping provider." }, { status: 400 })
   }
 
   let rawStatus: string
+  let mappedStatus: CommonTrackingResult["mappedStatus"]
   try {
-    const tracking = await trackShiprocketAwb({ email: credentials.email, password: credentials.password }, sellerOrder.trackingNumber)
+    const tracking = await trackShipment(sellerOrder.shippingProvider, sellerOrder.trackingNumber)
     rawStatus = tracking.rawStatus
+    mappedStatus = tracking.mappedStatus
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to fetch tracking from Shiprocket." },
+      { error: error instanceof Error ? error.message : `Failed to fetch tracking from ${getShippingProviderDisplayName(sellerOrder.shippingProvider)}.` },
       { status: 502 },
     )
   }
 
-  const mappedStatus = mapShiprocketStatusToOrderStatus(rawStatus)
   const currentIndex = ORDER_FULFILMENT_SEQUENCE.indexOf(sellerOrder.status)
   const targetIndex = mappedStatus ? ORDER_FULFILMENT_SEQUENCE.indexOf(mappedStatus) : -1
 
@@ -74,7 +71,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       for (let i = freshIndex + 1; i <= targetIndex; i++) {
         const isFinalHop = i === targetIndex
         updated = buildTransitionedSellerOrder(updated, ORDER_FULFILMENT_SEQUENCE[i], {
-          ...(isFinalHop ? { reason: `Synced from Shiprocket: ${rawStatus}` } : {}),
+          ...(isFinalHop ? { reason: `Synced from ${getShippingProviderDisplayName(sellerOrder.shippingProvider!)}: ${rawStatus}` } : {}),
         })
       }
 
