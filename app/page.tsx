@@ -16,7 +16,13 @@ import { SponsoredAdSlot } from "@/components/marketplace/sponsored-ad-slot"
 import { RecentlyViewedSection } from "@/components/marketplace/recently-viewed-section"
 import { FullCatalogBrowser } from "@/components/marketplace/full-catalog-browser"
 import { NewsletterSection } from "@/components/marketplace/newsletter-section"
-import type { Banner } from "@/types/banner"
+
+// Otherwise statically baked at build time with no refresh at all (no
+// dynamic input on this route) — a deleted/edited banner, or any other
+// admin change reflected here, would never show up without a full
+// redeploy. Matches the same 60s ISR contract app/products/page.tsx and
+// app/categories/page.tsx already use for the same reason.
+export const revalidate = 60
 
 /**
  * The homepage — every section below is real, admin-editable, database-
@@ -39,25 +45,6 @@ export default async function HomePage() {
       getTrustBadgesSettings(),
       getRunningAdsByPosition(),
     ])
-
-  // Position 1 (Top Hero Slider) — a paid seller promotion slots into the
-  // same rotation as admin banners, just appended after them (real banners
-  // always lead) and ranked among themselves by priority.
-  const heroSlides: Banner[] = [
-    ...banners,
-    ...adsByPosition.hero.map(
-      (ad, i): Banner => ({
-        id: `ad-${ad.id}`,
-        imageUrl: ad.productImage,
-        title: ad.productName,
-        buttonText: "Shop Now",
-        productId: ad.productId,
-        order: banners.length + i,
-        active: true,
-        createdAt: ad.createdAt,
-      }),
-    ),
-  ]
 
   // Trending: highest rating x review-volume — a simple, honest popularity
   // proxy that needs no separate analytics pipeline.
@@ -88,7 +75,14 @@ export default async function HomePage() {
 
   return (
     <div className="bg-white">
-      <HeroSlider banners={heroSlides} />
+      <HeroSlider banners={banners} />
+
+      {/* Position 1 — a paid seller promotion never mixes into the hero
+       * banner rotation itself (that slot is real admin-uploaded creative
+       * only); it gets its own thin strip right below instead, same
+       * treatment as Positions 2-4. */}
+      <SponsoredAdSlot ads={adsByPosition.hero} />
+
       <CategoryPillBar categories={categories} />
 
       {/* Flash Sale / Offers — leads the page right after the hero, per the

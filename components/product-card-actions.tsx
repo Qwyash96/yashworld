@@ -27,7 +27,7 @@ export function ProductCardActions({ product }: { product: Product }) {
   }
 
   return (
-    <div className="mt-2 flex flex-nowrap gap-1">
+    <div className="mt-1.5 flex flex-nowrap gap-1">
       <button
         type="button"
         onClick={handleAddToCart}

@@ -121,7 +121,7 @@ export function ProductListing({
           </p>
         </div>
       ) : (
-        <div className="mt-4 grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-4 lg:grid-cols-6">
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:gap-2.5 md:grid-cols-4 lg:grid-cols-6">
           {filtered.map((p) => (
             <ProductCard key={p.id} product={p} />
           ))}

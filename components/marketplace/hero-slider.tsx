@@ -16,20 +16,24 @@ function bannerHref(banner: Banner): string | undefined {
   return banner.linkUrl
 }
 
-/** Real admin-managed banners (Admin → Marketing → Home Banners) — unlimited
- * count, renders nothing when there are none so a fresh install never shows
- * a placeholder slide. All slides render in one sliding track (smooth CSS
- * transform transition) so both auto-advance and swipe feel identical. */
+/** Real admin-managed banners (Admin → Marketing → Home Banners) only —
+ * never a product photo (see app/page.tsx, which keeps paid sponsored
+ * placements in their own strip below instead of mixing them in here).
+ * Unlimited count, renders nothing when there are none so a fresh install
+ * (or every banner deleted) never shows a placeholder slide. All slides
+ * render in one sliding track (smooth CSS transform transition) so both
+ * auto-advance and swipe feel identical. */
 export function HeroSlider({ banners }: { banners: Banner[] }) {
   const [index, setIndex] = useState(0)
+  const [paused, setPaused] = useState(false)
   const touchStartX = useRef<number | null>(null)
   const touchDeltaX = useRef(0)
 
   useEffect(() => {
-    if (banners.length < 2) return
+    if (banners.length < 2 || paused) return
     const timer = setInterval(() => setIndex((i) => (i + 1) % banners.length), AUTO_ADVANCE_MS)
     return () => clearInterval(timer)
-  }, [banners.length])
+  }, [banners.length, paused])
 
   if (banners.length === 0) return null
 
@@ -58,10 +62,12 @@ export function HeroSlider({ banners }: { banners: Banner[] }) {
   return (
     <section className="relative mx-3 mt-3 max-w-7xl overflow-hidden sm:mx-4 lg:mx-auto lg:px-4">
       <div
-        className="relative touch-pan-y overflow-hidden rounded-2xl bg-gray-100"
+        className="relative touch-pan-y overflow-hidden rounded-2xl bg-white"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
       >
         <div
           className="flex transition-transform duration-500 ease-out"
@@ -70,7 +76,7 @@ export function HeroSlider({ banners }: { banners: Banner[] }) {
           {banners.map((banner, i) => {
             const href = bannerHref(banner)
             const slide = (
-              <div className="relative h-[130px] w-full shrink-0 overflow-hidden md:h-[160px] lg:h-[190px]">
+              <div className="relative h-[150px] w-full shrink-0 overflow-hidden bg-white md:h-[200px] lg:h-[240px]">
                 <Image
                   src={banner.imageUrl}
                   alt={banner.title ?? "Promotional banner"}
@@ -78,10 +84,10 @@ export function HeroSlider({ banners }: { banners: Banner[] }) {
                   priority={i === 0}
                   loading={i === 0 ? undefined : "lazy"}
                   sizes="100vw"
-                  className="object-cover"
+                  className="object-contain"
                 />
                 {(banner.title || banner.subtitle || banner.buttonText) && (
-                  <div className="absolute inset-0 flex flex-col items-start justify-end gap-1 bg-gradient-to-t from-black/55 to-transparent p-3 lg:p-4">
+                  <div className="absolute inset-x-0 bottom-0 flex flex-col items-start gap-1 bg-black/65 p-3 lg:p-4">
                     {banner.title && (
                       <h2 className="max-w-lg text-sm font-bold text-white sm:text-base lg:text-lg">{banner.title}</h2>
                     )}

@@ -28,7 +28,7 @@ export function ProductCard({ product }: { product: Product }) {
   return (
     <div className="group overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
       <Link href={`/products/${product.id}`} className="relative block aspect-square overflow-hidden">
-        <ProductImage src={product.image} alt={product.name} className="absolute inset-0" padding="sm" />
+        <ProductImage src={product.image} alt={product.name} className="absolute inset-0" padding="xs" />
 
         {discountPercent > 0 && (
           <DiscountBadge percent={discountPercent} className="absolute left-1.5 top-1.5 shadow-sm" />
@@ -69,16 +69,16 @@ export function ProductCard({ product }: { product: Product }) {
         </div>
       </Link>
 
-      <div className="p-2 sm:p-2.5">
+      <div className="p-1.5 sm:p-2">
         <h3 className="line-clamp-2 text-xs font-medium leading-tight text-black sm:text-sm">{product.name}</h3>
 
-        <div className="mt-1 flex items-center gap-0.5 text-[11px]">
+        <div className="mt-0.5 flex items-center gap-0.5 text-[11px]">
           <Star className="size-3 fill-yellow-400 text-yellow-400" />
           <span className="font-semibold text-black">{product.rating}</span>
           <span className="text-[#888888]">({product.reviews})</span>
         </div>
 
-        <Price price={product.price} originalPrice={product.originalPrice} size="sm" className="mt-1" />
+        <Price price={product.price} originalPrice={product.originalPrice} size="sm" className="mt-0.5" />
 
         <ProductCardActions product={product} />
       </div>
