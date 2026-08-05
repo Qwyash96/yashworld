@@ -12,7 +12,6 @@ import { formatPrice } from "@/lib/products"
 import type { Order, OrderStatus } from "@/types/order"
 import type { SellerWallet, WithdrawalRequest } from "@/types/wallet"
 import { OrderStatusBadge } from "@/components/orders/order-status-badge"
-import { SellerNotificationBell } from "@/components/seller/seller-notification-bell"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
@@ -149,12 +148,11 @@ export default function SellerOrdersPage() {
           <Link href="/seller/shipping" className="text-sm font-medium text-green-700 hover:underline">
             Shipping Dashboard
           </Link>
-          <SellerNotificationBell sellerId={sellerUid!} />
         </div>
       </div>
 
       {wallet && (
-        <section className="mt-6 rounded-2xl border border-border bg-white p-5 shadow-sm">
+        <section id="wallet" className="mt-6 scroll-mt-20 rounded-2xl border border-border bg-white p-5 shadow-sm">
           <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-[#444444]">
             <WalletIcon className="size-4 text-green-700" />
             Wallet

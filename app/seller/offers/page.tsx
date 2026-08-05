@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
-import { Menu, Tag, Ticket, Megaphone, BarChart3, Pencil, X } from "lucide-react"
+import { Tag, Ticket, Megaphone, BarChart3, Pencil, X } from "lucide-react"
 import { useSellerGate } from "@/hooks/use-seller-status"
 import { getProductsBySeller, setScheduledOffer, clearScheduledOffer } from "@/services/product.service"
 import { getOrdersBySeller } from "@/services/order.service"
@@ -31,9 +31,8 @@ import type { DiscountSource, Order } from "@/types/order"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { SellerSidebar, SellerSidebarContent } from "@/components/seller/seller-sidebar"
 import { StatCard } from "@/components/seller/stat-card"
 
 const emptyOfferForm = { price: "", startAt: "", endAt: "" }
@@ -58,7 +57,6 @@ const ANALYTICS_SOURCES: { source: DiscountSource; label: string }[] = [
 export default function SellerOffersPage() {
   const gate = useSellerGate()
   const sellerUid = gate.state === "approved" ? gate.uid : null
-  const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
   const [products, setProducts] = useState<Product[] | null>(null)
   const [coupons, setCoupons] = useState<Coupon[] | null>(null)
@@ -323,29 +321,15 @@ export default function SellerOffersPage() {
   )
 
   return (
-    <div className="flex min-h-screen bg-[#F8F8F2]">
-      <SellerSidebar />
+    <div>
+      <header className="flex items-center gap-4 border-b border-gray-200 bg-white px-4 py-5 sm:px-6 lg:px-10">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Offers</h1>
+          <p className="text-sm text-gray-500">Scheduled offers, your coupons, and campaign participation.</p>
+        </div>
+      </header>
 
-      <div className="min-w-0 flex-1">
-        <header className="flex items-center gap-4 border-b border-gray-200 bg-white px-4 py-5 sm:px-6 lg:px-10">
-          <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-            <SheetTrigger aria-label="Open menu" className="rounded-xl border border-gray-200 p-2 text-gray-600 lg:hidden">
-              <Menu className="h-5 w-5" />
-            </SheetTrigger>
-            <SheetContent side="left" className="w-72 p-0">
-              <SheetHeader className="sr-only">
-                <SheetTitle>Seller Menu</SheetTitle>
-              </SheetHeader>
-              <SellerSidebarContent />
-            </SheetContent>
-          </Sheet>
-          <div>
-            <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Offers</h1>
-            <p className="text-sm text-gray-500">Scheduled offers, your coupons, and campaign participation.</p>
-          </div>
-        </header>
-
-        <main className="space-y-10 px-4 py-8 sm:px-6 lg:px-10">
+      <main className="space-y-10 px-4 py-8 sm:px-6 lg:px-10">
           {/* Analytics */}
           {analytics && (
             <section>
@@ -513,7 +497,6 @@ export default function SellerOffersPage() {
             )}
           </section>
         </main>
-      </div>
 
       {/* Scheduled Offer Sheet */}
       <Sheet open={!!offerSheetProduct} onOpenChange={(open) => !open && setOfferSheetProduct(null)}>

@@ -3,24 +3,6 @@
 import Link from "next/link"
 import { useRouter, usePathname } from "next/navigation"
 import {
-  Home,
-  LayoutDashboard,
-  Bell,
-  Users,
-  ShoppingBag,
-  ClipboardList,
-  Wallet,
-  Megaphone,
-  BarChart3,
-  Settings,
-  LifeBuoy,
-  ShieldCheck,
-  LogOut,
-  Plug,
-  FolderOpen,
-  type LucideIcon,
-} from "lucide-react"
-import {
   Accordion,
   AccordionItem,
   AccordionTrigger,
@@ -47,7 +29,6 @@ type AdminSectionItem = {
 
 type AdminSection = {
   label: string
-  icon: LucideIcon
   permission: AdminPermission
   items: AdminSectionItem[]
 }
@@ -55,7 +36,6 @@ type AdminSection = {
 export const adminSections: AdminSection[] = [
   {
     label: "Users",
-    icon: Users,
     permission: "user_management",
     items: [
       { label: "Buyers", href: "/admin/users", permission: "user_management" },
@@ -66,7 +46,6 @@ export const adminSections: AdminSection[] = [
   },
   {
     label: "Catalog",
-    icon: ShoppingBag,
     permission: "product_management",
     items: [
       { label: "Products", href: "/admin/products", permission: "product_management" },
@@ -78,7 +57,6 @@ export const adminSections: AdminSection[] = [
   },
   {
     label: "Orders",
-    icon: ClipboardList,
     permission: "order_management",
     items: [
       { label: "All Orders", href: "/admin/orders" },
@@ -96,7 +74,6 @@ export const adminSections: AdminSection[] = [
     // without opening the rest of /admin/integrations (still settings-only,
     // see the Integrations section below).
     label: "Payments",
-    icon: Wallet,
     permission: "payments",
     items: [
       { label: "Payment Settings", href: "/admin/integrations/razorpay" },
@@ -112,7 +89,6 @@ export const adminSections: AdminSection[] = [
   },
   {
     label: "Integrations",
-    icon: Plug,
     permission: "settings",
     items: [
       { label: "All Integrations", href: "/admin/integrations", superAdminOnly: true },
@@ -127,7 +103,6 @@ export const adminSections: AdminSection[] = [
   },
   {
     label: "Marketing",
-    icon: Megaphone,
     permission: "marketing",
     items: [
       { label: "Home Banners", href: "/admin/banners", permission: "coupons_offers" },
@@ -139,7 +114,6 @@ export const adminSections: AdminSection[] = [
   },
   {
     label: "Reports",
-    icon: BarChart3,
     permission: "reports_analytics",
     items: [
       { label: "Sales", href: "/admin/reports/sales" },
@@ -151,7 +125,6 @@ export const adminSections: AdminSection[] = [
   },
   {
     label: "Settings",
-    icon: Settings,
     permission: "settings",
     items: [
       { label: "General Settings", href: "/admin/settings/general", superAdminOnly: true },
@@ -166,7 +139,6 @@ export const adminSections: AdminSection[] = [
   },
   {
     label: "Support",
-    icon: LifeBuoy,
     permission: "support",
     items: [
       { label: "Support Tickets", href: "/admin/support" },
@@ -179,7 +151,6 @@ export const adminSections: AdminSection[] = [
     // lib/admin-roles.ts ROLE_PERMISSIONS) — same gate as the route's own
     // requireSuperAdmin, so the sidebar and the route guard agree, no drift.
     label: "Security",
-    icon: ShieldCheck,
     permission: "security",
     items: [{ label: "Audit Logs", href: "/admin/audit-logs" }],
   },
@@ -286,7 +257,6 @@ export function AdminSidebarContent({ onNavigate }: { onNavigate?: () => void } 
           pathname === "/" ? "bg-green-50 text-green-700" : "text-black",
         )}
       >
-        <Home className="size-4 shrink-0 text-green-700" />
         Home
       </Link>
 
@@ -298,7 +268,6 @@ export function AdminSidebarContent({ onNavigate }: { onNavigate?: () => void } 
         onClick={onNavigate}
         className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-black transition-colors hover:bg-green-50 hover:text-green-700"
       >
-        <LayoutDashboard className="size-4 shrink-0 text-green-700" />
         Dashboard
       </Link>
 
@@ -311,7 +280,6 @@ export function AdminSidebarContent({ onNavigate }: { onNavigate?: () => void } 
         onClick={onNavigate}
         className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-black transition-colors hover:bg-green-50 hover:text-green-700"
       >
-        <Bell className="size-4 shrink-0 text-green-700" />
         Notifications
       </Link>
 
@@ -324,21 +292,16 @@ export function AdminSidebarContent({ onNavigate }: { onNavigate?: () => void } 
           onClick={onNavigate}
           className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-black transition-colors hover:bg-green-50 hover:text-green-700"
         >
-          <FolderOpen className="size-4 shrink-0 text-green-700" />
           Media
         </Link>
       )}
 
       <Accordion className="flex w-full flex-col gap-1 overflow-y-auto">
         {visibleSections.map((section) => {
-          const Icon = section.icon
           return (
             <AccordionItem key={section.label} value={section.label} className="border-none">
-              <AccordionTrigger className="rounded-xl px-3 py-2.5 text-sm font-medium text-black hover:bg-green-50 hover:text-green-700 hover:no-underline [&_svg]:text-green-700">
-                <span className="flex items-center gap-3">
-                  <Icon className="size-4 shrink-0 text-green-700" />
-                  {section.label}
-                </span>
+              <AccordionTrigger className="rounded-xl px-3 py-2.5 text-sm font-medium text-black hover:bg-green-50 hover:text-green-700 hover:no-underline">
+                <span className="flex items-center gap-3">{section.label}</span>
               </AccordionTrigger>
               <AccordionContent>
                 <div className="flex flex-col gap-1 pl-10">
@@ -365,7 +328,6 @@ export function AdminSidebarContent({ onNavigate }: { onNavigate?: () => void } 
         onClick={handleLogout}
         className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-red-300 py-2.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50"
       >
-        <LogOut className="size-4 shrink-0" />
         Log Out
       </button>
     </div>

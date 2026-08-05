@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useState } from "react"
-import { Menu, Megaphone, Package, Plus } from "lucide-react"
+import { Megaphone, Package, Plus } from "lucide-react"
 import { useSellerGate } from "@/hooks/use-seller-status"
 import { getMySponsoredAds } from "@/lib/seller-ads-client"
 import { getEffectiveAdStatus } from "@/lib/sponsored-ad-status"
@@ -10,8 +10,6 @@ import { formatPrice } from "@/lib/products"
 import { AD_POSITION_LABELS } from "@/types/sponsored-ad"
 import { ProductImage } from "@/components/product-image"
 import type { SponsoredAd, SponsoredAdStatus } from "@/types/sponsored-ad"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import { SellerSidebar, SellerSidebarContent } from "@/components/seller/seller-sidebar"
 
 const STATUS_STYLES: Record<SponsoredAdStatus, string> = {
   pending: "bg-gray-100 text-gray-600",
@@ -27,7 +25,6 @@ export default function SellerMarketingPage() {
   const gate = useSellerGate()
   const sellerUid = gate.state === "approved" ? gate.uid : null
   const [ads, setAds] = useState<SponsoredAd[] | null>(null)
-  const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
   useEffect(() => {
     if (!sellerUid) return
@@ -58,37 +55,21 @@ export default function SellerMarketingPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#F8F8F2]">
-      <SellerSidebar />
+    <div>
+      <header className="flex items-center justify-between gap-4 border-b border-gray-200 bg-white px-4 py-5 sm:px-6 lg:px-10">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Marketing</h1>
+          <p className="text-sm text-gray-500">Promote your products on the IXOFLORA homepage</p>
+        </div>
 
-      <div className="min-w-0 flex-1">
-        <header className="flex items-center justify-between gap-4 border-b border-gray-200 bg-white px-4 py-5 sm:px-6 lg:px-10">
-          <div className="flex items-center gap-3">
-            <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-              <SheetTrigger aria-label="Open menu" className="rounded-xl border border-gray-200 p-2 text-gray-600 lg:hidden">
-                <Menu className="h-5 w-5" />
-              </SheetTrigger>
-              <SheetContent side="left" className="w-72 p-0">
-                <SheetHeader className="sr-only">
-                  <SheetTitle>Seller Menu</SheetTitle>
-                </SheetHeader>
-                <SellerSidebarContent />
-              </SheetContent>
-            </Sheet>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Marketing</h1>
-              <p className="text-sm text-gray-500">Promote your products on the IXOFLORA homepage</p>
-            </div>
-          </div>
-
-          <Link
-            href="/seller/marketing/promote"
-            className="flex shrink-0 items-center gap-2 rounded-xl bg-green-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-green-800 sm:px-6 sm:py-3"
-          >
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Promote a Product</span>
-          </Link>
-        </header>
+        <Link
+          href="/seller/marketing/promote"
+          className="flex shrink-0 items-center gap-2 rounded-xl bg-green-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-green-800 sm:px-6 sm:py-3"
+        >
+          <Plus className="h-4 w-4" />
+          <span className="hidden sm:inline">Promote a Product</span>
+        </Link>
+      </header>
 
         <main className="px-4 py-8 sm:px-6 lg:px-10">
           {ads === null && <p className="text-sm text-gray-500">Loading...</p>}
@@ -153,7 +134,6 @@ export default function SellerMarketingPage() {
             </div>
           )}
         </main>
-      </div>
     </div>
   )
 }

@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useState } from "react"
-import { Menu, Package, Pencil, Plus, ShoppingBag, Trash2, Wallet } from "lucide-react"
+import { Package, Pencil, Plus, ShoppingBag, Trash2, Wallet } from "lucide-react"
 import { useSellerGate } from "@/hooks/use-seller-status"
 import { getProductsBySeller, deleteProduct } from "@/services/product.service"
 import { getOrdersBySeller } from "@/services/order.service"
@@ -11,14 +11,6 @@ import { formatPrice } from "@/lib/products"
 import { Price } from "@/components/price"
 import { ProductImage } from "@/components/product-image"
 import type { Product, ProductStatus } from "@/types/product"
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet"
-import { SellerSidebar, SellerSidebarContent } from "@/components/seller/seller-sidebar"
 import { StatCard } from "@/components/seller/stat-card"
 
 const STATUS_STYLES: Record<ProductStatus, string> = {
@@ -33,7 +25,6 @@ export default function SellerProductsPage() {
   const sellerUid = gate.state === "approved" ? gate.uid : null
   const [products, setProducts] = useState<Product[] | null>(null)
   const [orderStats, setOrderStats] = useState<{ count: number; revenue: number } | null>(null)
-  const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
   useEffect(() => {
     if (!sellerUid) return
@@ -124,43 +115,23 @@ export default function SellerProductsPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#F8F8F2]">
-      <SellerSidebar />
+    <div>
+      <header className="flex items-center justify-between gap-4 border-b border-gray-200 bg-white px-4 py-5 sm:px-6 lg:px-10">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">My Products</h1>
+          <p className="text-sm text-gray-500">Manage your plant listings</p>
+        </div>
 
-      <div className="min-w-0 flex-1">
-        {/* Dashboard header */}
-        <header className="flex items-center justify-between gap-4 border-b border-gray-200 bg-white px-4 py-5 sm:px-6 lg:px-10">
-          <div className="flex items-center gap-3">
-            <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-              <SheetTrigger
-                aria-label="Open menu"
-                className="rounded-xl border border-gray-200 p-2 text-gray-600 lg:hidden"
-              >
-                <Menu className="h-5 w-5" />
-              </SheetTrigger>
-              <SheetContent side="left" className="w-72 p-0">
-                <SheetHeader className="sr-only">
-                  <SheetTitle>Seller Menu</SheetTitle>
-                </SheetHeader>
-                <SellerSidebarContent />
-              </SheetContent>
-            </Sheet>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">My Products</h1>
-              <p className="text-sm text-gray-500">Manage your plant listings</p>
-            </div>
-          </div>
+        <Link
+          href="/seller/products/new"
+          className="flex shrink-0 items-center gap-2 rounded-xl bg-green-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-green-800 sm:px-6 sm:py-3"
+        >
+          <Plus className="h-4 w-4" />
+          <span className="hidden sm:inline">Add Product</span>
+        </Link>
+      </header>
 
-          <Link
-            href="/seller/products/new"
-            className="flex shrink-0 items-center gap-2 rounded-xl bg-green-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-green-800 sm:px-6 sm:py-3"
-          >
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Add Product</span>
-          </Link>
-        </header>
-
-        <main className="px-4 py-8 sm:px-6 lg:px-10">
+      <main className="px-4 py-8 sm:px-6 lg:px-10">
           {/* Analytics cards */}
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
             <StatCard
@@ -266,7 +237,6 @@ export default function SellerProductsPage() {
             )}
           </div>
         </main>
-      </div>
     </div>
   )
 }

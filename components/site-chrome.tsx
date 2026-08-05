@@ -7,10 +7,10 @@ import { CompareTray } from "@/components/compare-tray"
 
 /**
  * /admin and /seller each own their own navigation (AdminSidebar via
- * app/admin/layout.tsx; SellerSidebar rendered inline by each app/seller/**
- * page) — the public shop header/footer must never stack on top of those.
- * This is a single route-driven switch, not a per-page opt-out: any new
- * page under either prefix is automatically chrome-less with no extra work.
+ * app/admin/layout.tsx; the seller nav drawer via app/seller/layout.tsx) —
+ * the public shop header/footer must never stack on top of those. This is a
+ * single route-driven switch, not a per-page opt-out: any new page under
+ * either prefix is automatically chrome-less with no extra work.
  */
 const CHROME_LESS_PREFIXES = ["/admin", "/seller"]
 
