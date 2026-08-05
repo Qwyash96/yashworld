@@ -271,45 +271,49 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-[#f3f5f2]">
-      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
         {/* TOP PROFILE SECTION */}
-        <div className="rounded-3xl border border-border bg-white p-6 shadow-sm sm:p-8">
-          <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
-              <Avatar className="h-24 w-24 border-4 border-green-500 shadow-md sm:h-28 sm:w-28">
+        <div className="rounded-2xl border border-border bg-white p-4 shadow-sm sm:p-5">
+          <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col items-center gap-3 text-center sm:flex-row sm:text-left">
+              <Avatar className="h-[70px] w-[70px] shrink-0 border-2 border-green-500 shadow-sm">
                 {profile.photoUrl && <AvatarImage src={profile.photoUrl} alt={displayName} />}
-                <AvatarFallback className="bg-green-600 text-3xl font-bold text-white">
+                <AvatarFallback className="bg-green-600 text-xl font-bold text-white">
                   {initials}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <h1 className="text-2xl font-bold text-black sm:text-3xl">{displayName}</h1>
-                <p className="mt-1 text-sm text-[#444444]">{user.email}</p>
-                <p className="text-sm text-[#444444]">{profile.mobile || "No mobile number added"}</p>
-                <p className="mt-1 text-xs text-[#444444]">
+                <h1 className="text-lg font-bold text-black sm:text-xl">{displayName}</h1>
+                <p className="text-xs text-[#444444]">{user.email}</p>
+                <p className="text-xs text-[#444444]">{profile.mobile || "No mobile number added"}</p>
+                <p className="text-[11px] text-[#888888]">
                   Member since {formatDate(profile.createdAt)}
                 </p>
               </div>
             </div>
-            <Button className="h-11" onClick={openEdit}>
-              <Pencil className="size-4" />
+            <Button size="sm" className="h-9" onClick={openEdit}>
+              <Pencil className="size-3.5" />
               Edit Profile
             </Button>
           </div>
         </div>
 
         {/* ACCOUNT OVERVIEW */}
-        <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
           {overviewStats.map((stat) => {
             const Icon = stat.icon
             return (
               <div
                 key={stat.label}
-                className="rounded-2xl border border-border bg-white p-5 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                className="flex h-[92px] items-center gap-2.5 rounded-xl border border-border bg-white px-3 shadow-sm transition hover:shadow-md"
               >
-                <Icon className={`mx-auto size-8 ${stat.color}`} />
-                <p className="mt-3 text-xl font-bold text-black">{stat.value}</p>
-                <p className="mt-1 text-xs text-[#444444]">{stat.label}</p>
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#f3f5f2]">
+                  <Icon className={`size-[18px] ${stat.color}`} />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-base font-bold leading-tight text-black">{stat.value}</p>
+                  <p className="truncate text-[11px] leading-tight text-[#666666]">{stat.label}</p>
+                </div>
               </div>
             )
           })}
@@ -320,7 +324,7 @@ export default function ProfilePage() {
         {orders.length === 0 ? (
           <EmptyNote text="No orders yet." />
         ) : (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
             {orders.slice(0, 5).map((order) => {
               const itemCount = order.sellerOrders.reduce(
                 (sum, so) => sum + so.items.reduce((s, i) => s + i.quantity, 0),
@@ -329,26 +333,24 @@ export default function ProfilePage() {
               return (
                 <div
                   key={order.id}
-                  className="flex flex-col gap-4 rounded-2xl border border-border bg-white p-4 shadow-sm sm:flex-row sm:items-center"
+                  className="flex flex-col gap-2 rounded-xl border border-border bg-white p-3 shadow-sm sm:flex-row sm:items-center sm:gap-3"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="font-bold text-black">Order #{order.id.slice(0, 8)}</p>
-                    <p className="text-xs text-[#444444]">
-                      {formatDate(order.createdAt)} · {itemCount} item{itemCount === 1 ? "" : "s"}
-                    </p>
-                    <div className="mt-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-bold text-black">Order #{order.id.slice(0, 8)}</p>
                       <OrderStatusBadge status={order.status} />
                     </div>
+                    <p className="text-[11px] text-[#888888]">
+                      {formatDate(order.createdAt)} · {itemCount} item{itemCount === 1 ? "" : "s"}
+                    </p>
                   </div>
-                  <p className="text-lg font-bold text-black sm:w-28 sm:text-right">
+                  <p className="text-sm font-bold text-black sm:w-24 sm:text-right">
                     {formatPrice(order.totals.total)}
                   </p>
-                  <div className="flex flex-wrap gap-2 sm:shrink-0">
-                    <Button size="sm" variant="outline" className="h-9" render={<Link href={`/orders/${order.id}`} />}>
-                      <Eye className="size-4" />
-                      View Details
-                    </Button>
-                  </div>
+                  <Button size="sm" variant="outline" className="h-7 shrink-0 px-2.5 text-xs" render={<Link href={`/orders/${order.id}`} />}>
+                    <Eye className="size-3.5" />
+                    View
+                  </Button>
                 </div>
               )
             })}
@@ -360,28 +362,28 @@ export default function ProfilePage() {
         {addresses.length === 0 ? (
           <EmptyNote text="No addresses added." />
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
             {addresses.map((a) => (
-              <div key={a.id} className="rounded-2xl border border-border bg-white p-5 shadow-sm">
-                <div className="flex items-start justify-between">
-                  <p className="font-bold text-black">{a.fullName}</p>
+              <div key={a.id} className="rounded-xl border border-border bg-white p-3 shadow-sm">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm font-bold text-black">{a.fullName}</p>
                   {a.isDefault && (
-                    <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">
+                    <span className="shrink-0 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-800">
                       Default
                     </span>
                   )}
                 </div>
-                <p className="mt-1 text-sm text-[#444444]">{a.phone}</p>
-                <p className="mt-2 text-sm text-black">
+                <p className="text-xs text-[#444444]">{a.phone}</p>
+                <p className="mt-1 text-xs text-black">
                   {a.line1}, {a.city}, {a.state} - {a.postalCode}
                 </p>
-                <div className="mt-4 flex gap-2">
-                  <Button size="sm" variant="outline" className="h-8" onClick={() => openEditAddress(a)}>
-                    <Pencil className="size-3.5" />
+                <div className="mt-2.5 flex gap-1.5">
+                  <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => openEditAddress(a)}>
+                    <Pencil className="size-3" />
                     Edit
                   </Button>
-                  <Button size="sm" variant="destructive" className="h-8" onClick={() => removeAddress(a.id)}>
-                    <Trash2 className="size-3.5" />
+                  <Button size="sm" variant="destructive" className="h-7 px-2.5 text-xs" onClick={() => removeAddress(a.id)}>
+                    <Trash2 className="size-3" />
                     Delete
                   </Button>
                 </div>
@@ -391,28 +393,28 @@ export default function ProfilePage() {
         )}
 
         {/* WISHLIST PREVIEW */}
-        <SectionHeader title="Wishlist" action={<Link href="/wishlist" className="text-sm font-semibold text-green-700 hover:underline">View All</Link>} />
+        <SectionHeader title="Wishlist" action={<Link href="/wishlist" className="text-xs font-semibold text-green-700 hover:underline">View All</Link>} />
         {savedItems.length === 0 ? (
           <EmptyNote text="No wishlist items." />
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
             {savedItems.map((p) => (
-              <div key={p.id} className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
-                <div className="relative h-40">
-                  <ProductImage src={p.image} alt={p.name} className="absolute inset-0" padding="md" />
+              <div key={p.id} className="overflow-hidden rounded-xl border border-border bg-white shadow-sm">
+                <div className="relative h-28">
+                  <ProductImage src={p.image} alt={p.name} className="absolute inset-0" padding="sm" />
                 </div>
-                <div className="p-4">
-                  <p className="line-clamp-1 font-bold text-black">{p.name}</p>
-                  <p className="mt-1 font-semibold text-green-700">{formatPrice(p.price)}</p>
-                  <div className="mt-3 flex gap-2">
+                <div className="p-2.5">
+                  <p className="line-clamp-1 text-xs font-bold text-black">{p.name}</p>
+                  <p className="text-xs font-semibold text-green-700">{formatPrice(p.price)}</p>
+                  <div className="mt-2 flex gap-1.5">
                     <Button
                       size="sm"
-                      className="h-8 flex-1"
+                      className="h-7 flex-1 px-2 text-xs"
                       onClick={() => addToCart(p, p.sizes[0], p.colors[0])}
                     >
                       Add to Cart
                     </Button>
-                    <Button size="sm" variant="outline" className="h-8" onClick={() => toggleWishlist(p)}>
+                    <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => toggleWishlist(p)}>
                       Remove
                     </Button>
                   </div>
@@ -426,22 +428,22 @@ export default function ProfilePage() {
         <SectionHeader title="Sell on IXOFLORA" />
         <Link
           href={isApprovedSeller ? "/seller/products" : "/sell"}
-          className="flex items-center justify-between rounded-2xl border border-green-600 bg-green-50 p-6 shadow-sm transition hover:shadow-md"
+          className="flex items-center justify-between rounded-xl border border-green-600 bg-green-50 p-3.5 shadow-sm transition hover:shadow-md"
         >
-          <div className="flex items-center gap-3">
-            <Leaf className="size-7 text-green-700" />
+          <div className="flex items-center gap-2.5">
+            <Leaf className="size-5 text-green-700" />
             <div>
-              <p className="text-lg font-bold text-black">
+              <p className="text-sm font-bold text-black">
                 {isApprovedSeller ? "Go to Seller Dashboard" : "Become a Seller"}
               </p>
-              <p className="text-sm text-[#444444]">
+              <p className="text-xs text-[#444444]">
                 {isApprovedSeller
                   ? "Manage your products, orders and earnings."
                   : "Start selling plants and gardening essentials on IXOFLORA."}
               </p>
             </div>
           </div>
-          <span className="rounded-xl bg-green-600 px-5 py-2.5 font-semibold text-white">
+          <span className="shrink-0 rounded-lg bg-green-600 px-3.5 py-1.5 text-sm font-semibold text-white">
             {isApprovedSeller ? "Open" : "Start"}
           </span>
         </Link>
@@ -450,12 +452,12 @@ export default function ProfilePage() {
         <SectionHeader title="Account Settings" />
         <button
           onClick={openEdit}
-          className="flex items-center gap-3 rounded-2xl border border-border bg-white p-5 text-left shadow-sm transition hover:border-green-600"
+          className="flex items-center gap-2.5 rounded-xl border border-border bg-white p-3.5 text-left shadow-sm transition hover:border-green-600"
         >
-          <User className="size-6 text-green-700" />
+          <User className="size-4 text-green-700" />
           <div>
-            <p className="font-bold text-black">Edit Profile</p>
-            <p className="text-xs text-[#444444]">Update your mobile number</p>
+            <p className="text-sm font-bold text-black">Edit Profile</p>
+            <p className="text-[11px] text-[#444444]">Update your mobile number</p>
           </div>
         </button>
 
@@ -464,19 +466,19 @@ export default function ProfilePage() {
         {activityFeed.length === 0 ? (
           <EmptyNote text="No recent activity." />
         ) : (
-          <div className="rounded-2xl border border-border bg-white p-6 shadow-sm">
-            <div className="flex flex-col gap-5">
+          <div className="rounded-xl border border-border bg-white p-4 shadow-sm">
+            <div className="flex flex-col gap-3">
               {activityFeed.map((event, i) => (
-                <div key={event.id} className="flex items-start gap-3">
+                <div key={event.id} className="flex items-start gap-2.5">
                   <div className="flex flex-col items-center">
-                    <div className="flex size-7 items-center justify-center rounded-full bg-green-100">
-                      <CheckCircle2 className="size-4 text-green-700" />
+                    <div className="flex size-6 items-center justify-center rounded-full bg-green-100">
+                      <CheckCircle2 className="size-3.5 text-green-700" />
                     </div>
                     {i < activityFeed.length - 1 && <div className="mt-1 h-full w-px flex-1 bg-border" />}
                   </div>
-                  <div className="pb-4">
-                    <p className="text-sm font-semibold text-black">{event.message}</p>
-                    <p className="text-xs text-[#444444]">{timeAgo(event.createdAt)}</p>
+                  <div className="pb-2.5">
+                    <p className="text-xs font-semibold text-black">{event.message}</p>
+                    <p className="text-[11px] text-[#444444]">{timeAgo(event.createdAt)}</p>
                   </div>
                 </div>
               ))}
@@ -484,12 +486,12 @@ export default function ProfilePage() {
           </div>
         )}
 
-        <div className="mt-10">
+        <div className="mt-5">
           <button
             onClick={logout}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-300 py-3 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50"
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-300 py-2 text-xs font-semibold text-red-600 transition-colors hover:bg-red-50"
           >
-            <XCircle className="size-4" />
+            <XCircle className="size-3.5" />
             Log Out
           </button>
         </div>
@@ -617,8 +619,8 @@ export default function ProfilePage() {
 
 function SectionHeader({ title, action }: { title: string; action?: React.ReactNode }) {
   return (
-    <div className="mb-4 mt-10 flex items-center justify-between">
-      <h2 className="text-xl font-bold text-black">{title}</h2>
+    <div className="mb-2.5 mt-5 flex items-center justify-between">
+      <h2 className="text-base font-bold text-black">{title}</h2>
       {action}
     </div>
   )
@@ -628,9 +630,9 @@ function AddButton({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="flex items-center gap-1.5 rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700"
+      className="flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-green-700"
     >
-      <Plus className="size-4" />
+      <Plus className="size-3.5" />
       {label}
     </button>
   )
@@ -638,7 +640,7 @@ function AddButton({ label, onClick }: { label: string; onClick: () => void }) {
 
 function EmptyNote({ text }: { text: string }) {
   return (
-    <div className="col-span-full rounded-2xl border border-dashed border-border bg-white p-8 text-center text-sm text-[#444444]">
+    <div className="col-span-full rounded-xl border border-dashed border-border bg-white p-5 text-center text-xs text-[#444444]">
       {text}
     </div>
   )
