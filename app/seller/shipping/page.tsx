@@ -5,9 +5,11 @@ import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { Truck, RefreshCw, PackageCheck } from "lucide-react"
 import { useSellerGate } from "@/hooks/use-seller-status"
-import { getOrdersBySeller, updateSellerOrderStatus, syncSellerOrderTracking } from "@/services/order.service"
+import { updateSellerOrderStatus, syncSellerOrderTracking } from "@/services/order.service"
+import { fetchMySellerOrders } from "@/lib/seller-orders-client"
 import { OrderStatusBadge } from "@/components/orders/order-status-badge"
-import type { Order, OrderStatus } from "@/types/order"
+import type { OrderStatus } from "@/types/order"
+import type { SellerFacingOrder } from "@/lib/seller-order-redaction"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
@@ -36,7 +38,7 @@ export default function SellerShippingDashboardPage() {
   const gate = useSellerGate()
   const sellerUid = gate.state === "approved" ? gate.uid : null
 
-  const [orders, setOrders] = useState<Order[] | null>(null)
+  const [orders, setOrders] = useState<SellerFacingOrder[] | null>(null)
   const [filter, setFilter] = useState<FilterKey>("shippable")
   const [search, setSearch] = useState("")
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -46,7 +48,7 @@ export default function SellerShippingDashboardPage() {
 
   function refresh() {
     if (!sellerUid) return
-    getOrdersBySeller(sellerUid).then(setOrders)
+    fetchMySellerOrders().then(setOrders)
   }
 
   useEffect(() => {
@@ -65,7 +67,7 @@ export default function SellerShippingDashboardPage() {
     if (!orders || !sellerUid) return []
     return orders
       .map((order) => ({ order, mine: order.sellerOrders.find((so) => so.sellerId === sellerUid) }))
-      .filter((r): r is { order: Order; mine: NonNullable<typeof r.mine> } => !!r.mine && SHIPPABLE_STATUSES.has(r.mine.status))
+      .filter((r): r is { order: SellerFacingOrder; mine: NonNullable<typeof r.mine> } => !!r.mine && SHIPPABLE_STATUSES.has(r.mine.status))
   }, [orders, sellerUid])
 
   const filtered = useMemo(() => {

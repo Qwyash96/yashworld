@@ -6,7 +6,7 @@ import { toast } from "sonner"
 import { Tag, Ticket, Megaphone, BarChart3, Pencil, X } from "lucide-react"
 import { useSellerGate } from "@/hooks/use-seller-status"
 import { getProductsBySeller, setScheduledOffer, clearScheduledOffer } from "@/services/product.service"
-import { getOrdersBySeller } from "@/services/order.service"
+import { fetchMySellerOrders } from "@/lib/seller-orders-client"
 import {
   listSellerCoupons,
   createSellerCoupon,
@@ -27,7 +27,8 @@ import { ProductImage } from "@/components/product-image"
 import type { Product } from "@/types/product"
 import type { Coupon } from "@/types/coupon"
 import type { Campaign, CampaignParticipant, DiscountType } from "@/types/campaign"
-import type { DiscountSource, Order } from "@/types/order"
+import type { DiscountSource } from "@/types/order"
+import type { SellerFacingOrder } from "@/lib/seller-order-redaction"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -62,7 +63,7 @@ export default function SellerOffersPage() {
   const [coupons, setCoupons] = useState<Coupon[] | null>(null)
   const [campaigns, setCampaigns] = useState<Campaign[] | null>(null)
   const [participations, setParticipations] = useState<CampaignParticipant[] | null>(null)
-  const [orders, setOrders] = useState<Order[] | null>(null)
+  const [orders, setOrders] = useState<SellerFacingOrder[] | null>(null)
 
   const [offerSheetProduct, setOfferSheetProduct] = useState<Product | null>(null)
   const [offerForm, setOfferForm] = useState(emptyOfferForm)
@@ -81,7 +82,7 @@ export default function SellerOffersPage() {
     listSellerCoupons(uid).then(setCoupons)
     listCampaigns().then(setCampaigns)
     listSellerParticipations(uid).then(setParticipations)
-    getOrdersBySeller(uid).then(setOrders)
+    fetchMySellerOrders().then(setOrders)
   }
 
   useEffect(() => {

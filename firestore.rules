@@ -204,10 +204,19 @@ service cloud.firestore {
 
     // orders/{orderId}
     match /orders/{orderId} {
+      // Sellers deliberately do NOT get a read clause here (removed the old
+      // `resource.data.sellerIds.hasAny([request.auth.uid])`) — a client
+      // Firestore read returns the whole document, including
+      // shippingAddress.phone and contactEmail, and Firestore rules can't
+      // redact individual fields. Every seller-facing order read now goes
+      // through app/api/seller/orders/** (Admin SDK), which strips those
+      // two fields server-side before the response is ever sent (see
+      // lib/seller-order-redaction.ts) — so this rule denying sellers a
+      // direct read is what actually keeps a seller from just opening the
+      // browser console and reading the buyer's phone/email themselves.
       allow read: if isSignedIn() && (
         resource.data.buyerId == request.auth.uid
         || isAdmin()
-        || resource.data.sellerIds.hasAny([request.auth.uid])
       );
       // Orders are only ever created by the Admin SDK (app/api/checkout/cod
       // and app/api/payments/razorpay/verify), after price/stock have been

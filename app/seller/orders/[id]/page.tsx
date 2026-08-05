@@ -15,13 +15,13 @@ import {
   CheckCircle2,
   Circle,
   RefreshCw,
-  Phone,
   StickyNote,
   type LucideIcon,
 } from "lucide-react"
 import { useSellerGate } from "@/hooks/use-seller-status"
 import { useStore } from "@/components/store-provider"
-import { getOrderById, updateSellerOrderStatus, syncSellerOrderTracking, updateSellerOrderNote } from "@/services/order.service"
+import { updateSellerOrderStatus, syncSellerOrderTracking, updateSellerOrderNote } from "@/services/order.service"
+import { fetchMySellerOrder } from "@/lib/seller-orders-client"
 import { getSellerProfile } from "@/services/seller.service"
 import { OrderStatusBadge } from "@/components/orders/order-status-badge"
 import { OrderTrackingTimeline } from "@/components/orders/order-tracking-timeline"
@@ -35,7 +35,8 @@ import { generateShippingLabelPdf } from "@/lib/documents/shipping-label"
 import { generatePackingSlipPdf } from "@/lib/documents/packing-slip"
 import { generateOrderQrCodeDataUrl } from "@/lib/documents/qr-code"
 import { generateBarcodeDataUrl } from "@/lib/documents/barcode"
-import type { Order, OrderStatus } from "@/types/order"
+import type { OrderStatus } from "@/types/order"
+import type { SellerFacingOrder } from "@/lib/seller-order-redaction"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -64,7 +65,7 @@ export default function SellerOrderDetailPage() {
   const { getProductById } = useStore()
   const sellerUid = gate.state === "approved" ? gate.uid : null
 
-  const [order, setOrder] = useState<Order | null | undefined>(undefined)
+  const [order, setOrder] = useState<SellerFacingOrder | null | undefined>(undefined)
   const [shopName, setShopName] = useState("")
   const [busy, setBusy] = useState(false)
   const [rejectOpen, setRejectOpen] = useState(false)
@@ -81,7 +82,7 @@ export default function SellerOrderDetailPage() {
   const [savingNote, setSavingNote] = useState(false)
 
   function refresh() {
-    getOrderById(params.id).then(setOrder)
+    fetchMySellerOrder(params.id).then(setOrder)
   }
 
   useEffect(() => {
@@ -235,15 +236,8 @@ export default function SellerOrderDetailPage() {
   }
 
   const status = mine.status
-  const timeline = mine.timeline ?? []
   const isTerminal = status === "Cancelled" || status === "Returned"
   const currentIndex = ORDER_FULFILMENT_SEQUENCE.indexOf(status)
-  // History-based, not current-status-based — a rejected Pending order goes
-  // straight to "Cancelled" without ever passing through "Accepted", so
-  // checking the timeline (not just "status !== Pending") is what actually
-  // keeps the phone number hidden for an order the seller never accepted.
-  const hasBeenAccepted = timeline.some((e) => e.status === "Accepted")
-  const hasBeenShipped = timeline.some((e) => e.status === "Picked Up")
 
   return (
     <div className="mx-auto max-w-6xl px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
@@ -404,7 +398,12 @@ export default function SellerOrderDetailPage() {
 
         {/* SIDEBAR column */}
         <div className="flex flex-col gap-4 lg:col-span-1">
-          {/* Customer Information */}
+          {/* Customer Information — buyer phone/email are deliberately never
+              fetched for a seller (redacted server-side, see
+              lib/seller-order-redaction.ts) and must never be added back
+              here. The courier still gets them automatically, straight from
+              the backend, during AWB generation (lib/order-status-transition's
+              caller in app/api/seller/orders/[id]/status/route.ts). */}
           <Card title="Customer Information">
             <p className="font-semibold text-black">{order.shippingAddress.fullName}</p>
             <p className="mt-1.5 text-sm text-[#444444]">
@@ -421,18 +420,7 @@ export default function SellerOrderDetailPage() {
               <Row label="City" value={order.shippingAddress.city} />
               <Row label="State" value={order.shippingAddress.state} />
               <Row label="PIN Code" value={order.shippingAddress.postalCode} />
-              {hasBeenAccepted ? (
-                <Row label="Phone" value={order.shippingAddress.phone} />
-              ) : (
-                <p className="text-xs text-[#888888]">Phone number unlocks once you accept the order.</p>
-              )}
             </div>
-            {hasBeenShipped && (
-              <Button size="sm" className="mt-3 h-9 w-full" render={<a href={`tel:${order.shippingAddress.phone}`} />}>
-                <Phone className="size-3.5" />
-                Call Customer
-              </Button>
-            )}
           </Card>
 
           {/* Courier Section */}

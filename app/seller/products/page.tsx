@@ -5,7 +5,7 @@ import { useEffect, useState } from "react"
 import { Package, Pencil, Plus, ShoppingBag, Trash2, Wallet } from "lucide-react"
 import { useSellerGate } from "@/hooks/use-seller-status"
 import { getProductsBySeller, deleteProduct } from "@/services/product.service"
-import { getOrdersBySeller } from "@/services/order.service"
+import { fetchMySellerOrders } from "@/lib/seller-orders-client"
 import { getCoverImageUrl } from "@/lib/product-images"
 import { formatPrice } from "@/lib/products"
 import { Price } from "@/components/price"
@@ -31,7 +31,7 @@ export default function SellerProductsPage() {
     getProductsBySeller(sellerUid).then(setProducts)
     // Read-only usage of the existing Orders service, purely to power the
     // analytics cards below — nothing in the Orders feature itself changes.
-    getOrdersBySeller(sellerUid).then((orders) => {
+    fetchMySellerOrders().then((orders) => {
       const mine = orders
         .map((o) => o.sellerOrders.find((so) => so.sellerId === sellerUid))
         .filter((so): so is NonNullable<typeof so> => so !== undefined)

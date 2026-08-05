@@ -6,10 +6,11 @@ import { toast } from "sonner"
 import { Search, Wallet as WalletIcon, PackageSearch } from "lucide-react"
 import { useSellerGate } from "@/hooks/use-seller-status"
 import { useStore } from "@/components/store-provider"
-import { getOrdersBySeller } from "@/services/order.service"
+import { fetchMySellerOrders } from "@/lib/seller-orders-client"
 import { fetchMyWallet, requestWithdrawal } from "@/lib/seller-wallet-client"
 import { formatPrice } from "@/lib/products"
-import type { Order, OrderStatus } from "@/types/order"
+import type { OrderStatus } from "@/types/order"
+import type { SellerFacingOrder } from "@/lib/seller-order-redaction"
 import type { SellerWallet, WithdrawalRequest } from "@/types/wallet"
 import { OrderStatusBadge } from "@/components/orders/order-status-badge"
 import { Button } from "@/components/ui/button"
@@ -42,7 +43,7 @@ export default function SellerOrdersPage() {
   const gate = useSellerGate()
   const { getProductById } = useStore()
   const sellerUid = gate.state === "approved" ? gate.uid : null
-  const [orders, setOrders] = useState<Order[] | null>(null)
+  const [orders, setOrders] = useState<SellerFacingOrder[] | null>(null)
   const [wallet, setWallet] = useState<SellerWallet | null>(null)
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[] | null>(null)
   const [withdrawAmount, setWithdrawAmount] = useState("")
@@ -63,7 +64,7 @@ export default function SellerOrdersPage() {
 
   useEffect(() => {
     if (!sellerUid) return
-    getOrdersBySeller(sellerUid).then(setOrders)
+    fetchMySellerOrders().then(setOrders)
     refreshWallet()
   }, [sellerUid])
 
@@ -89,7 +90,7 @@ export default function SellerOrdersPage() {
     if (!orders || !sellerUid) return []
     return orders
       .map((order) => ({ order, mine: order.sellerOrders.find((so) => so.sellerId === sellerUid) }))
-      .filter((r): r is { order: Order; mine: NonNullable<typeof r.mine> } => !!r.mine)
+      .filter((r): r is { order: SellerFacingOrder; mine: NonNullable<typeof r.mine> } => !!r.mine)
   }, [orders, sellerUid])
 
   const filtered = useMemo(() => {

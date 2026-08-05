@@ -5,7 +5,7 @@ import { useEffect, useState } from "react"
 import { Package, ShoppingBag, Clock, Wallet as WalletIcon } from "lucide-react"
 import { useSellerGate } from "@/hooks/use-seller-status"
 import { getProductsBySeller } from "@/services/product.service"
-import { getOrdersBySeller } from "@/services/order.service"
+import { fetchMySellerOrders } from "@/lib/seller-orders-client"
 import { fetchMyWallet } from "@/lib/seller-wallet-client"
 import { formatPrice } from "@/lib/products"
 import { StatCard } from "@/components/seller/stat-card"
@@ -28,7 +28,7 @@ export default function SellerDashboardPage() {
   useEffect(() => {
     if (!sellerUid) return
     getProductsBySeller(sellerUid).then((products) => setProductCount(products.length))
-    getOrdersBySeller(sellerUid).then((orders) => {
+    fetchMySellerOrders().then((orders) => {
       const mine = orders
         .map((o) => o.sellerOrders.find((so) => so.sellerId === sellerUid))
         .filter((so): so is NonNullable<typeof so> => so !== undefined)

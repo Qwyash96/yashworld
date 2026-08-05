@@ -1,4 +1,5 @@
-import type { Order, SellerOrder } from "@/types/order"
+import type { SellerOrder } from "@/types/order"
+import type { SellerFacingOrder } from "@/lib/seller-order-redaction"
 
 /** Everything every document generator (invoice/shipping-label/packing-slip)
  * needs — assembled once on the seller order detail page from data already
@@ -33,7 +34,7 @@ export interface OrderDocumentContext {
 }
 
 export function buildOrderDocumentContext(
-  order: Order,
+  order: SellerFacingOrder,
   sellerOrder: SellerOrder,
   sellerShopName: string,
   productNames: Map<string, string>,
