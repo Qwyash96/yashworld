@@ -17,8 +17,11 @@ import {
 import { SHIPPING_OPTIONS } from "@/lib/shipping"
 import { formatPrice } from "@/lib/products"
 import { sanitizeIndianMobile, sanitizeDigits } from "@/lib/numeric-input"
+import { cn } from "@/lib/utils"
+import { getUserProfile, updateUserAddresses } from "@/services/user.service"
 import type { PaymentMethod, ShippingMethod } from "@/types/order"
 import type { PublicCheckoutConfig } from "@/types/checkout-config"
+import type { Address } from "@/types/user"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -122,6 +125,60 @@ export default function CheckoutPage() {
   const [preview, setPreview] = useState<OrderPricingPreview | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
 
+  // Saved addresses (users/{uid}.addresses) — the permanent source of truth,
+  // never touched by placing an order. "new" means the buyer is filling a
+  // fresh address rather than reusing a saved one.
+  const [savedAddresses, setSavedAddresses] = useState<Address[]>([])
+  const [selectedAddressId, setSelectedAddressId] = useState<string | "new">("new")
+  const [saveNewAddress, setSaveNewAddress] = useState(true)
+
+  function applyAddressToForm(a: Address) {
+    setForm((prev) => ({
+      ...prev,
+      fullName: a.fullName,
+      line1: a.line1,
+      line2: a.line2 ?? "",
+      landmark: a.landmark ?? "",
+      city: a.city,
+      state: a.state,
+      postalCode: a.postalCode,
+      country: a.country,
+      phone: a.phone,
+    }))
+    setErrors({})
+  }
+
+  function selectNewAddress() {
+    setSelectedAddressId("new")
+    setForm((prev) => ({
+      ...prev,
+      fullName: "",
+      line1: "",
+      line2: "",
+      landmark: "",
+      city: "",
+      state: "",
+      postalCode: "",
+      country: "India",
+      phone: "",
+    }))
+    setErrors({})
+  }
+
+  useEffect(() => {
+    if (!user) return
+    getUserProfile(user.uid).then((profile) => {
+      const addrs = profile?.addresses ?? []
+      setSavedAddresses(addrs)
+      const preferred = addrs.find((a) => a.isDefault) ?? addrs[0]
+      if (preferred) {
+        setSelectedAddressId(preferred.id)
+        applyAddressToForm(preferred)
+      }
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid])
+
   const previewItems: CheckoutItemInput[] = useMemo(
     () =>
       cart
@@ -223,6 +280,35 @@ export default function CheckoutPage() {
     setErrors((prev) => ({ ...prev, [key]: undefined }))
   }
 
+  /** Runs only after the order has actually been placed/paid — never before,
+   * so an abandoned checkout never touches the buyer's saved addresses. A
+   * reused saved address is already in users/{uid}.addresses and is left
+   * untouched (this only ever appends); a fresh one typed at checkout gets
+   * saved so it's there next time, unless the buyer opted out. Best-effort:
+   * the order itself already succeeded, so a failure here must never surface
+   * as an order failure. */
+  async function persistAddressIfNew() {
+    if (!user || selectedAddressId !== "new" || !saveNewAddress) return
+    const newAddress: Address = {
+      id: crypto.randomUUID(),
+      fullName: form.fullName.trim(),
+      line1: form.line1.trim(),
+      ...(form.line2.trim() ? { line2: form.line2.trim() } : {}),
+      ...(form.landmark.trim() ? { landmark: form.landmark.trim() } : {}),
+      city: form.city.trim(),
+      state: form.state.trim(),
+      postalCode: form.postalCode.trim(),
+      country: form.country.trim(),
+      phone: form.phone.trim(),
+      isDefault: savedAddresses.length === 0,
+    }
+    try {
+      await updateUserAddresses(user.uid, [...savedAddresses, newAddress])
+    } catch (error) {
+      console.error("Failed to save address for future orders:", error)
+    }
+  }
+
   async function handlePlaceOrder(e: React.FormEvent) {
     e.preventDefault()
     setSubmitError(null)
@@ -270,6 +356,7 @@ export default function CheckoutPage() {
         setSubmitError(result.error)
         return
       }
+      await persistAddressIfNew()
       clearCart()
       router.push(`/orders/${result.orderId}?confirmed=1`)
       return
@@ -333,6 +420,7 @@ export default function CheckoutPage() {
           setSubmitError(result.error)
           return
         }
+        await persistAddressIfNew()
         clearCart()
         router.push(`/orders/${result.orderId}?confirmed=1`)
       },
@@ -416,6 +504,55 @@ export default function CheckoutPage() {
             <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
               Shipping Address
             </h2>
+
+            {savedAddresses.length > 0 && (
+              <div className="space-y-2">
+                <Label>Saved Addresses</Label>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {savedAddresses.map((a) => (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedAddressId(a.id)
+                        applyAddressToForm(a)
+                      }}
+                      className={cn(
+                        "rounded-lg border p-3 text-left text-sm transition",
+                        selectedAddressId === a.id
+                          ? "border-green-600 bg-green-50"
+                          : "border-border hover:border-green-300",
+                      )}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-medium text-foreground">{a.fullName}</p>
+                        {a.isDefault && (
+                          <span className="shrink-0 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-800">
+                            Default
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {a.line1}, {a.city}, {a.state} - {a.postalCode}
+                      </p>
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={selectNewAddress}
+                    className={cn(
+                      "flex items-center justify-center rounded-lg border border-dashed p-3 text-sm font-medium transition",
+                      selectedAddressId === "new"
+                        ? "border-green-600 bg-green-50 text-green-700"
+                        : "border-border text-muted-foreground hover:border-green-300",
+                    )}
+                  >
+                    + Add New Address
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="fullName">Full Name</Label>
               <Input
@@ -497,6 +634,18 @@ export default function CheckoutPage() {
               />
               {errors.country && <p className="text-xs text-destructive">{errors.country}</p>}
             </div>
+
+            {selectedAddressId === "new" && (
+              <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={saveNewAddress}
+                  onChange={(e) => setSaveNewAddress(e.target.checked)}
+                  className="size-4 rounded border-border"
+                />
+                Save this address for future orders
+              </label>
+            )}
           </section>
 
           {/* Shipping Method */}

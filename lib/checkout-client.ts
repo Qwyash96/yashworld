@@ -11,6 +11,7 @@ export interface CheckoutAddressInput {
   fullName: string
   line1: string
   line2?: string
+  landmark?: string
   city: string
   state: string
   postalCode: string
