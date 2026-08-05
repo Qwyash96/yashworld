@@ -3,6 +3,7 @@ import { notFound } from "next/navigation"
 import { ChevronRight } from "lucide-react"
 import { ProductDetail } from "@/components/product-detail"
 import { ProductCard } from "@/components/product-card"
+import { ReviewsSection } from "@/components/reviews/reviews-section"
 import { getProductCatalog } from "@/services/catalog.service"
 
 // See app/products/page.tsx for why this is needed on a Firestore-backed page.
@@ -33,6 +34,8 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
       </nav>
 
       <ProductDetail product={product} />
+
+      <ReviewsSection productId={product.id} sellerId={product.sellerId} />
 
       {related.length > 0 && (
         <section className="mt-20">

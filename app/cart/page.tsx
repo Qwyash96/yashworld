@@ -1,6 +1,5 @@
 "use client"
 
-import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Minus, Plus, ShoppingBag, Trash2, X } from "lucide-react"
@@ -9,6 +8,7 @@ import { formatPrice } from "@/lib/products"
 import { Price } from "@/components/price"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
+import { ProductImage } from "@/components/product-image"
 
 export default function CartPage() {
   const router = useRouter()
@@ -56,15 +56,9 @@ export default function CartPage() {
               <li key={`${item.id}-${item.size}-${item.color}`} className="flex gap-4 py-5">
                 <Link
                   href={`/products/${product.id}`}
-                  className="relative size-24 shrink-0 overflow-hidden rounded-md bg-muted sm:size-28"
+                  className="relative size-24 shrink-0 overflow-hidden rounded-md sm:size-28"
                 >
-                  <Image
-                    src={product.image || "/placeholder.svg"}
-                    alt={product.name}
-                    fill
-                    sizes="112px"
-                    className="object-cover"
-                  />
+                  <ProductImage src={product.image} alt={product.name} className="absolute inset-0" padding="sm" sizes="112px" />
                 </Link>
                 <div className="flex flex-1 flex-col">
                   <div className="flex items-start justify-between gap-2">

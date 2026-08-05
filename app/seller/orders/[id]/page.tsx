@@ -1,7 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import Image from "next/image"
 import { useParams, useRouter } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
@@ -18,12 +17,14 @@ import {
   CheckCircle2,
   Circle,
   XCircle,
+  RefreshCw,
 } from "lucide-react"
 import { useSellerGate } from "@/hooks/use-seller-status"
 import { useStore } from "@/components/store-provider"
-import { getOrderById, updateSellerOrderStatus } from "@/services/order.service"
+import { getOrderById, updateSellerOrderStatus, syncSellerOrderTracking } from "@/services/order.service"
 import { getSellerProfile } from "@/services/seller.service"
 import { OrderStatusBadge } from "@/components/orders/order-status-badge"
+import { ProductImage } from "@/components/product-image"
 import { ORDER_FULFILMENT_SEQUENCE, isCancellable, isReturnable } from "@/types/order-lifecycle"
 import { formatPrice } from "@/lib/products"
 import { buildOrderDocumentContext } from "@/lib/documents/order-document-context"
@@ -58,6 +59,8 @@ export default function SellerOrderDetailPage() {
   const [pickupTime, setPickupTime] = useState("")
   const [trackingNumber, setTrackingNumber] = useState("")
   const [previewImage, setPreviewImage] = useState<{ title: string; dataUrl: string; filename: string } | null>(null)
+  const [syncing, setSyncing] = useState(false)
+  const [autoAwbEnabled, setAutoAwbEnabled] = useState(false)
 
   function refresh() {
     getOrderById(params.id).then(setOrder)
@@ -67,6 +70,13 @@ export default function SellerOrderDetailPage() {
     refresh()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id])
+
+  useEffect(() => {
+    fetch("/api/seller/shipping/config")
+      .then((r) => r.json())
+      .then((body) => setAutoAwbEnabled(!!body.autoAwbEnabled))
+      .catch(() => setAutoAwbEnabled(false))
+  }, [])
 
   useEffect(() => {
     if (!sellerUid) return
@@ -136,16 +146,17 @@ export default function SellerOrderDetailPage() {
   }
 
   function handleConfirmPickup() {
-    if (!courierPartner) {
+    if (!autoAwbEnabled && !courierPartner) {
       toast.error("Select a courier partner.")
       return
     }
     runTransition({
       status: "Pickup Requested",
-      courierPartner,
+      ...(autoAwbEnabled
+        ? {}
+        : { courierPartner, ...(trackingNumber.trim() ? { trackingNumber: trackingNumber.trim() } : {}) }),
       ...(pickupDate ? { pickupDate } : {}),
       ...(pickupTime ? { pickupTime } : {}),
-      ...(trackingNumber.trim() ? { trackingNumber: trackingNumber.trim() } : {}),
     }).then(() => setPickupOpen(false))
   }
 
@@ -158,6 +169,19 @@ export default function SellerOrderDetailPage() {
   function handleReturn() {
     const reason = window.prompt("Reason for return? (optional)") ?? undefined
     runTransition({ status: "Returned", ...(reason?.trim() ? { reason: reason.trim() } : {}) })
+  }
+
+  async function handleSyncTracking() {
+    setSyncing(true)
+    try {
+      const result = await syncSellerOrderTracking(order!.id)
+      toast.success(result.changed ? `Updated to "${result.status}" (Shiprocket: ${result.rawStatus}).` : `No change (Shiprocket: ${result.rawStatus}).`)
+      refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to sync tracking.")
+    } finally {
+      setSyncing(false)
+    }
   }
 
   async function handleGenerateQr() {
@@ -311,6 +335,12 @@ export default function SellerOrderDetailPage() {
                 <CourierMilestone label="Pickup Scheduled" done={!!mine.pickupDate} />
                 <CourierMilestone label="Picked Up Successfully" done={ORDER_FULFILMENT_SEQUENCE.indexOf(status) >= ORDER_FULFILMENT_SEQUENCE.indexOf("Picked Up")} />
               </div>
+              {mine.shippingProvider === "shiprocket" && status !== "Delivered" && status !== "Cancelled" && status !== "Returned" && (
+                <Button variant="outline" className="mt-2 h-9" onClick={handleSyncTracking} disabled={syncing}>
+                  <RefreshCw className={syncing ? "size-3.5 animate-spin" : "size-3.5"} />
+                  Sync Tracking
+                </Button>
+              )}
             </div>
           )}
         </div>
@@ -330,8 +360,8 @@ export default function SellerOrderDetailPage() {
                 const product = getProductById(item.productId)
                 return (
                   <div key={item.productId} className="flex items-center gap-3 py-3">
-                    <div className="relative size-14 shrink-0 overflow-hidden rounded-lg bg-gray-50">
-                      <Image src={product?.image || "/placeholder.svg"} alt={product?.name ?? item.productId} fill className="object-cover" />
+                    <div className="relative size-14 shrink-0 overflow-hidden rounded-lg">
+                      <ProductImage src={product?.image} alt={product?.name ?? item.productId} className="absolute inset-0" padding="xs" sizes="56px" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-black">{product?.name ?? item.productId}</p>
@@ -423,20 +453,32 @@ export default function SellerOrderDetailPage() {
         <DialogContent>
           <DialogTitle>Schedule Pickup</DialogTitle>
           <div className="mt-4 flex flex-col gap-3">
-            <div className="flex flex-col gap-2">
-              <Label>Courier Partner</Label>
-              <select
-                value={courierPartner}
-                onChange={(e) => setCourierPartner(e.target.value)}
-                className="h-10 rounded-lg border border-border px-3 text-sm"
-              >
-                {COURIER_OPTIONS.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {autoAwbEnabled ? (
+              <p className="rounded-lg bg-green-50 p-3 text-sm text-green-800">
+                Shiprocket will automatically assign a courier and generate the AWB when you confirm.
+              </p>
+            ) : (
+              <>
+                <div className="flex flex-col gap-2">
+                  <Label>Courier Partner</Label>
+                  <select
+                    value={courierPartner}
+                    onChange={(e) => setCourierPartner(e.target.value)}
+                    className="h-10 rounded-lg border border-border px-3 text-sm"
+                  >
+                    {COURIER_OPTIONS.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="awb">Tracking Number / AWB (optional)</Label>
+                  <Input id="awb" value={trackingNumber} onChange={(e) => setTrackingNumber(e.target.value)} className="h-10" />
+                </div>
+              </>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-2">
                 <Label htmlFor="pickup-date">Pickup Date</Label>
@@ -446,10 +488,6 @@ export default function SellerOrderDetailPage() {
                 <Label htmlFor="pickup-time">Pickup Time</Label>
                 <Input id="pickup-time" type="time" value={pickupTime} onChange={(e) => setPickupTime(e.target.value)} className="h-10" />
               </div>
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="awb">Tracking Number / AWB (optional)</Label>
-              <Input id="awb" value={trackingNumber} onChange={(e) => setTrackingNumber(e.target.value)} className="h-10" />
             </div>
             <Button className="h-10" onClick={handleConfirmPickup} disabled={busy}>
               Confirm Pickup Schedule

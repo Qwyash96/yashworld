@@ -6,10 +6,16 @@ import { useParams, useSearchParams } from "next/navigation"
 import { CheckCircle2 } from "lucide-react"
 import { useStore } from "@/components/store-provider"
 import { getOrderById } from "@/services/order.service"
+import { getReview } from "@/services/review.service"
 import { formatPrice } from "@/lib/products"
 import type { Order } from "@/types/order"
+import type { Review } from "@/types/review"
 import { OrderStatusBadge } from "@/components/orders/order-status-badge"
+import { OrderTrackingTimeline } from "@/components/orders/order-tracking-timeline"
 import { Separator } from "@/components/ui/separator"
+import { Button } from "@/components/ui/button"
+import { ReviewStars } from "@/components/reviews/review-stars"
+import { WriteReviewDialog } from "@/components/reviews/write-review-dialog"
 import type { DiscountSource } from "@/types/order"
 
 const DISCOUNT_SOURCE_LABELS: Partial<Record<DiscountSource, string>> = {
@@ -24,10 +30,25 @@ export default function OrderDetailPage() {
   const searchParams = useSearchParams()
   const confirmed = searchParams.get("confirmed") === "1"
   const [order, setOrder] = useState<Order | null | "loading">("loading")
+  const [reviewsByProduct, setReviewsByProduct] = useState<Record<string, Review | null>>({})
+  const [reviewDialogProductId, setReviewDialogProductId] = useState<string | null>(null)
 
   useEffect(() => {
     getOrderById(params.id).then(setOrder)
   }, [params.id])
+
+  useEffect(() => {
+    if (order === "loading" || !order) return
+    const deliveredProductIds = order.sellerOrders
+      .filter((so) => so.status === "Delivered")
+      .flatMap((so) => so.items.map((item) => item.productId))
+    deliveredProductIds.forEach((productId) => {
+      getReview(order.id, productId).then((review) =>
+        setReviewsByProduct((prev) => ({ ...prev, [productId]: review })),
+      )
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order === "loading" ? null : order?.id])
 
   if (!user) {
     return (
@@ -118,32 +139,74 @@ export default function OrderDetailPage() {
               {sellerOrder.items.map((item) => {
                 const product = getProductById(item.productId)
                 const sourceLabel = item.discountSource ? DISCOUNT_SOURCE_LABELS[item.discountSource] : undefined
+                const existingReview = reviewsByProduct[item.productId]
                 return (
-                  <li key={item.productId} className="flex justify-between">
-                    <span>
-                      {product?.name ?? item.productId} × {item.quantity}
-                      {sourceLabel && (
-                        <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                          {sourceLabel}
-                          {item.couponCode ? ` · ${item.couponCode}` : ""}
-                        </span>
-                      )}
-                    </span>
-                    <span>
-                      {item.originalPrice !== undefined && item.originalPrice > item.price && (
-                        <span className="mr-2 text-xs text-muted-foreground line-through">
-                          {formatPrice(item.originalPrice * item.quantity)}
-                        </span>
-                      )}
-                      {formatPrice(item.price * item.quantity)}
-                    </span>
+                  <li key={item.productId}>
+                    <div className="flex justify-between">
+                      <span>
+                        {product?.name ?? item.productId} × {item.quantity}
+                        {sourceLabel && (
+                          <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                            {sourceLabel}
+                            {item.couponCode ? ` · ${item.couponCode}` : ""}
+                          </span>
+                        )}
+                      </span>
+                      <span>
+                        {item.originalPrice !== undefined && item.originalPrice > item.price && (
+                          <span className="mr-2 text-xs text-muted-foreground line-through">
+                            {formatPrice(item.originalPrice * item.quantity)}
+                          </span>
+                        )}
+                        {formatPrice(item.price * item.quantity)}
+                      </span>
+                    </div>
+                    {sellerOrder.status === "Delivered" && (
+                      <div className="mt-1.5 flex items-center gap-2">
+                        {existingReview && <ReviewStars rating={existingReview.rating} size="sm" />}
+                        <Button
+                          type="button"
+                          variant="link"
+                          className="h-auto p-0 text-xs"
+                          onClick={() => setReviewDialogProductId(item.productId)}
+                        >
+                          {existingReview ? "Edit Review" : "Write a Review"}
+                        </Button>
+                      </div>
+                    )}
                   </li>
                 )
               })}
             </ul>
+
+            {(sellerOrder.courierPartner || sellerOrder.trackingNumber) && (
+              <p className="mt-3 text-xs text-muted-foreground">
+                {sellerOrder.courierPartner && <>Courier: {sellerOrder.courierPartner}</>}
+                {sellerOrder.courierPartner && sellerOrder.trackingNumber && " · "}
+                {sellerOrder.trackingNumber && <>AWB: {sellerOrder.trackingNumber}</>}
+              </p>
+            )}
+
+            <div className="mt-4 border-t border-border pt-4">
+              <OrderTrackingTimeline status={sellerOrder.status} timeline={sellerOrder.timeline} />
+            </div>
           </div>
         ))}
       </div>
+
+      {reviewDialogProductId && (
+        <WriteReviewDialog
+          open={!!reviewDialogProductId}
+          onOpenChange={(open) => !open && setReviewDialogProductId(null)}
+          orderId={order.id}
+          productId={reviewDialogProductId}
+          productName={getProductById(reviewDialogProductId)?.name ?? reviewDialogProductId}
+          buyerName={user.name}
+          buyerUid={user.uid}
+          existingReview={reviewsByProduct[reviewDialogProductId] ?? null}
+          onSaved={(review) => setReviewsByProduct((prev) => ({ ...prev, [reviewDialogProductId]: review }))}
+        />
+      )}
 
       <Separator className="my-6" />
 

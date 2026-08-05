@@ -1,12 +1,12 @@
 "use client"
 
-import Image from "next/image"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Heart, Minus, Plus, ShoppingCart, Star, Truck, RotateCcw, Leaf, Zap } from "lucide-react"
 import { useStore } from "@/components/store-provider"
 import { formatPrice, type Product } from "@/lib/products"
 import { Price } from "@/components/price"
+import { ProductImage } from "@/components/product-image"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
@@ -37,14 +37,14 @@ export function ProductDetail({ product }: { product: Product }) {
   return (
     <div className="grid gap-10 lg:grid-cols-2">
       {/* Gallery */}
-      <div className="relative aspect-[4/5] overflow-hidden rounded-md bg-muted">
-        <Image
-          src={product.image || "/placeholder.svg"}
+      <div className="relative aspect-[4/5] overflow-hidden rounded-md">
+        <ProductImage
+          src={product.image}
           alt={product.name}
-          fill
+          className="absolute inset-0"
+          padding="lg"
           priority
           sizes="(max-width: 1024px) 100vw, 50vw"
-          className="object-cover"
         />
         {product.badge && (
           <Badge

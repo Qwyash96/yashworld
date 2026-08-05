@@ -1,12 +1,12 @@
 "use client"
 
 import Link from "next/link"
-import Image from "next/image"
 import { Star, Heart, Truck, Store } from "lucide-react"
 import { useStore } from "@/components/store-provider"
 import { type Product } from "@/lib/products"
 import { Price } from "@/components/price"
 import { ProductCardActions } from "@/components/product-card-actions"
+import { ProductImage } from "@/components/product-image"
 import { getDeliveryEstimate } from "@/lib/delivery-estimate"
 import { cn } from "@/lib/utils"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
@@ -32,8 +32,8 @@ export function QuickView({
       <DialogContent className="max-w-2xl">
         <DialogTitle className="sr-only">{product.name}</DialogTitle>
         <div className="grid gap-6 sm:grid-cols-2">
-          <div className="relative aspect-square overflow-hidden rounded-xl bg-gray-50">
-            <Image src={product.image || "/placeholder.svg"} alt={product.name} fill className="object-cover" />
+          <div className="relative aspect-square overflow-hidden rounded-xl">
+            <ProductImage src={product.image} alt={product.name} className="absolute inset-0" padding="md" />
           </div>
 
           <div className="flex flex-col">

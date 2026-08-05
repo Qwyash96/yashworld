@@ -1,6 +1,5 @@
 "use client"
 
-import Image from "next/image"
 import { useEffect, useMemo, useState } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Package, Search, Eye, Trash2, CheckCircle2, XCircle } from "lucide-react"
@@ -12,6 +11,7 @@ import {
   deleteProduct,
 } from "@/services/product.service"
 import { getCoverImageUrl } from "@/lib/product-images"
+import { ProductImage } from "@/components/product-image"
 import { formatPrice } from "@/lib/products"
 import { Price } from "@/components/price"
 import type { Product, ProductStatus } from "@/types/product"
@@ -219,12 +219,12 @@ export default function AdminProductsPage() {
               key={product.id}
               className="flex flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-sm"
             >
-              <div className="relative h-44 bg-[#f3f5f2]">
-                <Image
-                  src={getCoverImageUrl(product.images) || "/placeholder.svg"}
+              <div className="relative h-44">
+                <ProductImage
+                  src={getCoverImageUrl(product.images)}
                   alt={product.name}
-                  fill
-                  className="object-cover"
+                  className="absolute inset-0"
+                  padding="md"
                 />
                 <span
                   className={`absolute left-3 top-3 rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${statusStyles[product.status]}`}
@@ -341,9 +341,9 @@ export default function AdminProductsPage() {
                   viewingProduct.images.map((img) => (
                     <div
                       key={img.url}
-                      className="relative h-24 overflow-hidden rounded-lg bg-[#f3f5f2]"
+                      className="relative h-24 overflow-hidden rounded-lg"
                     >
-                      <Image src={img.url} alt="" fill className="object-cover" />
+                      <ProductImage src={img.url} alt="" className="absolute inset-0" padding="xs" />
                       {img.isCover && (
                         <span className="absolute left-1 top-1 rounded-full bg-green-600 px-1.5 py-0.5 text-[9px] font-semibold text-white">
                           Cover

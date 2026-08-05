@@ -3,8 +3,13 @@ import type { IntegrationAdapter } from "@/lib/integrations/types"
 
 // Confirmed: Shiprocket authenticates via email+password against
 // https://apiv2.shiprocket.in/v1/external/auth/login, returning a bearer
-// token valid for 240 hours. No order in this app auto-generates an AWB
-// yet — Auto AWB/Tracking/Pickup below are admin-manageable settings only.
+// token valid for 240 hours. When "Auto AWB Generation" is on, a seller's
+// Schedule Pickup action (app/api/seller/orders/[id]/status) calls
+// lib/shiprocket-client.ts to create the shipment and assign a real AWB
+// synchronously — no manual courier/tracking entry needed. "Auto Tracking
+// Sync" powers the seller's "Sync Tracking" button (a live pull, not a
+// passive webhook — see app/api/seller/orders/[id]/track), which advances
+// the order through the same validated status pipeline as a manual update.
 export const shiprocketAdapter: IntegrationAdapter = {
   id: "shiprocket",
   name: "Shiprocket",
@@ -19,6 +24,13 @@ export const shiprocketAdapter: IntegrationAdapter = {
     { key: "autoAwb", label: "Auto AWB Generation", type: "boolean", default: false },
     { key: "autoTracking", label: "Auto Tracking Sync", type: "boolean", default: false },
     { key: "autoPickup", label: "Auto Pickup Scheduling", type: "boolean", default: false },
+    {
+      key: "pickupLocationName",
+      label: "Pickup Location Nickname",
+      type: "text",
+      default: "",
+      helpText: "The pickup location nickname from your Shiprocket panel (Settings → Pickup Addresses). Required for Auto AWB Generation.",
+    },
   ],
   supportsWebhook: true,
   supportsTest: true,

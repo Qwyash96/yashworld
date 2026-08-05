@@ -56,9 +56,9 @@ export function HeroSlider({ banners }: { banners: Banner[] }) {
   }
 
   return (
-    <section className="relative mx-auto max-w-7xl overflow-hidden bg-gray-100 sm:mx-3 sm:mt-3 sm:rounded-2xl lg:mx-auto lg:px-4">
+    <section className="relative mx-3 mt-3 max-w-7xl overflow-hidden sm:mx-4 lg:mx-auto lg:px-4">
       <div
-        className="relative touch-pan-y overflow-hidden sm:rounded-2xl"
+        className="relative touch-pan-y overflow-hidden rounded-2xl bg-gray-100"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -70,7 +70,7 @@ export function HeroSlider({ banners }: { banners: Banner[] }) {
           {banners.map((banner, i) => {
             const href = bannerHref(banner)
             const slide = (
-              <div className="relative h-[170px] w-full shrink-0 overflow-hidden lg:h-[340px]">
+              <div className="relative h-[130px] w-full shrink-0 overflow-hidden md:h-[160px] lg:h-[190px]">
                 <Image
                   src={banner.imageUrl}
                   alt={banner.title ?? "Promotional banner"}
@@ -81,15 +81,15 @@ export function HeroSlider({ banners }: { banners: Banner[] }) {
                   className="object-cover"
                 />
                 {(banner.title || banner.subtitle || banner.buttonText) && (
-                  <div className="absolute inset-0 flex flex-col items-start justify-end gap-1.5 bg-gradient-to-t from-black/50 to-transparent p-4 lg:p-6">
+                  <div className="absolute inset-0 flex flex-col items-start justify-end gap-1 bg-gradient-to-t from-black/55 to-transparent p-3 lg:p-4">
                     {banner.title && (
-                      <h2 className="max-w-lg text-base font-bold text-white sm:text-xl lg:text-2xl">{banner.title}</h2>
+                      <h2 className="max-w-lg text-sm font-bold text-white sm:text-base lg:text-lg">{banner.title}</h2>
                     )}
                     {banner.subtitle && (
-                      <p className="max-w-md text-xs text-white/90 sm:text-sm lg:text-base">{banner.subtitle}</p>
+                      <p className="max-w-md text-[11px] text-white/90 sm:text-xs lg:text-sm">{banner.subtitle}</p>
                     )}
                     {banner.buttonText && (
-                      <span className="mt-1 inline-flex items-center rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-black sm:text-sm">
+                      <span className="mt-0.5 inline-flex items-center rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-black sm:text-xs">
                         {banner.buttonText}
                       </span>
                     )}
@@ -110,19 +110,19 @@ export function HeroSlider({ banners }: { banners: Banner[] }) {
             <button
               onClick={() => go(-1)}
               aria-label="Previous banner"
-              className="absolute left-2 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-black shadow transition hover:bg-white lg:size-9"
+              className="absolute left-2 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-black shadow transition hover:bg-white lg:size-8"
             >
-              <ChevronLeft className="size-4 lg:size-5" />
+              <ChevronLeft className="size-3.5 lg:size-4" />
             </button>
             <button
               onClick={() => go(1)}
               aria-label="Next banner"
-              className="absolute right-2 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-black shadow transition hover:bg-white lg:size-9"
+              className="absolute right-2 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-black shadow transition hover:bg-white lg:size-8"
             >
-              <ChevronRight className="size-4 lg:size-5" />
+              <ChevronRight className="size-3.5 lg:size-4" />
             </button>
 
-            <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-1.5">
+            <div className="absolute bottom-1.5 left-1/2 flex -translate-x-1/2 gap-1.5">
               {banners.map((b, i) => (
                 <button
                   key={b.id}

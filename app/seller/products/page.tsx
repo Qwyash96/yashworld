@@ -1,7 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import Image from "next/image"
 import { useEffect, useState } from "react"
 import { Menu, Package, Pencil, Plus, ShoppingBag, Trash2, Wallet } from "lucide-react"
 import { useSellerGate } from "@/hooks/use-seller-status"
@@ -10,6 +9,7 @@ import { getOrdersBySeller } from "@/services/order.service"
 import { getCoverImageUrl } from "@/lib/product-images"
 import { formatPrice } from "@/lib/products"
 import { Price } from "@/components/price"
+import { ProductImage } from "@/components/product-image"
 import type { Product, ProductStatus } from "@/types/product"
 import {
   Sheet,
@@ -216,12 +216,13 @@ export default function SellerProductsPage() {
                       <tr key={product.id} className="transition hover:bg-green-50/40">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-gray-100">
-                              <Image
-                                src={getCoverImageUrl(product.images) || "/placeholder.svg"}
+                            <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl">
+                              <ProductImage
+                                src={getCoverImageUrl(product.images)}
                                 alt={product.name}
-                                fill
-                                className="object-cover"
+                                className="absolute inset-0"
+                                padding="xs"
+                                sizes="48px"
                               />
                             </div>
                             <span className="font-medium text-gray-900">{product.name}</span>

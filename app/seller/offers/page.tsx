@@ -23,6 +23,7 @@ import { sanitizeDecimal, sanitizeDigits } from "@/lib/numeric-input"
 import { formatPrice } from "@/lib/products"
 import { Price } from "@/components/price"
 import { getCoverImageUrl } from "@/lib/product-images"
+import { ProductImage } from "@/components/product-image"
 import type { Product } from "@/types/product"
 import type { Coupon } from "@/types/coupon"
 import type { Campaign, CampaignParticipant, DiscountType } from "@/types/campaign"
@@ -381,7 +382,7 @@ export default function SellerOffersPage() {
                   {products.map((product) => (
                     <div key={product.id} className="flex items-center justify-between gap-4 p-4">
                       <div className="flex min-w-0 items-center gap-3">
-                        <img src={getCoverImageUrl(product.images)} alt={product.name} className="h-12 w-12 shrink-0 rounded-lg object-cover" />
+                        <ProductImage src={getCoverImageUrl(product.images)} alt={product.name} className="h-12 w-12 shrink-0 rounded-lg" padding="xs" sizes="48px" />
                         <div className="min-w-0">
                           <p className="truncate font-medium text-gray-900">{product.name}</p>
                           <Price price={product.price} originalPrice={product.originalPrice} size="sm" />

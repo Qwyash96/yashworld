@@ -1,6 +1,6 @@
 import Link from "next/link"
-import Image from "next/image"
 import type { SponsoredAd } from "@/types/sponsored-ad"
+import { ProductImage } from "@/components/product-image"
 
 /** Position 2/3/4 — a thin "Sponsored" strip for the highest-priority
  * running ad in that slot (real, paid seller promotions — see
@@ -16,8 +16,8 @@ export function SponsoredAdSlot({ ads }: { ads: SponsoredAd[] }) {
         href={`/products/${ad.productId}`}
         className="flex items-center gap-3 overflow-hidden rounded-xl border border-border bg-white p-3 shadow-sm transition hover:shadow-md sm:p-4"
       >
-        <div className="relative size-14 shrink-0 overflow-hidden rounded-lg bg-gray-100 sm:size-16">
-          {ad.productImage && <Image src={ad.productImage} alt={ad.productName} fill className="object-cover" />}
+        <div className="relative size-14 shrink-0 overflow-hidden rounded-lg sm:size-16">
+          {ad.productImage && <ProductImage src={ad.productImage} alt={ad.productName} className="absolute inset-0" padding="xs" sizes="64px" />}
         </div>
         <div className="min-w-0 flex-1">
           <span className="inline-block rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">

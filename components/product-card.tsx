@@ -1,6 +1,5 @@
 "use client"
 
-import Image from "next/image"
 import Link from "next/link"
 import { useState } from "react"
 import { Heart, Star, Eye, GitCompareArrows } from "lucide-react"
@@ -9,6 +8,7 @@ import { type Product } from "@/lib/products"
 import { calculateDiscountPercent } from "@/lib/discount"
 import { Price, DiscountBadge } from "@/components/price"
 import { ProductCardActions } from "@/components/product-card-actions"
+import { ProductImage } from "@/components/product-image"
 import { QuickView } from "@/components/quick-view"
 import { cn } from "@/lib/utils"
 
@@ -27,13 +27,8 @@ export function ProductCard({ product }: { product: Product }) {
 
   return (
     <div className="group overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-      <Link href={`/products/${product.id}`} className="relative block aspect-square overflow-hidden bg-gray-50">
-        <Image
-          src={product.image || "/placeholder.svg"}
-          alt={product.name}
-          fill
-          className="object-cover transition duration-300 group-hover:scale-105"
-        />
+      <Link href={`/products/${product.id}`} className="relative block aspect-square overflow-hidden">
+        <ProductImage src={product.image} alt={product.name} className="absolute inset-0" padding="sm" />
 
         {discountPercent > 0 && (
           <DiscountBadge percent={discountPercent} className="absolute left-1.5 top-1.5 shadow-sm" />

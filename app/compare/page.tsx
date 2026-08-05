@@ -1,12 +1,12 @@
 "use client"
 
 import Link from "next/link"
-import Image from "next/image"
 import { Star, X, GitCompareArrows } from "lucide-react"
 import { useStore } from "@/components/store-provider"
 import { Price } from "@/components/price"
 import { getDeliveryEstimate } from "@/lib/delivery-estimate"
 import { Button } from "@/components/ui/button"
+import { ProductImage } from "@/components/product-image"
 
 export default function ComparePage() {
   const { compare, getProductById, toggleCompare, clearCompare } = useStore()
@@ -49,8 +49,8 @@ export default function ComparePage() {
                 <X className="size-4 text-[#444444]" />
               </button>
               <Link href={`/products/${product.id}`} className="block">
-                <div className="relative aspect-square overflow-hidden rounded-xl bg-gray-50">
-                  <Image src={product.image || "/placeholder.svg"} alt={product.name} fill className="object-cover" />
+                <div className="relative aspect-square overflow-hidden rounded-xl">
+                  <ProductImage src={product.image} alt={product.name} className="absolute inset-0" padding="md" />
                 </div>
                 <p className="mt-3 line-clamp-2 font-semibold text-black">{product.name}</p>
               </Link>

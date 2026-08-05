@@ -96,6 +96,27 @@ export async function updateSellerOrderStatus(
   }
 }
 
+/** Live-pulls the AWB's current status from Shiprocket and advances the
+ * seller order through the fulfilment sequence if it's moved — see
+ * app/api/seller/orders/[id]/track's doc comment for why this is a pull
+ * button rather than a passive webhook. */
+export async function syncSellerOrderTracking(
+  orderId: string,
+): Promise<{ rawStatus: string; changed: boolean; status?: OrderStatus }> {
+  const token = await auth.currentUser?.getIdToken()
+  if (!token) throw new Error("Not signed in.")
+
+  const response = await fetch(`/api/seller/orders/${orderId}/track`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  const body = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    throw new Error(body.error ?? `Failed to sync tracking for order "${orderId}"`)
+  }
+  return body
+}
+
 /** For the future Razorpay webhook — not called anywhere yet. */
 export async function updateOrderPaymentStatus(
   id: string,

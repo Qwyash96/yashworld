@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Image from "next/image"
 import { toast } from "sonner"
 import { Megaphone, Package, Settings2, Check, X, Pause, Play } from "lucide-react"
 import {
@@ -12,6 +11,7 @@ import {
 } from "@/lib/admin-sponsored-ads-client"
 import { getEffectiveAdStatus } from "@/lib/sponsored-ad-status"
 import { formatPrice } from "@/lib/products"
+import { ProductImage } from "@/components/product-image"
 import { sanitizeDigits } from "@/lib/numeric-input"
 import { AD_DURATION_OPTIONS, AD_POSITIONS, AD_POSITION_LABELS } from "@/types/sponsored-ad"
 import type { SponsoredAd, SponsoredAdStatus, AdPosition } from "@/types/sponsored-ad"
@@ -170,9 +170,9 @@ export default function AdminSponsoredAdsPage() {
             <div key={ad.id} className="flex flex-col gap-3 rounded-2xl border border-border bg-white p-4 shadow-sm">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="relative size-14 shrink-0 overflow-hidden rounded-xl bg-gray-100">
+                  <div className="relative size-14 shrink-0 overflow-hidden rounded-xl bg-white">
                     {ad.productImage ? (
-                      <Image src={ad.productImage} alt={ad.productName} fill className="object-cover" />
+                      <ProductImage src={ad.productImage} alt={ad.productName} className="absolute inset-0" padding="xs" sizes="56px" />
                     ) : (
                       <div className="flex h-full items-center justify-center">
                         <Package className="size-5 text-gray-400" />

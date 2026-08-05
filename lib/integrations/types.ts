@@ -12,7 +12,7 @@ export interface CredentialFieldDef {
 export interface SettingFieldDef {
   key: string
   label: string
-  type: "boolean" | "select" | "number"
+  type: "boolean" | "select" | "number" | "text"
   options?: { value: string; label: string }[]
   default: unknown
   helpText?: string

@@ -1,7 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import Image from "next/image"
 import { useEffect, useMemo, useState } from "react"
 import {
   Package,
@@ -33,6 +32,7 @@ import { sanitizeIndianMobile, sanitizeDigits } from "@/lib/numeric-input"
 import type { Order, OrderStatus } from "@/types/order"
 import type { Address, UserProfile } from "@/types/user"
 import { OrderStatusBadge } from "@/components/orders/order-status-badge"
+import { ProductImage } from "@/components/product-image"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -398,8 +398,8 @@ export default function ProfilePage() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {savedItems.map((p) => (
               <div key={p.id} className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
-                <div className="relative h-40 bg-[#f3f5f2]">
-                  <Image src={p.image || "/placeholder.svg"} alt={p.name} fill className="object-cover" />
+                <div className="relative h-40">
+                  <ProductImage src={p.image} alt={p.name} className="absolute inset-0" padding="md" />
                 </div>
                 <div className="p-4">
                   <p className="line-clamp-1 font-bold text-black">{p.name}</p>

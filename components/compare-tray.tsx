@@ -1,9 +1,9 @@
 "use client"
 
 import Link from "next/link"
-import Image from "next/image"
 import { X, GitCompareArrows } from "lucide-react"
 import { useStore } from "@/components/store-provider"
+import { ProductImage } from "@/components/product-image"
 
 /** A floating bottom bar that appears once at least one product is added to
  * compare — mounted globally in components/site-chrome.tsx. */
@@ -19,8 +19,8 @@ export function CompareTray() {
           <GitCompareArrows className="size-5 shrink-0 text-green-700" />
           {catalogItems.map((product) => (
             <div key={product.id} className="relative shrink-0">
-              <div className="relative size-12 overflow-hidden rounded-lg border border-border bg-gray-50">
-                <Image src={product.image || "/placeholder.svg"} alt={product.name} fill className="object-cover" />
+              <div className="relative size-12 overflow-hidden rounded-lg border border-border">
+                <ProductImage src={product.image} alt={product.name} className="absolute inset-0" padding="xs" />
               </div>
               <button
                 onClick={() => toggleCompare(product)}

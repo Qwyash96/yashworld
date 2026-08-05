@@ -91,10 +91,10 @@ export default async function HomePage() {
       <HeroSlider banners={heroSlides} />
       <CategoryPillBar categories={categories} />
 
-      <ProductRail id="trending" title="Trending Plants" subtitle="Popular with our shoppers right now" products={trending} />
-
-      {/* Position 2 — After Trending */}
-      <SponsoredAdSlot ads={adsByPosition["after-trending"]} />
+      {/* Flash Sale / Offers — leads the page right after the hero, per the
+       * homepage's intended above-the-fold priority: Hero, Flash Sale, Best
+       * Sellers, New Arrivals, then everything else. */}
+      <FlashDeals campaigns={flashSales} />
 
       <ProductRail
         id="best-sellers"
@@ -103,6 +103,19 @@ export default async function HomePage() {
         products={bestSellers}
         viewAllHref="/products"
       />
+
+      <ProductRail
+        id="new-arrivals"
+        title="New Arrivals"
+        subtitle="Freshly listed by our sellers"
+        products={newArrivals}
+        viewAllHref="/products"
+      />
+
+      <ProductRail id="trending" title="Trending Plants" subtitle="Popular with our shoppers right now" products={trending} />
+
+      {/* Position 2 — After Trending */}
+      <SponsoredAdSlot ads={adsByPosition["after-trending"]} />
 
       <PromoStrip banner={banners[1 % banners.length]} />
 
@@ -114,15 +127,7 @@ export default async function HomePage() {
 
       <PromoStrip banner={banners[2 % banners.length]} />
 
-      <ProductRail
-        id="new-arrivals"
-        title="New Arrivals"
-        subtitle="Freshly listed by our sellers"
-        products={newArrivals}
-        viewAllHref="/products"
-      />
       <ProductRail id="todays-deals" title="Today's Deals" subtitle="Biggest discounts on the marketplace right now" products={todaysDeals} />
-      <FlashDeals campaigns={flashSales} />
 
       <PromoStrip banner={banners[3 % banners.length]} />
 

@@ -145,7 +145,12 @@ export default function SellerOrdersPage() {
           <h1 className="text-2xl font-bold text-black">Order Fulfillment</h1>
           <p className="mt-1 text-sm text-[#444444]">Only your own items within each order are shown here.</p>
         </div>
-        <SellerNotificationBell sellerId={sellerUid!} />
+        <div className="flex items-center gap-3">
+          <Link href="/seller/shipping" className="text-sm font-medium text-green-700 hover:underline">
+            Shipping Dashboard
+          </Link>
+          <SellerNotificationBell sellerId={sellerUid!} />
+        </div>
       </div>
 
       {wallet && (

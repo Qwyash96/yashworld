@@ -1,7 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import Image from "next/image"
 import { useEffect, useState } from "react"
 import { Menu, Megaphone, Package, Plus } from "lucide-react"
 import { useSellerGate } from "@/hooks/use-seller-status"
@@ -9,6 +8,7 @@ import { getMySponsoredAds } from "@/lib/seller-ads-client"
 import { getEffectiveAdStatus } from "@/lib/sponsored-ad-status"
 import { formatPrice } from "@/lib/products"
 import { AD_POSITION_LABELS } from "@/types/sponsored-ad"
+import { ProductImage } from "@/components/product-image"
 import type { SponsoredAd, SponsoredAdStatus } from "@/types/sponsored-ad"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { SellerSidebar, SellerSidebarContent } from "@/components/seller/seller-sidebar"
@@ -119,9 +119,9 @@ export default function SellerMarketingPage() {
                   className="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="relative size-14 shrink-0 overflow-hidden rounded-xl bg-gray-100">
+                    <div className="relative size-14 shrink-0 overflow-hidden rounded-xl bg-white">
                       {ad.productImage ? (
-                        <Image src={ad.productImage} alt={ad.productName} fill className="object-cover" />
+                        <ProductImage src={ad.productImage} alt={ad.productName} className="absolute inset-0" padding="xs" sizes="56px" />
                       ) : (
                         <div className="flex h-full items-center justify-center">
                           <Package className="size-5 text-gray-400" />

@@ -1,7 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import Image from "next/image"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
@@ -9,6 +8,7 @@ import { ArrowLeft, Loader2, Package, Zap } from "lucide-react"
 import { useSellerGate } from "@/hooks/use-seller-status"
 import { getProductsBySeller } from "@/services/product.service"
 import { getCoverImageUrl } from "@/lib/product-images"
+import { ProductImage } from "@/components/product-image"
 import { formatPrice } from "@/lib/products"
 import { createAdOrder, verifyAdPayment } from "@/lib/seller-ads-client"
 import { loadRazorpayCheckoutScript } from "@/lib/checkout-client"
@@ -139,9 +139,9 @@ export default function PromoteProductPage() {
                       active ? "border-green-600 ring-2 ring-green-100" : "border-gray-200 hover:border-green-300"
                     }`}
                   >
-                    <div className="relative aspect-square bg-gray-100">
+                    <div className="relative aspect-square bg-white">
                       {cover ? (
-                        <Image src={cover} alt={p.name} fill className="object-cover" />
+                        <ProductImage src={cover} alt={p.name} className="absolute inset-0" padding="sm" />
                       ) : (
                         <div className="flex h-full items-center justify-center">
                           <Package className="size-6 text-gray-400" />

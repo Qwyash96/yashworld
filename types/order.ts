@@ -50,6 +50,13 @@ export interface SellerOrder {
   trackingNumber?: string
   /** Set once a courier is assigned via Schedule Pickup. */
   courierPartner?: string
+  /** Set only when Schedule Pickup went through Shiprocket's live API (Auto
+   * AWB Generation) rather than manual entry — the machine-readable flag
+   * app/api/seller/orders/[id]/track checks before attempting a live
+   * tracking pull, since `courierPartner` itself is just a display string
+   * (and for Shiprocket shipments names the actual assigned sub-carrier,
+   * e.g. "Delhivery Surface", not "Shiprocket"). */
+  shippingProvider?: "shiprocket"
   pickupDate?: string
   pickupTime?: string
   shippedAt?: string

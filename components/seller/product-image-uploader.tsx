@@ -1,10 +1,10 @@
 "use client"
 
 import { useRef, useState, type DragEvent } from "react"
-import Image from "next/image"
 import { GripVertical, ImagePlus, Loader2, Star, Trash2, X } from "lucide-react"
 import { uploadProductImage, deleteProductImage } from "@/services/storage.service"
 import type { ProductImage } from "@/types/product"
+import { ProductImage as ProductPhoto } from "@/components/product-image"
 import { Label } from "@/components/ui/label"
 
 const MAX_IMAGES = 10
@@ -196,11 +196,11 @@ export function ProductImageUploader({
               onDragOver={(e) => handleThumbDragOver(e, index)}
               onDrop={() => handleThumbDrop(index)}
               onDragEnd={() => setDragOverIndex(null)}
-              className={`group relative aspect-square overflow-hidden rounded-xl border-2 bg-white ${
+              className={`group relative aspect-square overflow-hidden rounded-xl border-2 ${
                 dragOverIndex === index ? "border-green-600" : "border-border"
               }`}
             >
-              <Image src={img.url} alt="" fill className="object-cover" />
+              <ProductPhoto src={img.url} alt="" className="absolute inset-0" padding="sm" />
 
               {img.isCover && (
                 <span className="absolute left-1.5 top-1.5 flex items-center gap-1 rounded-full bg-green-600 px-2 py-0.5 text-[10px] font-semibold text-white">
