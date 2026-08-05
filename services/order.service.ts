@@ -117,6 +117,23 @@ export async function syncSellerOrderTracking(
   return body
 }
 
+/** A seller's own private note on their portion of the order — never seen
+ * by the buyer. Pass an empty string to clear it. */
+export async function updateSellerOrderNote(orderId: string, note: string): Promise<void> {
+  const token = await auth.currentUser?.getIdToken()
+  if (!token) throw new Error("Not signed in.")
+
+  const response = await fetch(`/api/seller/orders/${orderId}/note`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ note }),
+  })
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}))
+    throw new Error(body.error ?? `Failed to save note for order "${orderId}"`)
+  }
+}
+
 /** For the future Razorpay webhook — not called anywhere yet. */
 export async function updateOrderPaymentStatus(
   id: string,

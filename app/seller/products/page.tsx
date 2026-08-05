@@ -116,24 +116,24 @@ export default function SellerProductsPage() {
 
   return (
     <div>
-      <header className="flex items-center justify-between gap-4 border-b border-gray-200 bg-white px-4 py-5 sm:px-6 lg:px-10">
+      <header className="flex items-center justify-between gap-3 border-b border-gray-200 bg-white px-3 py-3 sm:px-6 sm:py-5 lg:px-10">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">My Products</h1>
-          <p className="text-sm text-gray-500">Manage your plant listings</p>
+          <h1 className="text-lg font-bold text-gray-900 sm:text-xl">My Products</h1>
+          <p className="text-xs text-gray-500 sm:text-sm">Manage your plant listings</p>
         </div>
 
         <Link
           href="/seller/products/new"
-          className="flex shrink-0 items-center gap-2 rounded-xl bg-green-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-green-800 sm:px-6 sm:py-3"
+          className="flex h-10 shrink-0 items-center gap-2 rounded-xl bg-green-700 px-3 text-sm font-semibold text-white transition hover:bg-green-800 sm:px-6"
         >
           <Plus className="h-4 w-4" />
           <span className="hidden sm:inline">Add Product</span>
         </Link>
       </header>
 
-      <main className="px-4 py-8 sm:px-6 lg:px-10">
+      <main className="px-3 py-4 sm:px-6 sm:py-8 lg:px-10">
           {/* Analytics cards */}
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <StatCard
               icon={Package}
               label="Products"
@@ -151,89 +151,135 @@ export default function SellerProductsPage() {
             />
           </div>
 
-          {/* Product table */}
-          <div className="mt-8 overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm">
+          {/* Product list */}
+          <div className="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm sm:mt-8">
             {products === null ? (
-              <div className="space-y-3 p-6">
+              <div className="space-y-3 p-4 sm:p-6">
                 {[0, 1, 2].map((i) => (
                   <div key={i} className="h-14 animate-pulse rounded-xl bg-gray-100" />
                 ))}
               </div>
             ) : products.length === 0 ? (
-              <div className="p-12 text-center">
-                <p className="text-gray-500">You haven&apos;t added any products yet.</p>
+              <div className="p-8 text-center sm:p-12">
+                <p className="text-sm text-gray-500">You haven&apos;t added any products yet.</p>
                 <Link
                   href="/seller/products/new"
-                  className="mt-4 inline-block rounded-xl bg-green-700 px-6 py-3 text-sm font-semibold text-white transition hover:bg-green-800"
+                  className="mt-4 inline-block rounded-xl bg-green-700 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-green-800"
                 >
                   Add Your First Product
                 </Link>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-200 bg-gray-50 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                      <th className="px-6 py-4">Product</th>
-                      <th className="px-6 py-4">Category</th>
-                      <th className="px-6 py-4">Price</th>
-                      <th className="px-6 py-4">Stock</th>
-                      <th className="px-6 py-4">Status</th>
-                      <th className="px-6 py-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {products.map((product) => (
-                      <tr key={product.id} className="transition hover:bg-green-50/40">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl">
-                              <ProductImage
-                                src={getCoverImageUrl(product.images)}
-                                alt={product.name}
-                                className="absolute inset-0"
-                                padding="xs"
-                                sizes="48px"
-                              />
-                            </div>
-                            <span className="font-medium text-gray-900">{product.name}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-gray-500">{product.categoryId}</td>
-                        <td className="px-6 py-4 text-gray-700">
+              <>
+                {/* Mobile — stacked cards, no horizontal scroll */}
+                <div className="divide-y divide-gray-100 sm:hidden">
+                  {products.map((product) => (
+                    <div key={product.id} className="flex items-center gap-3 p-3">
+                      <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg">
+                        <ProductImage
+                          src={getCoverImageUrl(product.images)}
+                          alt={product.name}
+                          className="absolute inset-0"
+                          padding="xs"
+                          sizes="56px"
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-gray-900">{product.name}</p>
+                        <div className="mt-0.5 flex items-center gap-2">
                           <Price price={product.price} originalPrice={product.originalPrice} size="sm" />
-                        </td>
-                        <td className="px-6 py-4 text-gray-700">{product.stock}</td>
-                        <td className="px-6 py-4">
-                          <span
-                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${STATUS_STYLES[product.status]}`}
-                          >
+                          <span className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_STYLES[product.status]}`}>
                             {product.status}
                           </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center justify-end gap-2">
-                            <Link
-                              href={`/seller/products/${product.id}/edit`}
-                              aria-label="Edit product"
-                              className="rounded-lg border border-gray-200 p-2 text-gray-500 transition hover:border-green-600 hover:text-green-700"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Link>
-                            <button
-                              onClick={() => handleDelete(product.id)}
-                              aria-label="Delete product"
-                              className="rounded-lg border border-gray-200 p-2 text-gray-500 transition hover:border-red-400 hover:text-red-600"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </td>
+                        </div>
+                        <p className="mt-0.5 text-xs text-gray-500">Stock: {product.stock} · {product.categoryId}</p>
+                      </div>
+                      <div className="flex shrink-0 flex-col gap-1.5">
+                        <Link
+                          href={`/seller/products/${product.id}/edit`}
+                          aria-label="Edit product"
+                          className="rounded-lg border border-gray-200 p-2 text-gray-500 transition hover:border-green-600 hover:text-green-700"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Link>
+                        <button
+                          onClick={() => handleDelete(product.id)}
+                          aria-label="Delete product"
+                          className="rounded-lg border border-gray-200 p-2 text-gray-500 transition hover:border-red-400 hover:text-red-600"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop/tablet — table */}
+                <div className="hidden overflow-x-auto sm:block">
+                  <table className="w-full text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-200 bg-gray-50 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                        <th className="px-6 py-4">Product</th>
+                        <th className="px-6 py-4">Category</th>
+                        <th className="px-6 py-4">Price</th>
+                        <th className="px-6 py-4">Stock</th>
+                        <th className="px-6 py-4">Status</th>
+                        <th className="px-6 py-4 text-right">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {products.map((product) => (
+                        <tr key={product.id} className="transition hover:bg-green-50/40">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl">
+                                <ProductImage
+                                  src={getCoverImageUrl(product.images)}
+                                  alt={product.name}
+                                  className="absolute inset-0"
+                                  padding="xs"
+                                  sizes="48px"
+                                />
+                              </div>
+                              <span className="font-medium text-gray-900">{product.name}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-gray-500">{product.categoryId}</td>
+                          <td className="px-6 py-4 text-gray-700">
+                            <Price price={product.price} originalPrice={product.originalPrice} size="sm" />
+                          </td>
+                          <td className="px-6 py-4 text-gray-700">{product.stock}</td>
+                          <td className="px-6 py-4">
+                            <span
+                              className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${STATUS_STYLES[product.status]}`}
+                            >
+                              {product.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center justify-end gap-2">
+                              <Link
+                                href={`/seller/products/${product.id}/edit`}
+                                aria-label="Edit product"
+                                className="rounded-lg border border-gray-200 p-2 text-gray-500 transition hover:border-green-600 hover:text-green-700"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Link>
+                              <button
+                                onClick={() => handleDelete(product.id)}
+                                aria-label="Delete product"
+                                className="rounded-lg border border-gray-200 p-2 text-gray-500 transition hover:border-red-400 hover:text-red-600"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </div>
         </main>

@@ -50,8 +50,8 @@ export default function SellerShopProfilePage() {
   if (gate.state !== "approved" || !sellerUid) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#F8F8F2] px-4">
-        <div className="w-full max-w-md rounded-3xl border border-gray-200 bg-white p-10 text-center shadow-sm">
-          <h1 className="text-xl font-bold text-gray-900">Seller Access Required</h1>
+        <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 text-center shadow-sm sm:p-10">
+          <h1 className="text-lg font-bold text-gray-900 sm:text-xl">Seller Access Required</h1>
           <p className="mt-2 text-sm text-gray-500">Sign in as an approved seller to manage your shop profile.</p>
         </div>
       </div>
@@ -60,21 +60,21 @@ export default function SellerShopProfilePage() {
 
   return (
     <div>
-      <header className="flex items-center gap-4 border-b border-gray-200 bg-white px-4 py-5 sm:px-6 lg:px-10">
+      <header className="flex items-center gap-4 border-b border-gray-200 bg-white px-3 py-3 sm:px-6 sm:py-5 lg:px-10">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Shop Profile</h1>
-          <p className="text-sm text-gray-500">Your public storefront branding</p>
+          <h1 className="text-lg font-bold text-gray-900 sm:text-xl">Shop Profile</h1>
+          <p className="text-xs text-gray-500 sm:text-sm">Your public storefront branding</p>
         </div>
       </header>
 
-      <main className="mx-auto max-w-2xl px-4 py-8 sm:px-6 lg:px-10">
+      <main className="mx-auto max-w-2xl px-3 py-4 sm:px-6 sm:py-8 lg:px-10">
           {!seller && <p className="text-sm text-gray-500">Loading...</p>}
           {seller && (
-            <div className="flex flex-col gap-6 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+            <div className="flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:gap-6 sm:p-6">
               <div className="flex items-center gap-2">
                 <Store className="size-5 text-green-700" />
                 <div>
-                  <p className="font-bold text-gray-900">{seller.shopName}</p>
+                  <p className="text-sm font-bold text-gray-900 sm:text-base">{seller.shopName}</p>
                   <p className="text-xs text-gray-500">Seller ID: {seller.sellerId}</p>
                 </div>
               </div>

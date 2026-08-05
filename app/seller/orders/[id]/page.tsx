@@ -6,27 +6,29 @@ import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import {
   ArrowLeft,
-  MapPin,
   Package,
   Truck,
   FileText,
   FileDown,
   QrCode,
   Barcode as BarcodeIcon,
-  CalendarClock,
   CheckCircle2,
   Circle,
-  XCircle,
   RefreshCw,
+  Phone,
+  StickyNote,
+  type LucideIcon,
 } from "lucide-react"
 import { useSellerGate } from "@/hooks/use-seller-status"
 import { useStore } from "@/components/store-provider"
-import { getOrderById, updateSellerOrderStatus, syncSellerOrderTracking } from "@/services/order.service"
+import { getOrderById, updateSellerOrderStatus, syncSellerOrderTracking, updateSellerOrderNote } from "@/services/order.service"
 import { getSellerProfile } from "@/services/seller.service"
 import { OrderStatusBadge } from "@/components/orders/order-status-badge"
+import { OrderTrackingTimeline } from "@/components/orders/order-tracking-timeline"
 import { ProductImage } from "@/components/product-image"
 import { ORDER_FULFILMENT_SEQUENCE, isCancellable, isReturnable } from "@/types/order-lifecycle"
 import { formatPrice } from "@/lib/products"
+import { getDeliveryEstimate } from "@/lib/delivery-estimate"
 import { buildOrderDocumentContext } from "@/lib/documents/order-document-context"
 import { generateInvoicePdf } from "@/lib/documents/invoice"
 import { generateShippingLabelPdf } from "@/lib/documents/shipping-label"
@@ -40,6 +42,20 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 
 const COURIER_OPTIONS = ["Shiprocket", "Delhivery", "Blue Dart", "Xpressbees", "DTDC", "Other"]
+
+/** The seller-actionable steps, in fulfilment order — drives the Action
+ * Panel checklist. Document-generation actions live in the header instead
+ * since they're not sequential (always available, any status). */
+const ACTION_STEPS: { status: OrderStatus; label: string }[] = [
+  { status: "Accepted", label: "Accept Order" },
+  { status: "Ready To Pack", label: "Mark Ready to Pack" },
+  { status: "Packed", label: "Pack Order" },
+  { status: "Pickup Requested", label: "Ready for Pickup" },
+  { status: "Picked Up", label: "Handed to Courier" },
+  { status: "In Transit", label: "Mark In Transit" },
+  { status: "Out For Delivery", label: "Mark Out For Delivery" },
+  { status: "Delivered", label: "Mark Delivered" },
+]
 
 export default function SellerOrderDetailPage() {
   const params = useParams<{ id: string }>()
@@ -61,6 +77,8 @@ export default function SellerOrderDetailPage() {
   const [previewImage, setPreviewImage] = useState<{ title: string; dataUrl: string; filename: string } | null>(null)
   const [syncing, setSyncing] = useState(false)
   const [autoAwbEnabled, setAutoAwbEnabled] = useState(false)
+  const [noteDraft, setNoteDraft] = useState("")
+  const [savingNote, setSavingNote] = useState(false)
 
   function refresh() {
     getOrderById(params.id).then(setOrder)
@@ -85,6 +103,10 @@ export default function SellerOrderDetailPage() {
 
   const mine = useMemo(() => order?.sellerOrders.find((so) => so.sellerId === sellerUid), [order, sellerUid])
 
+  useEffect(() => {
+    setNoteDraft(mine?.note ?? "")
+  }, [mine?.note])
+
   const documentContext = useMemo(() => {
     if (!order || !mine) return null
     const productNames = new Map(mine.items.map((i) => [i.productId, getProductById(i.productId)?.name ?? i.productId]))
@@ -93,18 +115,18 @@ export default function SellerOrderDetailPage() {
   }, [order, mine, shopName])
 
   if (gate.state === "loading" || order === undefined) {
-    return <div className="mx-auto max-w-5xl px-4 py-16">Loading...</div>
+    return <div className="mx-auto max-w-6xl px-3 py-10 sm:px-6 sm:py-16">Loading...</div>
   }
   if (gate.state !== "approved") {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-16">
+      <div className="mx-auto max-w-6xl px-3 py-10 sm:px-6 sm:py-16">
         <p>You need an approved seller account to view this page.</p>
       </div>
     )
   }
   if (order === null || !mine) {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-16 text-center">
+      <div className="mx-auto max-w-6xl px-3 py-10 sm:px-6 sm:py-16 text-center">
         <p className="text-black">Order not found.</p>
         <Link href="/seller/orders" className="mt-4 inline-block text-green-700 hover:underline">
           Back to Orders
@@ -160,6 +182,11 @@ export default function SellerOrderDetailPage() {
     }).then(() => setPickupOpen(false))
   }
 
+  function handleCancelPickup() {
+    if (!window.confirm("Cancel this pickup? The assigned courier and AWB will be cleared.")) return
+    runTransition({ status: "Packed" })
+  }
+
   function handleCancel() {
     const reason = window.prompt("Reason for cancellation?")
     if (!reason?.trim()) return
@@ -184,6 +211,19 @@ export default function SellerOrderDetailPage() {
     }
   }
 
+  async function handleSaveNote() {
+    setSavingNote(true)
+    try {
+      await updateSellerOrderNote(order!.id, noteDraft)
+      toast.success("Note saved.")
+      refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to save note.")
+    } finally {
+      setSavingNote(false)
+    }
+  }
+
   async function handleGenerateQr() {
     const dataUrl = await generateOrderQrCodeDataUrl(order!.id)
     setPreviewImage({ title: "Order QR Code", dataUrl, filename: `order-qr-${order!.id.slice(0, 8)}.png` })
@@ -195,184 +235,111 @@ export default function SellerOrderDetailPage() {
   }
 
   const status = mine.status
+  const timeline = mine.timeline ?? []
+  const isTerminal = status === "Cancelled" || status === "Returned"
+  const currentIndex = ORDER_FULFILMENT_SEQUENCE.indexOf(status)
+  // History-based, not current-status-based — a rejected Pending order goes
+  // straight to "Cancelled" without ever passing through "Accepted", so
+  // checking the timeline (not just "status !== Pending") is what actually
+  // keeps the phone number hidden for an order the seller never accepted.
+  const hasBeenAccepted = timeline.some((e) => e.status === "Accepted")
+  const hasBeenShipped = timeline.some((e) => e.status === "Picked Up")
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-6xl px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
       <Link href="/seller/orders" className="flex items-center gap-1 text-sm text-[#444444] hover:text-green-700">
         <ArrowLeft className="size-4" />
         Back to Orders
       </Link>
 
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-black">Order #{order.id.slice(0, 8)}</h1>
-          <p className="text-sm text-[#444444]">Placed {new Date(order.createdAt).toLocaleString()}</p>
+      {/* Order Header */}
+      <section className="mt-3 rounded-xl border border-border bg-white p-3 shadow-sm sm:p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-lg font-bold text-black sm:text-xl">Order #{order.id.slice(0, 8)}</h1>
+            <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-[#444444] sm:grid-cols-4">
+              <span>Placed {new Date(order.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span>
+              <span>{getDeliveryEstimate(order.shippingMethod)}</span>
+              <span>Payment: {order.paymentStatus}</span>
+              <span>{order.paymentMethod === "cod" ? "Cash on Delivery" : "Razorpay"}</span>
+            </div>
+          </div>
+          <OrderStatusBadge status={status} />
         </div>
-        <OrderStatusBadge status={status} />
-      </div>
 
-      {/* Action Buttons */}
-      <section className="mt-6 flex flex-wrap gap-2 rounded-2xl border border-border bg-white p-4 shadow-sm">
-        {status === "Pending" && (
-          <>
-            <Button className="h-10" onClick={handleAccept} disabled={busy}>
-              Accept Order
-            </Button>
-            <Button variant="destructive" className="h-10" onClick={() => setRejectOpen(true)} disabled={busy}>
-              Reject Order
-            </Button>
-          </>
-        )}
-        {status === "Accepted" && (
-          <Button className="h-10" onClick={() => handleAdvance("Ready To Pack")} disabled={busy}>
-            Mark Ready to Pack
-          </Button>
-        )}
-        {status === "Ready To Pack" && (
-          <Button className="h-10" onClick={() => handleAdvance("Packed")} disabled={busy}>
-            Mark Packed
-          </Button>
-        )}
-        {status === "Packed" && (
-          <Button className="h-10" onClick={() => setPickupOpen(true)} disabled={busy}>
-            Schedule Pickup
-          </Button>
-        )}
-        {status === "Pickup Requested" && (
-          <Button className="h-10" onClick={() => handleAdvance("Picked Up")} disabled={busy}>
-            Handed To Courier
-          </Button>
-        )}
-        {status === "Picked Up" && (
-          <Button className="h-10" onClick={() => handleAdvance("In Transit")} disabled={busy}>
-            Mark In Transit
-          </Button>
-        )}
-        {status === "In Transit" && (
-          <Button className="h-10" onClick={() => handleAdvance("Out For Delivery")} disabled={busy}>
-            Mark Out For Delivery
-          </Button>
-        )}
-        {status === "Out For Delivery" && (
-          <Button className="h-10" onClick={() => handleAdvance("Delivered")} disabled={busy}>
-            Mark Delivered
-          </Button>
-        )}
-        {isReturnable(status) && (
-          <Button variant="outline" className="h-10" onClick={handleReturn} disabled={busy}>
-            Mark Returned
-          </Button>
-        )}
-        {isCancellable(status) && status !== "Pending" && (
-          <Button variant="outline" className="h-10 text-red-600" onClick={handleCancel} disabled={busy}>
-            Cancel Order
-          </Button>
-        )}
-
-        <div className="ml-auto flex flex-wrap gap-2">
-          <Button variant="outline" className="h-10" onClick={() => documentContext && generateInvoicePdf(documentContext)}>
-            <FileText className="size-4" />
-            Print Invoice
-          </Button>
-          <Button variant="outline" className="h-10" onClick={() => documentContext && generateShippingLabelPdf(documentContext)}>
-            <FileDown className="size-4" />
+        <div className="-mx-3 mt-4 flex flex-nowrap gap-2 overflow-x-auto border-t border-border px-3 pt-3 sm:mx-0 sm:flex-wrap sm:px-0">
+          {status === "Pending" && (
+            <>
+              <Button size="sm" className="h-9 shrink-0" onClick={handleAccept} disabled={busy}>
+                Accept Order
+              </Button>
+              <Button size="sm" variant="destructive" className="h-9 shrink-0" onClick={() => setRejectOpen(true)} disabled={busy}>
+                Reject Order
+              </Button>
+            </>
+          )}
+          <Button size="sm" variant="outline" className="h-9 shrink-0" onClick={() => documentContext && generateShippingLabelPdf(documentContext)}>
+            <FileDown className="size-3.5" />
             Shipping Label
           </Button>
-          <Button variant="outline" className="h-10" onClick={() => documentContext && generatePackingSlipPdf(documentContext)}>
-            <Package className="size-4" />
+          <Button size="sm" variant="outline" className="h-9 shrink-0" onClick={() => documentContext && generateInvoicePdf(documentContext)}>
+            <FileText className="size-3.5" />
+            Invoice
+          </Button>
+          <Button size="sm" variant="outline" className="h-9 shrink-0" onClick={() => documentContext && generatePackingSlipPdf(documentContext)}>
+            <Package className="size-3.5" />
             Packing Slip
           </Button>
-          <Button variant="outline" className="h-10" onClick={handleGenerateQr}>
-            <QrCode className="size-4" />
-            QR Code
+          <Button size="sm" variant="outline" className="h-9 shrink-0" onClick={handleGenerateQr}>
+            <QrCode className="size-3.5" />
+            QR
           </Button>
-          <Button variant="outline" className="h-10" onClick={handleGenerateBarcode}>
-            <BarcodeIcon className="size-4" />
+          <Button size="sm" variant="outline" className="h-9 shrink-0" onClick={handleGenerateBarcode}>
+            <BarcodeIcon className="size-3.5" />
             Barcode
           </Button>
+          {isReturnable(status) && (
+            <Button size="sm" variant="outline" className="h-9 shrink-0 sm:ml-auto" onClick={handleReturn} disabled={busy}>
+              Mark Returned
+            </Button>
+          )}
+          {isCancellable(status) && status !== "Pending" && (
+            <Button size="sm" variant="outline" className="h-9 shrink-0 text-red-600" onClick={handleCancel} disabled={busy}>
+              Cancel Order
+            </Button>
+          )}
         </div>
       </section>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        {/* Customer Details */}
-        <div className="rounded-2xl border border-border bg-white p-5 shadow-sm lg:col-span-1">
-          <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-[#444444]">
-            <MapPin className="size-4 text-green-700" />
-            Customer Details
-          </h2>
-          <p className="mt-3 font-semibold text-black">{order.shippingAddress.fullName}</p>
-          <p className="mt-2 text-sm text-[#444444]">
-            {order.shippingAddress.line1}
-            {order.shippingAddress.line2 ? `, ${order.shippingAddress.line2}` : ""}
-            {order.shippingAddress.landmark && (
-              <>
-                <br />
-                Landmark: {order.shippingAddress.landmark}
-              </>
-            )}
-            <br />
-            {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.postalCode}
-          </p>
-          <p className="mt-3 text-xs text-[#888888]">
-            Phone and email are never shown to sellers — courier handoff carries the address only.
-          </p>
-
-          {/* Courier Details */}
-          <h2 className="mt-6 flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-[#444444]">
-            <Truck className="size-4 text-green-700" />
-            Courier Details
-          </h2>
-          {!mine.courierPartner ? (
-            <p className="mt-3 text-sm text-[#444444]">No courier assigned yet.</p>
-          ) : (
-            <div className="mt-3 flex flex-col gap-2 text-sm">
-              <Row label="Courier Partner" value={mine.courierPartner} />
-              {mine.pickupDate && <Row label="Pickup Date" value={mine.pickupDate} />}
-              {mine.pickupTime && <Row label="Pickup Time" value={mine.pickupTime} />}
-              {mine.trackingNumber && <Row label="Tracking Number (AWB)" value={mine.trackingNumber} />}
-              <div className="mt-2 flex flex-col gap-1.5 border-t border-border pt-2">
-                <CourierMilestone label="Courier Assigned" done={!!mine.courierPartner} />
-                <CourierMilestone label="Pickup Scheduled" done={!!mine.pickupDate} />
-                <CourierMilestone label="Picked Up Successfully" done={ORDER_FULFILMENT_SEQUENCE.indexOf(status) >= ORDER_FULFILMENT_SEQUENCE.indexOf("Picked Up")} />
-              </div>
-              {mine.shippingProvider === "shiprocket" && status !== "Delivered" && status !== "Cancelled" && status !== "Returned" && (
-                <Button variant="outline" className="mt-2 h-9" onClick={handleSyncTracking} disabled={syncing}>
-                  <RefreshCw className={syncing ? "size-3.5 animate-spin" : "size-3.5"} />
-                  Sync Tracking
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Order Details */}
+      <div className="mt-3 grid gap-3 sm:mt-4 sm:gap-4 lg:grid-cols-3">
+        {/* MAIN column */}
         <div className="flex flex-col gap-4 lg:col-span-2">
-          <div className="rounded-2xl border border-border bg-white p-5 shadow-sm">
-            <h2 className="text-sm font-semibold uppercase tracking-widest text-[#444444]">Order Details</h2>
-            <div className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
-              <Row label="Order Date & Time" value={new Date(order.createdAt).toLocaleString()} />
-              <Row label="Payment Status" value={order.paymentStatus} />
-              <Row label="Payment Method" value={order.paymentMethod === "cod" ? "Cash on Delivery" : "Razorpay"} />
-            </div>
-
-            <div className="mt-4 flex flex-col divide-y divide-border border-t border-border">
+          {/* Product Information */}
+          <Card title="Product Information" icon={Package}>
+            <div className="flex flex-col divide-y divide-border">
               {mine.items.map((item) => {
                 const product = getProductById(item.productId)
+                const hasDiscount = item.originalPrice !== undefined && item.originalPrice > item.price
                 return (
-                  <div key={item.productId} className="flex items-center gap-3 py-3">
-                    <div className="relative size-14 shrink-0 overflow-hidden rounded-lg">
-                      <ProductImage src={product?.image} alt={product?.name ?? item.productId} className="absolute inset-0" padding="xs" sizes="56px" />
+                  <div key={item.productId} className="flex gap-3 py-3 first:pt-0 last:pb-0">
+                    <div className="relative size-24 shrink-0 overflow-hidden rounded-lg">
+                      <ProductImage src={product?.image} alt={product?.name ?? item.productId} className="absolute inset-0" padding="sm" sizes="96px" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-black">{product?.name ?? item.productId}</p>
-                      <p className="text-xs text-[#888888]">SKU: {item.productId}</p>
-                      <p className="text-xs text-[#444444]">
-                        Qty {item.quantity}
-                        {item.originalPrice !== undefined && item.originalPrice > item.price && (
-                          <span className="ml-2 line-through">{formatPrice(item.originalPrice)}</span>
+                      <p className="truncate text-sm font-semibold text-black">{product?.name ?? item.productId}</p>
+                      <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-[#444444] sm:grid-cols-3">
+                        <span>SKU: {item.productId.slice(0, 10)}</span>
+                        <span>Category: {product?.category ?? "—"}</span>
+                        <span>Variant: {product ? `${product.colors[0]} / ${product.sizes[0]}` : "—"}</span>
+                        <span>Qty: {item.quantity}</span>
+                        <span>
+                          Price: {formatPrice(item.price)}
+                          {hasDiscount && <span className="ml-1 line-through text-[#888888]">{formatPrice(item.originalPrice!)}</span>}
+                        </span>
+                        {hasDiscount && (
+                          <span>Discount: {formatPrice((item.originalPrice! - item.price) * item.quantity)}</span>
                         )}
-                        <span className="ml-2 font-semibold text-black">{formatPrice(item.price)}</span>
-                      </p>
+                      </div>
                     </div>
                     <p className="shrink-0 font-semibold text-black">{formatPrice(item.price * item.quantity)}</p>
                   </div>
@@ -380,51 +347,164 @@ export default function SellerOrderDetailPage() {
               })}
             </div>
 
-            <div className="mt-4 flex flex-col gap-1.5 border-t border-border pt-3 text-sm">
-              <Row label="Seller Earnings" value={formatPrice(mine.payoutAmount)} bold />
+            <div className="mt-3 flex flex-col gap-1.5 border-t border-border pt-3 text-sm">
+              <Row label="Seller Earnings" value={formatPrice(mine.payoutAmount)} />
               <Row label="Platform Commission" value={formatPrice(mine.commissionAmount)} />
-              <Row label="Delivery Charge" value={formatPrice(order.totals.shipping)} />
-              <Row label="Total Amount" value={formatPrice(order.totals.total)} bold />
+              <Row label="GST" value="Included in price" />
+              <Row label="Delivery Charges" value={formatPrice(order.totals.shipping)} />
+              <Row label="Net Payout" value={formatPrice(mine.payoutAmount)} bold />
             </div>
-          </div>
+          </Card>
 
           {/* Tracking Timeline */}
-          <div className="rounded-2xl border border-border bg-white p-5 shadow-sm">
-            <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-[#444444]">
-              <CalendarClock className="size-4 text-green-700" />
-              Tracking Timeline
-            </h2>
-            <div className="mt-4 flex flex-col gap-3">
-              {(mine.timeline ?? []).length === 0 ? (
-                <p className="text-sm text-[#444444]">No status changes yet.</p>
-              ) : (
-                mine.timeline!.map((event, i) => (
-                  <div key={i} className="flex items-start gap-3">
-                    {status === "Cancelled" && event.status === "Cancelled" ? (
-                      <XCircle className="mt-0.5 size-4 shrink-0 text-red-600" />
-                    ) : (
-                      <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-green-600" />
-                    )}
-                    <div>
-                      <p className="text-sm font-medium text-black">{event.status}</p>
-                      <p className="text-xs text-[#888888]">{new Date(event.at).toLocaleString()}</p>
-                      {event.note && <p className="text-xs text-[#444444]">{event.note}</p>}
-                    </div>
-                  </div>
-                ))
-              )}
-              {status !== "Cancelled" &&
-                status !== "Returned" &&
-                ["Order Confirmed", ...ORDER_FULFILMENT_SEQUENCE.slice(1)]
-                  .filter((label) => !(mine.timeline ?? []).some((e) => e.status === label || (label === "Order Confirmed" && e.status === "Pending")))
-                  .map((label) => (
-                    <div key={label} className="flex items-start gap-3 opacity-40">
-                      <Circle className="mt-0.5 size-4 shrink-0 text-[#888888]" />
-                      <p className="text-sm text-[#444444]">{label}</p>
-                    </div>
-                  ))}
+          <Card title="Tracking Timeline">
+            <OrderTrackingTimeline status={status} timeline={mine.timeline} />
+          </Card>
+
+          {/* Action Panel */}
+          <Card title="Action Panel">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {ACTION_STEPS.map((step) => {
+                const stepIndex = ORDER_FULFILMENT_SEQUENCE.indexOf(step.status)
+                const isDone = stepIndex <= currentIndex
+                const isCurrentAction = stepIndex === currentIndex + 1
+                const isPickupStep = step.status === "Pickup Requested"
+                return (
+                  <Button
+                    key={step.status}
+                    size="sm"
+                    variant={isCurrentAction ? "default" : "outline"}
+                    className="h-9 justify-start"
+                    disabled={busy || isTerminal || (!isCurrentAction && !isDone)}
+                    onClick={() => {
+                      if (isPickupStep) setPickupOpen(true)
+                      else if (step.status === "Accepted") handleAccept()
+                      else handleAdvance(step.status)
+                    }}
+                  >
+                    {isDone ? <CheckCircle2 className="size-3.5 shrink-0" /> : <Circle className="size-3.5 shrink-0" />}
+                    <span className="truncate">{step.label}</span>
+                  </Button>
+                )
+              })}
             </div>
-          </div>
+            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <Button size="sm" variant="outline" className="h-9" onClick={() => documentContext && generateShippingLabelPdf(documentContext)}>
+                Generate Label
+              </Button>
+              <Button size="sm" variant="outline" className="h-9" onClick={() => documentContext && generateInvoicePdf(documentContext)}>
+                Print Invoice
+              </Button>
+              <Button size="sm" variant="outline" className="h-9" onClick={() => documentContext && generatePackingSlipPdf(documentContext)}>
+                Print Packing Slip
+              </Button>
+            </div>
+          </Card>
+        </div>
+
+        {/* SIDEBAR column */}
+        <div className="flex flex-col gap-4 lg:col-span-1">
+          {/* Customer Information */}
+          <Card title="Customer Information">
+            <p className="font-semibold text-black">{order.shippingAddress.fullName}</p>
+            <p className="mt-1.5 text-sm text-[#444444]">
+              {order.shippingAddress.line1}
+              {order.shippingAddress.line2 ? `, ${order.shippingAddress.line2}` : ""}
+              {order.shippingAddress.landmark && (
+                <>
+                  <br />
+                  Landmark: {order.shippingAddress.landmark}
+                </>
+              )}
+            </p>
+            <div className="mt-2 flex flex-col gap-1 text-sm">
+              <Row label="City" value={order.shippingAddress.city} />
+              <Row label="State" value={order.shippingAddress.state} />
+              <Row label="PIN Code" value={order.shippingAddress.postalCode} />
+              {hasBeenAccepted ? (
+                <Row label="Phone" value={order.shippingAddress.phone} />
+              ) : (
+                <p className="text-xs text-[#888888]">Phone number unlocks once you accept the order.</p>
+              )}
+            </div>
+            {hasBeenShipped && (
+              <Button size="sm" className="mt-3 h-9 w-full" render={<a href={`tel:${order.shippingAddress.phone}`} />}>
+                <Phone className="size-3.5" />
+                Call Customer
+              </Button>
+            )}
+          </Card>
+
+          {/* Courier Section */}
+          <Card title="Courier Section" icon={Truck}>
+            {!mine.courierPartner ? (
+              <p className="text-sm text-[#444444]">No courier assigned yet.</p>
+            ) : (
+              <div className="flex flex-col gap-1.5 text-sm">
+                <Row label="Courier Partner" value={mine.courierPartner} />
+                <Row label="Tracking / AWB Number" value={mine.trackingNumber ?? "—"} />
+                <Row label="Pickup Date" value={mine.pickupDate ?? "—"} />
+                <Row label="Pickup Slot" value={mine.pickupTime ?? "—"} />
+                <Row label="Shipping Status" value={status} />
+              </div>
+            )}
+            <div className="mt-3 flex flex-wrap gap-2">
+              {status === "Packed" && (
+                <Button size="sm" className="h-9" onClick={() => setPickupOpen(true)} disabled={busy}>
+                  Request Pickup
+                </Button>
+              )}
+              {status === "Pickup Requested" && (
+                <Button size="sm" variant="outline" className="h-9" onClick={handleCancelPickup} disabled={busy}>
+                  Cancel Pickup
+                </Button>
+              )}
+              {mine.shippingProvider === "shiprocket" && !isTerminal && status !== "Packed" && (
+                <Button size="sm" variant="outline" className="h-9" onClick={handleSyncTracking} disabled={syncing}>
+                  <RefreshCw className={syncing ? "size-3.5 animate-spin" : "size-3.5"} />
+                  Track Shipment
+                </Button>
+              )}
+            </div>
+          </Card>
+
+          {/* Notes */}
+          <Card title="Notes">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="seller-note" className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-[#666666]">
+                <StickyNote className="size-3.5" />
+                Seller Notes
+              </Label>
+              <textarea
+                id="seller-note"
+                value={noteDraft}
+                onChange={(e) => setNoteDraft(e.target.value)}
+                placeholder="Private note — packing reminders, etc. Never shown to the buyer."
+                className="min-h-16 w-full rounded-lg border border-border p-2.5 text-sm outline-none focus:border-primary"
+              />
+              <Button size="sm" className="h-9 w-fit" onClick={handleSaveNote} disabled={savingNote || noteDraft === (mine.note ?? "")}>
+                {savingNote ? "Saving..." : "Save Note"}
+              </Button>
+            </div>
+            <div className="mt-3 border-t border-border pt-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#666666]">Admin Notes</p>
+              <p className="mt-1 text-sm text-[#444444]">{order.adminNote || "No notes from admin yet."}</p>
+            </div>
+          </Card>
+
+          {/* Order Summary */}
+          <Card title="Order Summary">
+            <div className="flex flex-col gap-1.5 text-sm">
+              <Row label="Subtotal" value={formatPrice(order.totals.subtotal)} />
+              <Row label="Discount" value={`-${formatPrice(order.totals.discount)}`} />
+              <Row label="Delivery Charge" value={formatPrice(order.totals.shipping)} />
+              <Row label="Platform Commission" value={formatPrice(mine.commissionAmount)} />
+              <Row label="GST" value="Included in price" />
+              <div className="mt-1 border-t border-border pt-1.5">
+                <Row label="Net Seller Amount" value={formatPrice(mine.payoutAmount)} bold />
+              </div>
+            </div>
+          </Card>
         </div>
       </div>
 
@@ -485,7 +565,7 @@ export default function SellerOrderDetailPage() {
                 <Input id="pickup-date" type="date" value={pickupDate} onChange={(e) => setPickupDate(e.target.value)} className="h-10" />
               </div>
               <div className="flex flex-col gap-2">
-                <Label htmlFor="pickup-time">Pickup Time</Label>
+                <Label htmlFor="pickup-time">Pickup Slot</Label>
                 <Input id="pickup-time" type="time" value={pickupTime} onChange={(e) => setPickupTime(e.target.value)} className="h-10" />
               </div>
             </div>
@@ -519,20 +599,23 @@ export default function SellerOrderDetailPage() {
   )
 }
 
+function Card({ title, icon: Icon, children }: { title: string; icon?: LucideIcon; children: React.ReactNode }) {
+  return (
+    <section className="rounded-xl border border-border bg-white p-3 shadow-sm transition-shadow hover:shadow-md sm:p-4">
+      <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[#666666]">
+        {Icon && <Icon className="size-3.5 text-green-700" />}
+        {title}
+      </h2>
+      {children}
+    </section>
+  )
+}
+
 function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
   return (
     <div className="flex items-center justify-between gap-4">
       <span className="text-[#444444]">{label}</span>
       <span className={bold ? "font-semibold text-black" : "text-black"}>{value}</span>
-    </div>
-  )
-}
-
-function CourierMilestone({ label, done }: { label: string; done: boolean }) {
-  return (
-    <div className="flex items-center gap-2">
-      {done ? <CheckCircle2 className="size-4 text-green-600" /> : <Circle className="size-4 text-[#888888]" />}
-      <span className={done ? "text-black" : "text-[#888888]"}>{label}</span>
     </div>
   )
 }

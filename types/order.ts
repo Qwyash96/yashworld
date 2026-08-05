@@ -73,6 +73,10 @@ export interface SellerOrder {
    * coupon discount — an admin-issued global coupon is platform marketing
    * spend and never reduces what a seller is owed (see lib/pricing-engine.ts). */
   payoutAmount: number
+  /** A seller's own private note on their portion of the order (packing
+   * instructions, a reminder, etc.) — never shown to the buyer. Set via
+   * app/api/seller/orders/[id]/note. */
+  note?: string
 }
 
 /** Firestore `orders/{id}` document shape. */
@@ -114,6 +118,10 @@ export interface Order {
   /** Set only for paymentMethod "razorpay" — the verified gateway order/payment pair, for reconciliation. */
   razorpayOrderId?: string
   razorpayPaymentId?: string
+  /** An admin-authored note on the whole order, visible to every seller on
+   * it — read-only from the seller side today; no admin-facing editor
+   * exists yet, so this is always unset until one's built. */
+  adminNote?: string
   createdAt: string
 }
 

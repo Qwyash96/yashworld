@@ -322,22 +322,22 @@ export default function SellerOffersPage() {
 
   return (
     <div>
-      <header className="flex items-center gap-4 border-b border-gray-200 bg-white px-4 py-5 sm:px-6 lg:px-10">
+      <header className="flex items-center gap-4 border-b border-gray-200 bg-white px-3 py-3 sm:px-6 sm:py-5 lg:px-10">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Offers</h1>
-          <p className="text-sm text-gray-500">Scheduled offers, your coupons, and campaign participation.</p>
+          <h1 className="text-lg font-bold text-gray-900 sm:text-xl">Offers</h1>
+          <p className="text-xs text-gray-500 sm:text-sm">Scheduled offers, your coupons, and campaign participation.</p>
         </div>
       </header>
 
-      <main className="space-y-10 px-4 py-8 sm:px-6 lg:px-10">
+      <main className="space-y-6 px-3 py-4 sm:space-y-10 sm:px-6 sm:py-8 lg:px-10">
           {/* Analytics */}
           {analytics && (
             <section>
-              <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-gray-500">
+              <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-gray-500 sm:text-sm">
                 <BarChart3 className="size-4 text-green-700" />
                 Offer Analytics
               </h2>
-              <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {ANALYTICS_SOURCES.map(({ source, label }) => (
                   <StatCard
                     key={source}
@@ -352,23 +352,23 @@ export default function SellerOffersPage() {
 
           {/* Scheduled Offers */}
           <section>
-            <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-gray-500">
+            <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-gray-500 sm:text-sm">
               <Tag className="size-4 text-green-700" />
               Scheduled Offers
             </h2>
-            <div className="mt-3 overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm">
+            <div className="mt-3 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
               {products === null ? (
-                <p className="p-6 text-sm text-gray-500">Loading...</p>
+                <p className="p-4 text-sm text-gray-500 sm:p-6">Loading...</p>
               ) : products.length === 0 ? (
-                <p className="p-6 text-sm text-gray-500">You have no products yet.</p>
+                <p className="p-4 text-sm text-gray-500 sm:p-6">You have no products yet.</p>
               ) : (
                 <div className="divide-y divide-gray-100">
                   {products.map((product) => (
-                    <div key={product.id} className="flex items-center justify-between gap-4 p-4">
+                    <div key={product.id} className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                       <div className="flex min-w-0 items-center gap-3">
-                        <ProductImage src={getCoverImageUrl(product.images)} alt={product.name} className="h-12 w-12 shrink-0 rounded-lg" padding="xs" sizes="48px" />
+                        <ProductImage src={getCoverImageUrl(product.images)} alt={product.name} className="h-10 w-11 shrink-0 rounded-lg sm:h-12 sm:w-12" padding="xs" sizes="48px" />
                         <div className="min-w-0">
-                          <p className="truncate font-medium text-gray-900">{product.name}</p>
+                          <p className="truncate text-sm font-medium text-gray-900">{product.name}</p>
                           <Price price={product.price} originalPrice={product.originalPrice} size="sm" />
                           {product.scheduledOffer && (
                             <p className="text-xs text-green-700">
@@ -379,12 +379,12 @@ export default function SellerOffersPage() {
                         </div>
                       </div>
                       <div className="flex shrink-0 gap-2">
-                        <Button size="sm" variant="outline" className="h-9" onClick={() => openOfferSheet(product)}>
+                        <Button size="sm" variant="outline" className="h-9 flex-1 sm:flex-none" onClick={() => openOfferSheet(product)}>
                           <Pencil className="size-3.5" />
                           {product.scheduledOffer ? "Edit" : "Set Offer"}
                         </Button>
                         {product.scheduledOffer && (
-                          <Button size="sm" variant="destructive" className="h-9" onClick={() => handleClearOffer(product)}>
+                          <Button size="sm" variant="destructive" className="h-9 flex-1 sm:flex-none" onClick={() => handleClearOffer(product)}>
                             <X className="size-3.5" />
                             Clear
                           </Button>
@@ -400,7 +400,7 @@ export default function SellerOffersPage() {
           {/* My Coupons */}
           <section>
             <div className="flex items-center justify-between">
-              <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-gray-500">
+              <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-gray-500 sm:text-sm">
                 <Ticket className="size-4 text-green-700" />
                 My Coupons
               </h2>
@@ -408,14 +408,14 @@ export default function SellerOffersPage() {
                 New Coupon
               </Button>
             </div>
-            <div className="mt-3 flex flex-col gap-3">
+            <div className="mt-3 flex flex-col gap-2 sm:gap-3">
               {coupons === null && <p className="text-sm text-gray-500">Loading...</p>}
               {coupons && coupons.length === 0 && <p className="text-sm text-gray-500">You have no coupons yet.</p>}
               {coupons?.map((coupon) => (
-                <div key={coupon.code} className="flex flex-col gap-2 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-                  <div>
+                <div key={coupon.code} className="flex flex-col gap-2 rounded-xl border border-gray-200 bg-white p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
                     <p className="font-mono font-bold text-gray-900">{coupon.code}</p>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-xs text-gray-500 sm:text-sm">
                       {coupon.discountType === "percent" ? `${coupon.discountValue}% off` : `${formatPrice(coupon.discountValue)} off`}
                       {" · "}
                       {new Date(coupon.startAt).toLocaleDateString()} – {new Date(coupon.endAt).toLocaleDateString()}
@@ -425,11 +425,11 @@ export default function SellerOffersPage() {
                     </p>
                   </div>
                   <div className="flex gap-2">
-                    <Button size="sm" variant="outline" className="h-9" onClick={() => openEditCoupon(coupon)}>
+                    <Button size="sm" variant="outline" className="h-9 flex-1 sm:flex-none" onClick={() => openEditCoupon(coupon)}>
                       <Pencil className="size-3.5" />
                       Edit
                     </Button>
-                    <Button size="sm" variant="destructive" className="h-9" onClick={() => handleDeleteCoupon(coupon)}>
+                    <Button size="sm" variant="destructive" className="h-9 flex-1 sm:flex-none" onClick={() => handleDeleteCoupon(coupon)}>
                       <X className="size-3.5" />
                       Delete
                     </Button>
@@ -441,7 +441,7 @@ export default function SellerOffersPage() {
 
           {/* Campaigns */}
           <section>
-            <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-gray-500">
+            <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-gray-500 sm:text-sm">
               <Megaphone className="size-4 text-green-700" />
               Campaigns
             </h2>
@@ -451,13 +451,13 @@ export default function SellerOffersPage() {
                 <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Invited</p>
                 <div className="mt-2 flex flex-col gap-2">
                   {invited.map((c) => (
-                    <div key={c.id} className="flex flex-col gap-2 rounded-2xl border border-dashed border-gray-300 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div key={c.id} className="flex flex-col gap-2 rounded-xl border border-dashed border-gray-300 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
                       <CampaignSummary campaign={c} />
                       <div className="flex gap-2">
-                        <Button size="sm" className="h-9" disabled={joiningId === c.id} onClick={() => handleJoin(c.id)}>
+                        <Button size="sm" className="h-9 flex-1 sm:flex-none" disabled={joiningId === c.id} onClick={() => handleJoin(c.id)}>
                           {joiningId === c.id ? "Joining..." : "Accept"}
                         </Button>
-                        <Button size="sm" variant="outline" className="h-9" onClick={() => handleDecline(c.id)}>
+                        <Button size="sm" variant="outline" className="h-9 flex-1 sm:flex-none" onClick={() => handleDecline(c.id)}>
                           Decline
                         </Button>
                       </div>
@@ -472,7 +472,7 @@ export default function SellerOffersPage() {
               <div className="mt-2 flex flex-col gap-2">
                 {joinable.length === 0 && <p className="text-sm text-gray-500">No open campaigns right now.</p>}
                 {joinable.map((c) => (
-                  <div key={c.id} className="flex flex-col gap-2 rounded-2xl border border-gray-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div key={c.id} className="flex flex-col gap-2 rounded-xl border border-gray-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
                     <CampaignSummary campaign={c} />
                     <Button size="sm" className="h-9" disabled={joiningId === c.id} onClick={() => handleJoin(c.id)}>
                       {joiningId === c.id ? "Joining..." : "Join"}
@@ -487,7 +487,7 @@ export default function SellerOffersPage() {
                 <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Joined</p>
                 <div className="mt-2 flex flex-col gap-2">
                   {joined.map((c) => (
-                    <div key={c.id} className="flex flex-col gap-2 rounded-2xl border border-gray-200 bg-green-50/60 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div key={c.id} className="flex flex-col gap-2 rounded-xl border border-gray-200 bg-green-50/60 p-3 sm:flex-row sm:items-center sm:justify-between">
                       <CampaignSummary campaign={c} />
                       <span className="w-fit rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800">Joined</span>
                     </div>
@@ -512,7 +512,7 @@ export default function SellerOffersPage() {
                 inputMode="decimal"
                 value={offerForm.price}
                 onChange={(e) => setOfferForm((f) => ({ ...f, price: sanitizeDecimal(e.target.value) }))}
-                className="h-11"
+                className="h-10"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -523,7 +523,7 @@ export default function SellerOffersPage() {
                   type="datetime-local"
                   value={offerForm.startAt}
                   onChange={(e) => setOfferForm((f) => ({ ...f, startAt: e.target.value }))}
-                  className="h-11"
+                  className="h-10"
                 />
               </div>
               <div className="flex flex-col gap-2">
@@ -533,11 +533,11 @@ export default function SellerOffersPage() {
                   type="datetime-local"
                   value={offerForm.endAt}
                   onChange={(e) => setOfferForm((f) => ({ ...f, endAt: e.target.value }))}
-                  className="h-11"
+                  className="h-10"
                 />
               </div>
             </div>
-            <Button className="mt-2 h-11" onClick={handleSaveOffer} disabled={offerSaving}>
+            <Button className="mt-2 h-10" onClick={handleSaveOffer} disabled={offerSaving}>
               {offerSaving ? "Saving..." : "Save Offer"}
             </Button>
           </div>
@@ -559,7 +559,7 @@ export default function SellerOffersPage() {
                 value={couponForm.code}
                 onChange={(e) => setCouponForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))}
                 placeholder="MYPLANT10"
-                className="h-11 font-mono"
+                className="h-10 font-mono"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -570,7 +570,7 @@ export default function SellerOffersPage() {
                   onValueChange={(v) => v && setCouponForm((f) => ({ ...f, discountType: v as DiscountType }))}
                   disabled={!!editingCouponCode}
                 >
-                  <SelectTrigger id="s-discount-type" className="h-11 w-full">
+                  <SelectTrigger id="s-discount-type" className="h-10 w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -586,7 +586,7 @@ export default function SellerOffersPage() {
                   inputMode="decimal"
                   value={couponForm.discountValue}
                   onChange={(e) => setCouponForm((f) => ({ ...f, discountValue: sanitizeDecimal(e.target.value) }))}
-                  className="h-11"
+                  className="h-10"
                 />
               </div>
             </div>
@@ -598,7 +598,7 @@ export default function SellerOffersPage() {
                   inputMode="decimal"
                   value={couponForm.maxDiscountAmount}
                   onChange={(e) => setCouponForm((f) => ({ ...f, maxDiscountAmount: sanitizeDecimal(e.target.value) }))}
-                  className="h-11"
+                  className="h-10"
                 />
               </div>
               <div className="flex flex-col gap-2">
@@ -608,7 +608,7 @@ export default function SellerOffersPage() {
                   inputMode="decimal"
                   value={couponForm.minOrderValue}
                   onChange={(e) => setCouponForm((f) => ({ ...f, minOrderValue: sanitizeDecimal(e.target.value) }))}
-                  className="h-11"
+                  className="h-10"
                 />
               </div>
             </div>
@@ -620,7 +620,7 @@ export default function SellerOffersPage() {
                   inputMode="numeric"
                   value={couponForm.usageLimit}
                   onChange={(e) => setCouponForm((f) => ({ ...f, usageLimit: sanitizeDigits(e.target.value) }))}
-                  className="h-11"
+                  className="h-10"
                 />
               </div>
               <div className="flex flex-col gap-2">
@@ -630,7 +630,7 @@ export default function SellerOffersPage() {
                   inputMode="numeric"
                   value={couponForm.usageLimitPerBuyer}
                   onChange={(e) => setCouponForm((f) => ({ ...f, usageLimitPerBuyer: sanitizeDigits(e.target.value) }))}
-                  className="h-11"
+                  className="h-10"
                 />
               </div>
             </div>
@@ -642,7 +642,7 @@ export default function SellerOffersPage() {
                   type="datetime-local"
                   value={couponForm.startAt}
                   onChange={(e) => setCouponForm((f) => ({ ...f, startAt: e.target.value }))}
-                  className="h-11"
+                  className="h-10"
                 />
               </div>
               <div className="flex flex-col gap-2">
@@ -652,12 +652,12 @@ export default function SellerOffersPage() {
                   type="datetime-local"
                   value={couponForm.endAt}
                   onChange={(e) => setCouponForm((f) => ({ ...f, endAt: e.target.value }))}
-                  className="h-11"
+                  className="h-10"
                 />
               </div>
             </div>
             {couponError && <p className="text-sm text-destructive">{couponError}</p>}
-            <Button className="mt-2 h-11" onClick={handleSaveCoupon} disabled={couponSaving}>
+            <Button className="mt-2 h-10" onClick={handleSaveCoupon} disabled={couponSaving}>
               {couponSaving ? "Saving..." : editingCouponCode ? "Save Changes" : "Create Coupon"}
             </Button>
           </div>

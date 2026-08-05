@@ -10,14 +10,14 @@ export function StatCard({
   value: string | number
 }) {
   return (
-    <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-      <div className="flex items-center gap-4">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-green-100 text-green-700">
-          <Icon className="h-6 w-6" />
+    <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm sm:p-4">
+      <div className="flex items-center gap-2.5">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-100 text-green-700 sm:h-10 sm:w-10">
+          <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
         </div>
         <div className="min-w-0">
-          <p className="text-sm text-gray-500">{label}</p>
-          <p className="truncate text-2xl font-bold text-gray-900">{value}</p>
+          <p className="truncate text-xs text-gray-500">{label}</p>
+          <p className="truncate text-base font-bold text-gray-900 sm:text-lg">{value}</p>
         </div>
       </div>
     </div>

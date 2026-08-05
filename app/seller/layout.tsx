@@ -33,9 +33,9 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
 
   return (
     <div className="min-h-screen bg-[#F8F8F2]">
-      <div className="flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-3">
+      <div className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-gray-200 bg-white px-3 sm:gap-3 sm:px-4">
         <Sheet open={navOpen} onOpenChange={setNavOpen}>
-          <SheetTrigger aria-label="Open seller menu" className="rounded-xl border border-gray-200 p-2 text-black hover:bg-gray-50">
+          <SheetTrigger aria-label="Open seller menu" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-200 text-black hover:bg-gray-50">
             <Menu className="size-5" />
           </SheetTrigger>
           <SheetContent side="left" className="w-64 p-0">
@@ -46,12 +46,12 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
           </SheetContent>
         </Sheet>
 
-        <span className="flex-1 text-sm font-bold text-green-700">IXOFLORA Seller</span>
+        <span className="flex-1 truncate text-sm font-bold text-green-700">IXOFLORA Seller</span>
 
         <SellerNotificationBell sellerId={gate.uid} />
         <Link
           href="/seller/shop-profile"
-          className="rounded-xl px-3 py-2 text-sm font-medium text-black transition-colors hover:bg-gray-50"
+          className="flex h-10 shrink-0 items-center rounded-xl px-2.5 text-sm font-medium text-black transition-colors hover:bg-gray-50 sm:px-3"
         >
           Profile
         </Link>

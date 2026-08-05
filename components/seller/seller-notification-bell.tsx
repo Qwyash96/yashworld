@@ -43,7 +43,7 @@ export function SellerNotificationBell({ sellerId }: { sellerId: string }) {
 
   return (
     <Sheet open={open} onOpenChange={(o) => { setOpen(o); if (o) markAllRead() }}>
-      <SheetTrigger aria-label="Notifications" className="relative rounded-xl border border-border p-2 text-black hover:bg-green-50">
+      <SheetTrigger aria-label="Notifications" className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border text-black hover:bg-green-50">
         <Bell className="size-4.5" />
         {unreadCount > 0 && (
           <span className="absolute -right-1 -top-1 flex size-4.5 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white">

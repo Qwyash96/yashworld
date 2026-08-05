@@ -60,9 +60,9 @@ export default function NewSellerProductPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-12 sm:px-6 lg:px-8">
-      <h1 className="font-serif text-3xl font-semibold tracking-tight">Add Product</h1>
-      <div className="mt-8">
+    <div className="mx-auto max-w-2xl px-3 py-4 sm:px-6 sm:py-12 lg:px-8">
+      <h1 className="text-lg font-bold tracking-tight sm:text-xl">Add Product</h1>
+      <div className="mt-4 sm:mt-8">
         <ProductForm uid={gate.uid} categories={categories} onSubmit={handleSubmit} submitLabel="Create Product" />
       </div>
     </div>

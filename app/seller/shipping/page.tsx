@@ -154,14 +154,14 @@ export default function SellerShippingDashboardPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-6xl px-3 py-4 sm:px-6 sm:py-8 lg:px-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-black">
-            <Truck className="size-6 text-green-700" />
+          <h1 className="flex items-center gap-2 text-lg font-bold text-black sm:text-xl">
+            <Truck className="size-5 text-green-700 sm:size-6" />
             Shipping Dashboard
           </h1>
-          <p className="mt-1 text-sm text-[#444444]">
+          <p className="mt-1 text-xs text-[#444444] sm:text-sm">
             Every in-flight shipment across your orders, in one place.{" "}
             <Link href="/seller/orders" className="text-green-700 underline underline-offset-4">
               Full Order Fulfillment
@@ -170,7 +170,7 @@ export default function SellerShippingDashboardPage() {
         </div>
       </div>
 
-      <div className="mt-6 flex flex-wrap gap-2">
+      <div className="-mx-3 mt-4 flex flex-nowrap gap-2 overflow-x-auto px-3 sm:mx-0 sm:mt-6 sm:flex-wrap sm:px-0">
         {FILTERS.map((f) => (
           <button
             key={f.key}
@@ -179,7 +179,7 @@ export default function SellerShippingDashboardPage() {
               setSelected(new Set())
             }}
             className={cn(
-              "rounded-full px-4 py-2 text-sm font-medium transition-colors",
+              "shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors",
               filter === f.key ? "bg-green-600 text-white" : "bg-[#f3f5f2] text-black hover:bg-green-50 hover:text-green-700",
             )}
           >
@@ -192,11 +192,11 @@ export default function SellerShippingDashboardPage() {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search by order id, buyer name, or AWB..."
-        className="mt-4 h-10 max-w-sm"
+        className="mt-3 h-10 w-full sm:mt-4 sm:max-w-sm"
       />
 
       {selectedRows.length > 0 && (
-        <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border border-green-600/30 bg-green-50 p-4">
+        <div className="mt-3 flex flex-col items-start gap-2 rounded-xl border border-green-600/30 bg-green-50 p-3 sm:mt-4 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 sm:p-4">
           <span className="text-sm font-medium text-green-800">{selectedRows.length} selected</span>
           {canBulkPickup && (
             <>
@@ -205,17 +205,17 @@ export default function SellerShippingDashboardPage() {
                   value={bulkCourier}
                   onChange={(e) => setBulkCourier(e.target.value)}
                   placeholder="Courier partner for this batch"
-                  className="h-9 w-56"
+                  className="h-9 w-full sm:w-56"
                 />
               )}
-              <Button size="sm" className="h-9" onClick={handleBulkSchedulePickup} disabled={busy}>
+              <Button size="sm" className="h-9 w-full sm:w-auto" onClick={handleBulkSchedulePickup} disabled={busy}>
                 <PackageCheck className="size-3.5" />
                 Schedule Pickup ({selectedRows.length})
               </Button>
             </>
           )}
           {canBulkSync && (
-            <Button size="sm" variant="outline" className="h-9" onClick={handleBulkSync} disabled={busy}>
+            <Button size="sm" variant="outline" className="h-9 w-full sm:w-auto" onClick={handleBulkSync} disabled={busy}>
               <RefreshCw className={busy ? "size-3.5 animate-spin" : "size-3.5"} />
               Sync Tracking ({selectedRows.length})
             </Button>
@@ -226,53 +226,85 @@ export default function SellerShippingDashboardPage() {
         </div>
       )}
 
-      <div className="mt-6 overflow-x-auto rounded-2xl border border-border bg-white shadow-sm">
-        <table className="w-full min-w-[720px] text-left text-sm">
-          <thead>
-            <tr className="border-b border-border text-xs uppercase tracking-widest text-[#444444]">
-              <th className="w-10 px-4 py-3">
-                <input type="checkbox" checked={filtered.length > 0 && selected.size === filtered.length} onChange={toggleSelectAll} />
-              </th>
-              <th className="px-4 py-3">Order</th>
-              <th className="px-4 py-3">Destination</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Courier</th>
-              <th className="px-4 py-3">AWB</th>
-              <th className="px-4 py-3">Pickup</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 && (
-              <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-sm text-[#444444]">
-                  No shipments in this view.
-                </td>
-              </tr>
-            )}
-            {filtered.map(({ order, mine }) => (
-              <tr key={order.id} className="border-b border-border last:border-0 hover:bg-[#f9faf8]">
-                <td className="px-4 py-3">
-                  <input type="checkbox" checked={selected.has(order.id)} onChange={() => toggleSelected(order.id)} />
-                </td>
-                <td className="px-4 py-3">
-                  <Link href={`/seller/orders/${order.id}`} className="font-medium text-green-700 hover:underline">
-                    #{order.id.slice(0, 8)}
-                  </Link>
-                  <p className="text-xs text-[#888888]">{mine.items.length} item(s)</p>
-                </td>
-                <td className="px-4 py-3 text-[#444444]">
-                  {order.shippingAddress.city}, {order.shippingAddress.state}
-                </td>
-                <td className="px-4 py-3">
-                  <OrderStatusBadge status={mine.status} />
-                </td>
-                <td className="px-4 py-3 text-[#444444]">{mine.courierPartner ?? "—"}</td>
-                <td className="px-4 py-3 text-[#444444]">{mine.trackingNumber ?? "—"}</td>
-                <td className="px-4 py-3 text-[#444444]">{mine.pickupDate ?? "—"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="mt-4 overflow-hidden rounded-xl border border-border bg-white shadow-sm sm:mt-6">
+        {filtered.length === 0 ? (
+          <p className="px-4 py-10 text-center text-sm text-[#444444]">No shipments in this view.</p>
+        ) : (
+          <>
+            {/* Mobile — stacked cards, no horizontal scroll */}
+            <div className="divide-y divide-border sm:hidden">
+              {filtered.map(({ order, mine }) => (
+                <div key={order.id} className="flex flex-col gap-1.5 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="flex min-w-0 items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={selected.has(order.id)}
+                        onChange={() => toggleSelected(order.id)}
+                        className="shrink-0"
+                      />
+                      <Link href={`/seller/orders/${order.id}`} className="truncate text-sm font-medium text-green-700 hover:underline">
+                        #{order.id.slice(0, 8)}
+                      </Link>
+                    </label>
+                    <OrderStatusBadge status={mine.status} />
+                  </div>
+                  <p className="text-xs text-[#444444]">
+                    {order.shippingAddress.city}, {order.shippingAddress.state} · {mine.items.length} item(s)
+                  </p>
+                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-[#888888]">
+                    <span>Courier: {mine.courierPartner ?? "—"}</span>
+                    <span>AWB: {mine.trackingNumber ?? "—"}</span>
+                    <span>Pickup: {mine.pickupDate ?? "—"}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop/tablet — table */}
+            <div className="hidden overflow-x-auto sm:block">
+              <table className="w-full min-w-[720px] text-left text-sm">
+                <thead>
+                  <tr className="border-b border-border text-xs uppercase tracking-widest text-[#444444]">
+                    <th className="w-10 px-4 py-3">
+                      <input type="checkbox" checked={filtered.length > 0 && selected.size === filtered.length} onChange={toggleSelectAll} />
+                    </th>
+                    <th className="px-4 py-3">Order</th>
+                    <th className="px-4 py-3">Destination</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3">Courier</th>
+                    <th className="px-4 py-3">AWB</th>
+                    <th className="px-4 py-3">Pickup</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map(({ order, mine }) => (
+                    <tr key={order.id} className="border-b border-border last:border-0 hover:bg-[#f9faf8]">
+                      <td className="px-4 py-3">
+                        <input type="checkbox" checked={selected.has(order.id)} onChange={() => toggleSelected(order.id)} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <Link href={`/seller/orders/${order.id}`} className="font-medium text-green-700 hover:underline">
+                          #{order.id.slice(0, 8)}
+                        </Link>
+                        <p className="text-xs text-[#888888]">{mine.items.length} item(s)</p>
+                      </td>
+                      <td className="px-4 py-3 text-[#444444]">
+                        {order.shippingAddress.city}, {order.shippingAddress.state}
+                      </td>
+                      <td className="px-4 py-3">
+                        <OrderStatusBadge status={mine.status} />
+                      </td>
+                      <td className="px-4 py-3 text-[#444444]">{mine.courierPartner ?? "—"}</td>
+                      <td className="px-4 py-3 text-[#444444]">{mine.trackingNumber ?? "—"}</td>
+                      <td className="px-4 py-3 text-[#444444]">{mine.pickupDate ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )

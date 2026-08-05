@@ -48,29 +48,29 @@ export default function SellerDashboardPage() {
   }
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-black">Dashboard</h1>
-      <p className="mt-1 text-sm text-[#444444]">A quick look at your store.</p>
+    <div className="px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
+      <h1 className="text-lg font-bold text-black sm:text-xl">Dashboard</h1>
+      <p className="mt-1 text-xs text-[#444444] sm:text-sm">A quick look at your store.</p>
 
-      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:mt-6 sm:grid-cols-4">
         <StatCard icon={Package} label="Products" value={productCount ?? "—"} />
         <StatCard icon={ShoppingBag} label="Total Orders" value={orderCount ?? "—"} />
         <StatCard icon={Clock} label="Pending Orders" value={pendingCount ?? "—"} />
         <StatCard icon={WalletIcon} label="Wallet Balance" value={walletBalance === null ? "—" : formatPrice(walletBalance)} />
       </div>
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-3">
-        <Link href="/seller/orders" className="rounded-2xl border border-border bg-white p-5 shadow-sm transition hover:border-green-600">
-          <p className="font-bold text-black">Orders</p>
-          <p className="mt-1 text-sm text-[#444444]">Fulfil orders and manage your wallet.</p>
+      <div className="mt-4 grid gap-3 sm:mt-6 sm:grid-cols-3">
+        <Link href="/seller/orders" className="rounded-xl border border-border bg-white p-3.5 shadow-sm transition hover:border-green-600 sm:p-4">
+          <p className="text-sm font-bold text-black">Orders</p>
+          <p className="mt-0.5 text-xs text-[#444444] sm:text-sm">Fulfil orders and manage your wallet.</p>
         </Link>
-        <Link href="/seller/products" className="rounded-2xl border border-border bg-white p-5 shadow-sm transition hover:border-green-600">
-          <p className="font-bold text-black">Products</p>
-          <p className="mt-1 text-sm text-[#444444]">Add, edit, and manage your listings.</p>
+        <Link href="/seller/products" className="rounded-xl border border-border bg-white p-3.5 shadow-sm transition hover:border-green-600 sm:p-4">
+          <p className="text-sm font-bold text-black">Products</p>
+          <p className="mt-0.5 text-xs text-[#444444] sm:text-sm">Add, edit, and manage your listings.</p>
         </Link>
-        <Link href="/seller/shipping" className="rounded-2xl border border-border bg-white p-5 shadow-sm transition hover:border-green-600">
-          <p className="font-bold text-black">Shipping</p>
-          <p className="mt-1 text-sm text-[#444444]">Track every in-flight shipment.</p>
+        <Link href="/seller/shipping" className="rounded-xl border border-border bg-white p-3.5 shadow-sm transition hover:border-green-600 sm:p-4">
+          <p className="text-sm font-bold text-black">Shipping</p>
+          <p className="mt-0.5 text-xs text-[#444444] sm:text-sm">Track every in-flight shipment.</p>
         </Link>
       </div>
     </div>

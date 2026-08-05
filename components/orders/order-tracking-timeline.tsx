@@ -7,6 +7,11 @@ function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
 }
 
+// Display-only relabeling — "Pending" is the real OrderStatus value the
+// moment an order lands with a seller; "Order Received" reads better as the
+// first step of a fulfilment timeline.
+const STEP_LABELS: Partial<Record<OrderStatus, string>> = { Pending: "Order Received" }
+
 /** Vertical stepper through the real fulfilment pipeline (types/order-lifecycle.ts's
  * ORDER_FULFILMENT_SEQUENCE), timestamped from sellerOrder.timeline — the
  * same array every status transition appends to, including a live Shiprocket
@@ -36,16 +41,33 @@ export function OrderTrackingTimeline({ status, timeline }: { status: OrderStatu
     <ol className="flex flex-col">
       {ORDER_FULFILMENT_SEQUENCE.map((step, i) => {
         const event = eventByStatus.get(step)
-        const done = i <= currentIndex
+        const done = i < currentIndex
+        const isCurrent = i === currentIndex
         const isLast = i === ORDER_FULFILMENT_SEQUENCE.length - 1
         return (
           <li key={step} className="flex gap-3">
             <div className="flex flex-col items-center">
-              {done ? <CheckCircle2 className="size-5 shrink-0 text-green-600" /> : <Circle className="size-5 shrink-0 text-gray-300" />}
+              {done || isCurrent ? (
+                <CheckCircle2 className={cn("size-5 shrink-0", isCurrent ? "text-green-600" : "text-green-600/70")} />
+              ) : (
+                <Circle className="size-5 shrink-0 text-gray-300" />
+              )}
               {!isLast && <div className={cn("min-h-6 w-px flex-1", i < currentIndex ? "bg-green-600" : "bg-gray-200")} />}
             </div>
             <div className="pb-4">
-              <p className={cn("text-sm font-medium", done ? "text-black" : "text-gray-400")}>{step}</p>
+              <p
+                className={cn(
+                  "text-sm font-medium",
+                  isCurrent ? "font-bold text-green-700" : done ? "text-black" : "text-gray-400",
+                )}
+              >
+                {STEP_LABELS[step] ?? step}
+                {isCurrent && (
+                  <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-green-700">
+                    Current
+                  </span>
+                )}
+              </p>
               {event && <p className="text-xs text-muted-foreground">{formatDateTime(event.at)}</p>}
               {event?.note && <p className="mt-0.5 text-xs text-muted-foreground">{event.note}</p>}
             </div>

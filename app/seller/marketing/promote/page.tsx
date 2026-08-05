@@ -95,8 +95,8 @@ export default function PromoteProductPage() {
   if (gate.state !== "approved") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#F8F8F2] px-4">
-        <div className="w-full max-w-md rounded-3xl border border-gray-200 bg-white p-10 text-center shadow-sm">
-          <h1 className="text-xl font-bold text-gray-900">Seller Access Required</h1>
+        <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 text-center shadow-sm sm:p-10">
+          <h1 className="text-lg font-bold text-gray-900 sm:text-xl">Seller Access Required</h1>
           <p className="mt-2 text-sm text-gray-500">Sign in as an approved seller to promote products.</p>
         </div>
       </div>
@@ -104,19 +104,19 @@ export default function PromoteProductPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8F8F2] px-4 py-8 sm:px-6 lg:px-10">
+    <div className="min-h-screen bg-[#F8F8F2] px-3 py-4 sm:px-6 sm:py-8 lg:px-10">
       <div className="mx-auto max-w-2xl">
         <Link href="/seller/marketing" className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-black">
           <ArrowLeft className="size-4" />
           Back to Marketing
         </Link>
 
-        <div className="mt-4 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+        <div className="mt-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
           <div className="flex items-center gap-2">
             <Zap className="size-5 text-green-700" />
-            <h1 className="text-xl font-bold text-gray-900">Promote a Product</h1>
+            <h1 className="text-lg font-bold text-gray-900 sm:text-xl">Promote a Product</h1>
           </div>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-xs text-gray-500 sm:text-sm">
             Your product gets featured in a real homepage slot for the duration you choose.
           </p>
 
@@ -201,7 +201,7 @@ export default function PromoteProductPage() {
 
           {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
 
-          <Button className="mt-6 h-12 w-full" onClick={handlePromote} disabled={submitting || !productId}>
+          <Button className="mt-6 h-10 w-full" onClick={handlePromote} disabled={submitting || !productId}>
             {submitting ? <Loader2 className="size-4 animate-spin" /> : `Pay ${fee !== null ? formatPrice(fee) : ""} & Submit for Approval`}
           </Button>
         </div>

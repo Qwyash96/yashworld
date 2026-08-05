@@ -138,11 +138,11 @@ export default function SellerOrdersPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-6xl px-3 py-4 sm:px-6 sm:py-8 lg:px-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-black">Order Fulfillment</h1>
-          <p className="mt-1 text-sm text-[#444444]">Only your own items within each order are shown here.</p>
+          <h1 className="text-lg font-bold text-black sm:text-xl">Order Fulfillment</h1>
+          <p className="mt-1 text-xs text-[#444444] sm:text-sm">Only your own items within each order are shown here.</p>
         </div>
         <div className="flex items-center gap-3">
           <Link href="/seller/shipping" className="text-sm font-medium text-green-700 hover:underline">
@@ -152,31 +152,31 @@ export default function SellerOrdersPage() {
       </div>
 
       {wallet && (
-        <section id="wallet" className="mt-6 scroll-mt-20 rounded-2xl border border-border bg-white p-5 shadow-sm">
-          <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-[#444444]">
+        <section id="wallet" className="mt-4 scroll-mt-20 rounded-xl border border-border bg-white p-3 shadow-sm sm:mt-6 sm:p-5">
+          <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-[#444444] sm:text-sm">
             <WalletIcon className="size-4 text-green-700" />
             Wallet
           </h2>
-          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-5">
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:mt-4 sm:grid-cols-5 sm:gap-4">
             <WalletTile label="Available Balance" value={wallet.balance} highlight />
             <WalletTile label="On Hold" value={wallet.onHoldBalance} />
             <WalletTile label="Pending Settlement" value={wallet.pendingSettlement} />
             <WalletTile label="Lifetime Earnings" value={wallet.lifetimeEarnings} />
             <WalletTile label="Total Withdrawn" value={wallet.lifetimeWithdrawn} />
           </div>
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-3 flex flex-col gap-2 sm:mt-4 sm:flex-row sm:flex-wrap">
             <Input
               value={withdrawAmount}
               onChange={(e) => setWithdrawAmount(e.target.value.replace(/[^0-9.]/g, ""))}
               placeholder="Amount to withdraw"
-              className="h-10 w-48"
+              className="h-10 w-full sm:w-48"
             />
-            <Button className="h-10" disabled={requesting || wallet.balance <= 0} onClick={handleRequestWithdrawal}>
+            <Button className="h-10 w-full sm:w-auto" disabled={requesting || wallet.balance <= 0} onClick={handleRequestWithdrawal}>
               {requesting ? "Requesting..." : "Request Withdrawal"}
             </Button>
           </div>
           {withdrawals && withdrawals.length > 0 && (
-            <div className="mt-4 flex flex-col gap-1 text-sm text-[#444444]">
+            <div className="mt-3 flex flex-col gap-1 text-xs text-[#444444] sm:mt-4 sm:text-sm">
               {withdrawals.slice(0, 5).map((w) => (
                 <div key={w.id} className="flex justify-between">
                   <span>
@@ -191,7 +191,7 @@ export default function SellerOrdersPage() {
       )}
 
       {/* Filters */}
-      <section className="mt-6 flex flex-wrap gap-2 overflow-x-auto">
+      <section className="-mx-3 mt-4 flex flex-nowrap gap-2 overflow-x-auto px-3 sm:mx-0 sm:mt-6 sm:flex-wrap sm:px-0">
         {FILTERS.map((f) => (
           <button
             key={f.key}
@@ -207,8 +207,8 @@ export default function SellerOrdersPage() {
       </section>
 
       {/* Search + date */}
-      <section className="mt-4 flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[240px]">
+      <section className="mt-3 flex flex-col gap-2 sm:mt-4 sm:flex-row sm:items-center sm:gap-3">
+        <div className="relative flex-1 sm:min-w-[240px]">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#888888]" />
           <Input
             value={search}
@@ -217,34 +217,34 @@ export default function SellerOrdersPage() {
             className="h-10 pl-9"
           />
         </div>
-        <Input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="h-10 w-44" />
+        <Input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="h-10 w-full sm:w-44" />
       </section>
 
       {/* Orders */}
-      <section className="mt-6">
+      <section className="mt-4 sm:mt-6">
         {orders === null ? (
           <p className="text-sm text-[#444444]">Loading orders...</p>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-white py-16 text-center">
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-white py-12 text-center sm:py-16">
             <PackageSearch className="size-8 text-[#888888]" />
             <p className="mt-3 text-sm text-[#444444]">No orders match this view.</p>
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2 sm:gap-3">
             {filtered.map(({ order, mine }) => {
               const total = mine.items.reduce((sum, i) => sum + i.price * i.quantity, 0)
               return (
                 <Link
                   key={order.id}
                   href={`/seller/orders/${order.id}`}
-                  className="flex flex-col gap-2 rounded-2xl border border-border bg-white p-4 shadow-sm transition hover:border-green-600 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-1.5 rounded-xl border border-border bg-white p-3 shadow-sm transition hover:border-green-600 sm:flex-row sm:items-center sm:justify-between sm:gap-2 sm:p-4"
                 >
-                  <div>
-                    <p className="font-semibold text-black">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-black">
                       #{order.id.slice(0, 8)} · {order.shippingAddress.fullName}
                     </p>
                     <p className="text-xs text-[#888888]">
-                      {new Date(order.createdAt).toLocaleString()} · {mine.items.length} item{mine.items.length === 1 ? "" : "s"} ·{" "}
+                      {new Date(order.createdAt).toLocaleDateString()} · {mine.items.length} item{mine.items.length === 1 ? "" : "s"} ·{" "}
                       {formatPrice(total)}
                     </p>
                     <p className="text-xs text-[#444444]">
@@ -264,9 +264,9 @@ export default function SellerOrdersPage() {
 
 function WalletTile({ label, value, highlight }: { label: string; value: number; highlight?: boolean }) {
   return (
-    <div className={cn("rounded-xl border p-3", highlight ? "border-green-600 bg-green-50" : "border-border bg-white")}>
-      <p className="text-xs uppercase tracking-widest text-[#888888]">{label}</p>
-      <p className={cn("mt-1 text-lg font-bold", highlight ? "text-green-700" : "text-black")}>{formatPrice(value)}</p>
+    <div className={cn("rounded-lg border p-2 sm:p-3", highlight ? "border-green-600 bg-green-50" : "border-border bg-white")}>
+      <p className="truncate text-[10px] uppercase tracking-wide text-[#888888] sm:text-xs sm:tracking-widest">{label}</p>
+      <p className={cn("mt-0.5 truncate text-sm font-bold sm:mt-1 sm:text-base", highlight ? "text-green-700" : "text-black")}>{formatPrice(value)}</p>
     </div>
   )
 }

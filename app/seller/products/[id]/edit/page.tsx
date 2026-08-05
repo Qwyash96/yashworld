@@ -77,8 +77,8 @@ export default function EditSellerProductPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-12 sm:px-6 lg:px-8">
-      <h1 className="font-serif text-3xl font-semibold tracking-tight">Edit Product</h1>
+    <div className="mx-auto max-w-2xl px-3 py-4 sm:px-6 sm:py-12 lg:px-8">
+      <h1 className="text-lg font-bold tracking-tight sm:text-xl">Edit Product</h1>
       {product.status === "approved" && (
         <p className="mt-3 text-sm text-muted-foreground">
           This product is live. Saving changes will resubmit it for admin review.
@@ -92,7 +92,7 @@ export default function EditSellerProductPage() {
           Saving changes will resubmit it for admin review.
         </p>
       )}
-      <div className="mt-8">
+      <div className="mt-4 sm:mt-8">
         <ProductForm
           uid={gate.uid}
           categories={categories}

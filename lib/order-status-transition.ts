@@ -14,6 +14,12 @@ import type { SellerNotificationType } from "@/types/seller-notification"
 export function isAllowedOrderTransition(from: OrderStatus, to: OrderStatus): boolean {
   if (to === "Cancelled") return isCancellable(from)
   if (to === "Returned") return isReturnable(from)
+  // "Cancel Pickup" — the one deliberate backward hop, only before the
+  // courier has actually taken physical custody. Reverting all the way to
+  // "Packed" (not just decrementing the index) because a cancelled pickup
+  // means nothing about the pack/pickup readiness has changed, only that
+  // the courier assignment itself needs to be redone.
+  if (from === "Pickup Requested" && to === "Packed") return true
   const fromIndex = ORDER_FULFILMENT_SEQUENCE.indexOf(from)
   const toIndex = ORDER_FULFILMENT_SEQUENCE.indexOf(to)
   return fromIndex !== -1 && toIndex === fromIndex + 1
@@ -25,6 +31,20 @@ export interface SellerOrderTransitionExtra {
   pickupDate?: string
   pickupTime?: string
   trackingNumber?: string
+}
+
+/** Drops the courier-assignment fields entirely (rather than setting them to
+ * `undefined`, which Firestore's Admin SDK rejects in nested array values)
+ * — used when a Cancel Pickup reverts the seller order back to "Packed", so
+ * a stale AWB/courier name never lingers past the pickup it belonged to. */
+function withoutCourierFields(sellerOrder: SellerOrder): SellerOrder {
+  const { courierPartner, trackingNumber, pickupDate, pickupTime, shippingProvider, ...rest } = sellerOrder
+  void courierPartner
+  void trackingNumber
+  void pickupDate
+  void pickupTime
+  void shippingProvider
+  return rest as SellerOrder
 }
 
 /** Throws if `nextStatus` isn't a legal transition from `sellerOrder.status`. */
@@ -39,9 +59,10 @@ export function buildTransitionedSellerOrder(
 
   const now = new Date().toISOString()
   const reason = extra.reason?.trim()
+  const isCancelPickup = sellerOrder.status === "Pickup Requested" && nextStatus === "Packed"
 
   return {
-    ...sellerOrder,
+    ...(isCancelPickup ? withoutCourierFields(sellerOrder) : sellerOrder),
     status: nextStatus,
     timeline: [...(sellerOrder.timeline ?? []), { status: nextStatus, at: now, ...(reason ? { note: reason } : {}) }],
     ...(nextStatus === "Delivered" ? { deliveredAt: now, payoutStatus: "Hold" as const } : {}),
