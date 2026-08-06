@@ -12,10 +12,12 @@ import type { Order } from "@/types/order"
 import type { Review } from "@/types/review"
 import { OrderStatusBadge } from "@/components/orders/order-status-badge"
 import { OrderTrackingTimeline } from "@/components/orders/order-tracking-timeline"
+import { CancelOrderDialog } from "@/components/orders/cancel-order-dialog"
 import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
 import { ReviewStars } from "@/components/reviews/review-stars"
 import { WriteReviewDialog } from "@/components/reviews/write-review-dialog"
+import { isCancellable } from "@/types/order-lifecycle"
 import type { DiscountSource } from "@/types/order"
 
 const DISCOUNT_SOURCE_LABELS: Partial<Record<DiscountSource, string>> = {
@@ -32,6 +34,7 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<Order | null | "loading">("loading")
   const [reviewsByProduct, setReviewsByProduct] = useState<Record<string, Review | null>>({})
   const [reviewDialogProductId, setReviewDialogProductId] = useState<string | null>(null)
+  const [cancelDialogSellerId, setCancelDialogSellerId] = useState<string | null>(null)
 
   useEffect(() => {
     getOrderById(params.id).then(setOrder)
@@ -135,6 +138,16 @@ export default function OrderDetailPage() {
               </p>
               <OrderStatusBadge status={sellerOrder.status} />
             </div>
+            {isCancellable(sellerOrder.status) && (
+              <Button
+                type="button"
+                variant="destructive"
+                className="mt-3 h-9 w-full sm:w-auto"
+                onClick={() => setCancelDialogSellerId(sellerOrder.sellerId)}
+              >
+                Cancel Order
+              </Button>
+            )}
             <ul className="mt-3 space-y-2 text-sm">
               {sellerOrder.items.map((item) => {
                 const product = getProductById(item.productId)
@@ -193,6 +206,16 @@ export default function OrderDetailPage() {
           </div>
         ))}
       </div>
+
+      {cancelDialogSellerId && (
+        <CancelOrderDialog
+          open={!!cancelDialogSellerId}
+          onOpenChange={(open) => !open && setCancelDialogSellerId(null)}
+          orderId={order.id}
+          sellerId={cancelDialogSellerId}
+          onCancelled={() => getOrderById(order.id).then(setOrder)}
+        />
+      )}
 
       {reviewDialogProductId && (
         <WriteReviewDialog

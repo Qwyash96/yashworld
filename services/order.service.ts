@@ -134,6 +134,33 @@ export async function updateSellerOrderNote(orderId: string, note: string): Prom
   }
 }
 
+/**
+ * Buyer self-serve cancel — goes through app/api/orders/[id]/cancel (Admin
+ * SDK), never a direct Firestore write (firestore.rules only lets a buyer
+ * read their own order, not update it). `sellerId` scopes which seller's
+ * portion to cancel, matching SellerOrder granularity; the vast majority of
+ * orders have exactly one.
+ */
+export async function cancelOrder(
+  orderId: string,
+  sellerId: string,
+  reason: string,
+): Promise<{ refundPending: boolean }> {
+  const token = await auth.currentUser?.getIdToken()
+  if (!token) throw new Error("Not signed in.")
+
+  const response = await fetch(`/api/orders/${orderId}/cancel`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ sellerId, reason }),
+  })
+  const body = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    throw new Error(body.error ?? `Failed to cancel order "${orderId}"`)
+  }
+  return { refundPending: !!body.refundPending }
+}
+
 /** For the future Razorpay webhook — not called anywhere yet. */
 export async function updateOrderPaymentStatus(
   id: string,

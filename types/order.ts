@@ -3,13 +3,14 @@ import type {
   OrderStatus,
   OrderTimelineEvent,
   PaymentStatus,
+  RefundStatus,
   SellerPayoutStatus,
 } from "./order-lifecycle"
 
 // Canonical status enums live in ./order-lifecycle — re-exported here so
 // existing imports of these types from "@/types/order" keep working. There
 // is only one definition of each; this is not a duplicate.
-export type { OrderStatus, OrderTimelineEvent, PaymentStatus, SellerPayoutStatus }
+export type { OrderStatus, OrderTimelineEvent, PaymentStatus, RefundStatus, SellerPayoutStatus }
 
 export type PaymentMethod = "cod" | "razorpay"
 
@@ -68,6 +69,17 @@ export interface SellerOrder {
   deliveredAt?: string
   cancelledAt?: string
   returnedAt?: string
+  /** Who cancelled this seller-order — "buyer" for a self-serve cancel via
+   * app/api/orders/[id]/cancel, or a seller uid for a seller-initiated cancel
+   * via app/api/seller/orders/[id]/status. Unset for non-cancelled orders. */
+  cancelledBy?: "buyer" | string
+  /** Buyer- or seller-supplied reason text, set alongside cancelledBy/cancelledAt. */
+  cancellationReason?: string
+  /** Set to "Pending" when a buyer self-cancels a paymentMethod "razorpay"
+   * order that was already Paid — signals Admin's Refunds module to process
+   * the gateway refund. Left unset for cod orders (nothing was collected)
+   * and for seller-initiated cancels before payment capture. */
+  refundStatus?: RefundStatus
   /** Set when the seller rejects a Pending order. */
   rejectionReason?: string
   /** Seller-side money flow for this seller's portion of the order. */

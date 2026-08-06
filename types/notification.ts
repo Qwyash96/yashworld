@@ -4,6 +4,7 @@ export type NotificationType =
   | "buyer_registered"
   | "seller_application_submitted"
   | "order_placed"
+  | "order_cancelled"
   | "payment_received"
   | "refund_issued"
   | "withdrawal_requested"
