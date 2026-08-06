@@ -32,7 +32,7 @@ export default function RefundPolicyPage() {
       <PolicySection heading="How Refunds Are Processed">
         <p>
           Once a return is picked up and inspected, approved refunds are issued to your original payment method
-          (Razorpay) within a few business days, or adjusted against the amount collected if the order was placed
+          within a few business days, or adjusted against the amount collected if the order was placed
           Cash on Delivery. You can track the status of every return and refund from your Orders page.
         </p>
       </PolicySection>

@@ -1,5 +1,5 @@
 import { auth } from "@/services/firebase/client"
-import type { GeneralSettings, ShippingSettings, TrustBadgesSettings } from "@/types/platform-settings"
+import type { GeneralSettings, ShippingSettings, TrustBadgesSettings, PaymentMethodsSettings } from "@/types/platform-settings"
 
 async function authHeaders(): Promise<HeadersInit> {
   const token = await auth.currentUser?.getIdToken()
@@ -63,6 +63,26 @@ export async function saveTrustBadgesSettingsClient(
   const headers = await authHeaders()
   const response = await fetch("/api/admin/settings/trust-badges", { method: "POST", headers, body: JSON.stringify({ badges }) })
   const result = await parseResult<TrustBadgesSettings>(response)
+  if (!result.ok) return result
+  return { ok: true, settings: result.data }
+}
+
+export async function fetchPaymentMethodsSettings(): Promise<
+  { ok: true; settings: PaymentMethodsSettings } | { ok: false; error: string }
+> {
+  const headers = await authHeaders()
+  const response = await fetch("/api/admin/settings/payment-methods", { headers })
+  const result = await parseResult<PaymentMethodsSettings>(response)
+  if (!result.ok) return result
+  return { ok: true, settings: result.data }
+}
+
+export async function savePaymentMethodsSettingsClient(
+  patch: Partial<PaymentMethodsSettings["methods"]>,
+): Promise<{ ok: true; settings: PaymentMethodsSettings } | { ok: false; error: string }> {
+  const headers = await authHeaders()
+  const response = await fetch("/api/admin/settings/payment-methods", { method: "POST", headers, body: JSON.stringify(patch) })
+  const result = await parseResult<PaymentMethodsSettings>(response)
   if (!result.ok) return result
   return { ok: true, settings: result.data }
 }

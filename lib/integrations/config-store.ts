@@ -146,3 +146,15 @@ export async function markVerified(providerId: string, ok: boolean, health: Inte
 export async function markSynced(providerId: string): Promise<void> {
   await getAdminDb().collection(COLLECTION).doc(providerId).set({ lastSyncAt: new Date().toISOString() }, { merge: true })
 }
+
+/** Payment category only — called by lib/payment-router.ts after every real
+ * checkout attempt against a gateway (never by the manual "Verify
+ * Connection"/"Test" buttons, which use markVerified instead). Drives the
+ * admin Gateway Manager's live "Last successful/failed transaction" display. */
+export async function markPaymentAttempt(providerId: string, ok: boolean, message?: string): Promise<void> {
+  const now = new Date().toISOString()
+  await getAdminDb()
+    .collection(COLLECTION)
+    .doc(providerId)
+    .set(ok ? { lastSuccessAt: now } : { lastFailureAt: now, lastFailureMessage: message ?? "Unknown error" }, { merge: true })
+}

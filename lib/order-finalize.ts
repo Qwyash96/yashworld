@@ -4,6 +4,7 @@ import { FieldValue } from "firebase-admin/firestore"
 import { getAdminDb } from "@/lib/firebase-admin"
 import { getShippingRate } from "@/lib/shipping"
 import { isCouponCurrentlyValid } from "@/lib/coupons"
+import { round2 } from "@/lib/utils"
 import {
   InsufficientStockError,
   computeOrderPricing,
@@ -12,7 +13,7 @@ import {
 } from "@/lib/pricing-engine"
 import type { Address } from "@/types/user"
 import type { Product } from "@/types/product"
-import type { Order, PaymentMethod, PaymentStatus, SellerOrder, ShippingMethod } from "@/types/order"
+import type { Order, PaymentGatewayId, PaymentMethod, PaymentStatus, SellerOrder, ShippingMethod } from "@/types/order"
 import type { Coupon } from "@/types/coupon"
 import type { AdminNotificationInput } from "@/types/notification"
 import type { SellerNotificationInput } from "@/types/seller-notification"
@@ -43,17 +44,15 @@ export interface FinalizeOrderInput {
   paymentMethod: PaymentMethod
   paymentStatus: PaymentStatus
   couponCode?: string
-  razorpayOrderId?: string
-  razorpayPaymentId?: string
+  /** Set together — whichever gateway (if any) the payment router chose and processed this payment through. Absent for cod. */
+  gatewayId?: PaymentGatewayId
+  gatewayOrderId?: string
+  gatewayPaymentId?: string
 }
 
 export interface FinalizeOrderResult {
   orderId: string
   total: number
-}
-
-function round2(value: number): number {
-  return Math.round(value * 100) / 100
 }
 
 /**
@@ -81,14 +80,15 @@ export async function finalizeOrder(input: FinalizeOrderInput): Promise<Finalize
 
   // Idempotency guard against a double-submit creating two orders for one
   // real checkout attempt (double-click, a network retry re-sending the
-  // same request, the Razorpay handler firing twice). Razorpay's payment id
-  // is already a unique, gateway-verified key. COD has no such external id,
-  // so it gets a content hash of buyer+cart+a coarse time bucket instead —
-  // not a perfect guarantee (a genuine repeat order of the identical cart
-  // within the window would also be caught), but it eliminates the common
-  // double-click case without a new composite query/index.
-  const idempotencyKey = input.razorpayPaymentId
-    ? `razorpay:${input.razorpayPaymentId}`
+  // same request, a gateway's verify handler firing twice). A gateway's
+  // payment id is already a unique, gateway-verified key. COD has no such
+  // external id, so it gets a content hash of buyer+cart+a coarse time
+  // bucket instead — not a perfect guarantee (a genuine repeat order of the
+  // identical cart within the window would also be caught), but it
+  // eliminates the common double-click case without a new composite
+  // query/index.
+  const idempotencyKey = input.gatewayPaymentId
+    ? `${input.gatewayId ?? "gateway"}:${input.gatewayPaymentId}`
     : `cod:${createHash("sha256")
         .update(
           [
@@ -247,8 +247,14 @@ export async function finalizeOrder(input: FinalizeOrderInput): Promise<Finalize
       shippingMethod: input.shippingMethod,
       paymentMethod: input.paymentMethod,
       paymentStatus: input.paymentStatus,
-      ...(input.razorpayOrderId ? { razorpayOrderId: input.razorpayOrderId } : {}),
-      ...(input.razorpayPaymentId ? { razorpayPaymentId: input.razorpayPaymentId } : {}),
+      ...(input.gatewayId ? { gatewayId: input.gatewayId } : {}),
+      ...(input.gatewayOrderId ? { gatewayOrderId: input.gatewayOrderId } : {}),
+      ...(input.gatewayPaymentId ? { gatewayPaymentId: input.gatewayPaymentId } : {}),
+      // Deprecated aliases, still populated for razorpay orders so existing
+      // readers (admin refund route, invoice context, the legacy webhook
+      // receiver) keep resolving them unchanged — see types/order.ts.
+      ...(input.gatewayId === "razorpay" && input.gatewayOrderId ? { razorpayOrderId: input.gatewayOrderId } : {}),
+      ...(input.gatewayId === "razorpay" && input.gatewayPaymentId ? { razorpayPaymentId: input.gatewayPaymentId } : {}),
       createdAt: now.toISOString(),
     }
 
@@ -268,12 +274,12 @@ export async function finalizeOrder(input: FinalizeOrderInput): Promise<Finalize
         relatedId: orderRef.id,
       },
     ]
-    if (input.paymentMethod === "razorpay" && input.paymentStatus === "Paid") {
+    if (input.paymentMethod !== "cod" && input.paymentStatus === "Paid") {
       notifications.push({
         type: "payment_received",
         targetPermission: "payments",
         title: "Payment received",
-        message: `Razorpay payment of ${round2(total)} received for order #${orderRef.id.slice(0, 8)}.`,
+        message: `Payment of ${round2(total)} received for order #${orderRef.id.slice(0, 8)}.`,
         relatedType: "order",
         relatedId: orderRef.id,
       })

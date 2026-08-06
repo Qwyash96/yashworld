@@ -11,8 +11,8 @@ import { writeWebhookEvent } from "@/lib/integrations/webhook-events"
  * /api/integrations/razorpay/webhook route uses. New setups should point
  * the Razorpay Dashboard at the generic URL instead (shown in
  * /admin/integrations/razorpay); this reconciliation-only receiver (not the
- * primary order-creation path — app/api/payments/razorpay/verify already
- * creates the order synchronously) is not the canonical URL to configure.
+ * primary order-creation path — app/api/payments/verify already creates the
+ * order synchronously) is not the canonical URL to configure.
  */
 export async function POST(request: NextRequest) {
   const rawBody = await request.text()

@@ -6,10 +6,22 @@ import { Undo2 } from "lucide-react"
 import { fetchRefundableOrders, refundOrder } from "@/lib/admin-orders-client"
 import { PaginationControls } from "@/components/admin/pagination-controls"
 import { formatPrice } from "@/lib/products"
-import type { Order } from "@/types/order"
+import type { Order, PaymentMethod } from "@/types/order"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
+// Admin-facing only — mirrors each adapter's own `name` in
+// lib/integrations/registry.ts (server-only, can't import that here).
+const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  cod: "Cash on Delivery",
+  razorpay: "Razorpay",
+  cashfree: "Cashfree",
+  phonepe: "PhonePe PG",
+  payu: "PayU",
+  stripe: "Stripe",
+  paypal: "PayPal",
+}
 
 export default function AdminRefundsPage() {
   const [orders, setOrders] = useState<Order[] | null>(null)
@@ -109,7 +121,7 @@ export default function AdminRefundsPage() {
                 </div>
                 <span className="font-semibold text-black">{formatPrice(order.totals.total)}</span>
                 <Badge variant={order.paymentStatus === "Refunded" ? "destructive" : "default"}>{order.paymentStatus}</Badge>
-                <span className="text-xs text-[#888888]">{order.paymentMethod === "cod" ? "Cash on Delivery" : "Razorpay"}</span>
+                <span className="text-xs text-[#888888]">{PAYMENT_METHOD_LABELS[order.paymentMethod] ?? order.paymentMethod}</span>
                 {order.paymentStatus === "Paid" && (
                   <Button size="sm" variant="destructive" className="h-8" disabled={busyId === order.id} onClick={() => handleRefund(order.id)}>
                     Refund

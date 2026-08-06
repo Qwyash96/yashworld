@@ -55,14 +55,14 @@ export default function AdminSettlementsPage() {
         <Banknote className="size-6 text-green-700" />
         <h1 className="text-2xl font-bold text-black">Settlements</h1>
       </div>
-      <p className="mt-1 text-sm text-[#444444]">Every payment captured via Razorpay, this page.</p>
+      <p className="mt-1 text-sm text-[#444444]">Every payment captured across all payment gateways, this page.</p>
 
       <div className="mt-4 flex items-start gap-2 rounded-2xl bg-yellow-50 p-4 text-sm text-yellow-800">
         <AlertTriangle className="mt-0.5 size-4 shrink-0" />
         <span>
-          This shows real captured-payment records from orders — not Razorpay&apos;s own bank-settlement report
-          (UTR numbers, settlement batch dates). That requires a separate call to Razorpay&apos;s Settlements API,
-          which isn&apos;t wired up yet.
+          This shows real captured-payment records from orders — not any gateway&apos;s own bank-settlement report
+          (UTR numbers, settlement batch dates). That requires a separate call to each gateway&apos;s own Settlements
+          API, which isn&apos;t wired up yet.
         </span>
       </div>
 
@@ -79,7 +79,7 @@ export default function AdminSettlementsPage() {
             ))}
           </div>
         ) : orders && orders.length === 0 ? (
-          <p className="p-8 text-center text-sm text-[#444444]">No captured Razorpay payments yet.</p>
+          <p className="p-8 text-center text-sm text-[#444444]">No captured payments yet.</p>
         ) : (
           <div className="divide-y divide-border">
             {orders?.map((order) => (
@@ -88,7 +88,10 @@ export default function AdminSettlementsPage() {
                   <span className="font-semibold text-black">#{order.id.slice(0, 8)}</span>
                   <p className="text-xs text-[#888888]">{new Date(order.createdAt).toLocaleString()}</p>
                 </div>
-                <span className="font-mono text-xs text-[#888888]">{order.razorpayPaymentId ?? "—"}</span>
+                <span className="font-mono text-xs text-[#888888]">
+                  {order.gatewayId ? `${order.gatewayId}: ` : ""}
+                  {order.gatewayPaymentId ?? order.razorpayPaymentId ?? "—"}
+                </span>
                 <span className="font-semibold text-black">{formatPrice(order.totals.total)}</span>
               </div>
             ))}

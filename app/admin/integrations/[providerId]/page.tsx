@@ -179,6 +179,19 @@ export default function AdminIntegrationDetailPage() {
         <span className="text-xs text-[#888888]">
           Last sync: {config.lastSyncAt ? new Date(config.lastSyncAt).toLocaleString() : "never"}
         </span>
+        {adapter.category === "payment" && (
+          <>
+            <span className="text-xs text-[#888888]">
+              Last successful transaction: {config.lastSuccessAt ? new Date(config.lastSuccessAt).toLocaleString() : "never"}
+            </span>
+            <span className="text-xs text-[#888888]">
+              Last failed transaction:{" "}
+              {config.lastFailureAt
+                ? `${new Date(config.lastFailureAt).toLocaleString()}${config.lastFailureMessage ? ` — ${config.lastFailureMessage}` : ""}`
+                : "never"}
+            </span>
+          </>
+        )}
       </section>
 
       {/* Credentials */}

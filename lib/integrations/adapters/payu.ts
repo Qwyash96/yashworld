@@ -13,6 +13,18 @@ function baseUrl(environment: "live" | "sandbox") {
   return environment === "live" ? "https://info.payu.in/merchant/postservice?form=2" : "https://test.payu.in/merchant/postservice?form=2"
 }
 
+// The hosted checkout page the browser form-posts to — a different host
+// from the server-to-server postservice API above.
+function checkoutUrl(environment: "live" | "sandbox") {
+  return environment === "live" ? "https://secure.payu.in/_payment" : "https://sandboxsecure.payu.in/_payment"
+}
+
+interface PayuTransactionDetail {
+  status?: string
+  amt?: string
+  mihpayid?: string
+}
+
 export const payuAdapter: IntegrationAdapter = {
   id: "payu",
   name: "PayU",
@@ -58,5 +70,107 @@ export const payuAdapter: IntegrationAdapter = {
   async testAction(credentials, environment) {
     const result = await this.verifyConnection(credentials, environment)
     return { ok: result.ok, message: result.ok ? "PayU Verify Payment API authenticated successfully." : result.message }
+  },
+
+  // No API call to "create" an order — PayU's classic integration is a
+  // hash-signed browser form-post straight to its hosted checkout page.
+  // clientParams carries the whole form for lib/payment-gateway-client.ts
+  // to build and submit.
+  async createPaymentOrder(credentials, environment, input) {
+    const { createHash } = await import("crypto")
+    const { merchantKey, salt } = credentials
+    const txnid = input.receiptId
+    const amount = (input.amountPaise / 100).toFixed(2)
+    const productinfo = "Order Payment"
+    const firstname = input.buyerName || "Customer"
+    const hash = createHash("sha512")
+      .update(`${merchantKey}|${txnid}|${amount}|${productinfo}|${firstname}|${input.buyerEmail}|||||||||||${salt}`)
+      .digest("hex")
+
+    return {
+      gatewayOrderId: txnid,
+      clientParams: {
+        actionUrl: checkoutUrl(environment),
+        fields: {
+          key: merchantKey,
+          txnid,
+          amount,
+          productinfo,
+          firstname,
+          email: input.buyerEmail,
+          phone: input.buyerPhone,
+          surl: input.returnUrl,
+          furl: input.returnUrl,
+          hash,
+        },
+      },
+    }
+  },
+
+  async verifyPayment(credentials, environment, input) {
+    const { createHash } = await import("crypto")
+    const { merchantKey, salt } = credentials
+    const command = "verify_payment"
+    const hash = createHash("sha512").update(`${merchantKey}|${command}|${input.gatewayOrderId}|${salt}`).digest("hex")
+
+    const response = await fetch(baseUrl(environment), {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ key: merchantKey, command, var1: input.gatewayOrderId, hash }).toString(),
+    })
+    const body = await response.json().catch(() => ({}))
+    const detail = body?.transaction_details?.[input.gatewayOrderId] as PayuTransactionDetail | undefined
+    if (!response.ok || !detail) {
+      return { ok: false, gatewayPaymentId: "", status: "failed", message: "Transaction not found." }
+    }
+    const gatewayPaymentId = detail.mihpayid ?? ""
+    if (detail.status !== "success") {
+      return { ok: false, gatewayPaymentId, status: detail.status === "failure" ? "failed" : "pending", message: `Status: ${detail.status}.` }
+    }
+    const paidPaise = Math.round(Number(detail.amt ?? 0) * 100)
+    if (paidPaise !== input.expectedAmountPaise) {
+      return { ok: false, gatewayPaymentId, status: "failed", message: "Paid amount does not match the order total." }
+    }
+    return { ok: true, gatewayPaymentId, status: "captured" }
+  },
+
+  async refundPayment(credentials, environment, input) {
+    const { createHash } = await import("crypto")
+    const { merchantKey, salt } = credentials
+    const command = "cancel_refund_transaction"
+    const hash = createHash("sha512").update(`${merchantKey}|${command}|${input.gatewayPaymentId}|${salt}`).digest("hex")
+
+    const response = await fetch(baseUrl(environment), {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        key: merchantKey,
+        command,
+        var1: input.gatewayPaymentId,
+        var3: (input.amountPaise / 100).toFixed(2),
+        hash,
+      }).toString(),
+    })
+    const body = await response.json().catch(() => ({}))
+    if (!response.ok || body.status !== 1) return { ok: false, message: body?.msg ?? "PayU refund failed." }
+    return { ok: true, gatewayRefundId: body.request_id !== undefined ? String(body.request_id) : undefined, message: "Refund issued." }
+  },
+
+  async syncPaymentStatus(credentials, environment, input) {
+    if (!input.gatewayOrderId) return { status: "unknown" }
+    const { createHash } = await import("crypto")
+    const { merchantKey, salt } = credentials
+    const command = "verify_payment"
+    const hash = createHash("sha512").update(`${merchantKey}|${command}|${input.gatewayOrderId}|${salt}`).digest("hex")
+    const response = await fetch(baseUrl(environment), {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ key: merchantKey, command, var1: input.gatewayOrderId, hash }).toString(),
+    })
+    const body = await response.json().catch(() => ({}))
+    const detail = body?.transaction_details?.[input.gatewayOrderId] as PayuTransactionDetail | undefined
+    if (!response.ok || !detail) return { status: "unknown" }
+    const status = detail.status === "success" ? "captured" : detail.status === "failure" ? "failed" : "pending"
+    return { status, gatewayPaymentId: detail.mihpayid }
   },
 }

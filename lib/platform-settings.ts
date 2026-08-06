@@ -6,6 +6,7 @@ import type {
   ShippingSettings,
   TrustBadgesSettings,
   AdPricingSettings,
+  PaymentMethodsSettings,
 } from "@/types/platform-settings"
 
 const COLLECTION = "platformSettings"
@@ -94,6 +95,34 @@ export async function saveTrustBadgesSettings(patch: Partial<TrustBadgesSettings
   await ref.set({ ...patch, updatedAt: new Date().toISOString() }, { merge: true })
   const snapshot = await ref.get()
   return { ...DEFAULT_TRUST_BADGES_SETTINGS, ...(snapshot.data() as Partial<TrustBadgesSettings>) }
+}
+
+// Matches the current Razorpay adapter's pre-refactor defaults (COD on,
+// everything else off) so migrating existing installs onto this doc changes
+// no buyer-visible behavior until an admin actively changes something.
+const DEFAULT_PAYMENT_METHODS_SETTINGS: PaymentMethodsSettings = {
+  methods: { upi: false, cards: false, netbanking: false, wallet: false, emi: false, cod: true },
+  updatedAt: new Date(0).toISOString(),
+}
+
+export async function getPaymentMethodsSettings(): Promise<PaymentMethodsSettings> {
+  const snapshot = await getAdminDb().collection(COLLECTION).doc("paymentMethods").get()
+  if (!snapshot.exists) return DEFAULT_PAYMENT_METHODS_SETTINGS
+  const data = snapshot.data() as Partial<PaymentMethodsSettings>
+  return {
+    ...DEFAULT_PAYMENT_METHODS_SETTINGS,
+    ...data,
+    methods: { ...DEFAULT_PAYMENT_METHODS_SETTINGS.methods, ...data.methods },
+  }
+}
+
+export async function savePaymentMethodsSettings(
+  patch: Partial<PaymentMethodsSettings["methods"]>,
+): Promise<PaymentMethodsSettings> {
+  const ref = getAdminDb().collection(COLLECTION).doc("paymentMethods")
+  const current = await getPaymentMethodsSettings()
+  await ref.set({ methods: { ...current.methods, ...patch }, updatedAt: new Date().toISOString() }, { merge: true })
+  return getPaymentMethodsSettings()
 }
 
 // Starter pricing — real, admin-editable rupee amounts from day one, not a

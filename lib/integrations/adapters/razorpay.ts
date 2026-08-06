@@ -1,8 +1,19 @@
 import "server-only"
 import { getRazorpayClient } from "@/lib/razorpay-admin"
-import type { IntegrationAdapter } from "@/lib/integrations/types"
+import type { IntegrationAdapter, PaymentInstrument } from "@/lib/integrations/types"
 
 const KEY_ID_PATTERN = /^rzp_(test|live)_[A-Za-z0-9]{8,}$/
+
+function razorpayMethodFlags(method: PaymentInstrument) {
+  return {
+    upi: method === "upi",
+    card: method === "cards",
+    netbanking: method === "netbanking",
+    wallet: method === "wallet",
+    emi: method === "emi",
+    paylater: false,
+  }
+}
 
 export const razorpayAdapter: IntegrationAdapter = {
   id: "razorpay",
@@ -15,26 +26,14 @@ export const razorpayAdapter: IntegrationAdapter = {
     { key: "webhookSecret", label: "Webhook Secret", type: "password", required: false },
     { key: "paymentLink", label: "Payment Link (optional fallback)", type: "url", required: false, placeholder: "https://rzp.io/l/..." },
   ],
-  settingFields: [
-    { key: "upi", label: "UPI", type: "boolean", default: false },
-    { key: "cards", label: "Cards", type: "boolean", default: false },
-    { key: "netbanking", label: "Net Banking", type: "boolean", default: false },
-    { key: "wallet", label: "Wallet", type: "boolean", default: false },
-    { key: "emi", label: "EMI", type: "boolean", default: false },
-    { key: "cod", label: "Cash on Delivery (payment method)", type: "boolean", default: true },
-    { key: "razorpayEnabled", label: "Enable Razorpay Checkout", type: "boolean", default: false },
-    { key: "codEnabled", label: "Enable COD Checkout", type: "boolean", default: true },
-    {
-      key: "defaultMethod",
-      label: "Default Payment Method",
-      type: "select",
-      options: [
-        { value: "cod", label: "Cash on Delivery" },
-        { value: "razorpay", label: "Razorpay" },
-      ],
-      default: "cod",
-    },
-  ],
+  // Checkout instruments (UPI/Cards/Net Banking/Wallet/EMI/COD) and the old
+  // razorpayEnabled/codEnabled/defaultMethod flags used to live here — moved
+  // to the gateway-agnostic Admin -> Payment Settings page
+  // (platformSettings/paymentMethods, see types/platform-settings.ts) since
+  // they're checkout concepts, not Razorpay credentials. "Is this gateway
+  // usable" is now solely IntegrationConfig.enabled, the same field every
+  // other adapter already uses.
+  settingFields: [],
   supportsWebhook: true,
   supportsTest: true,
 
@@ -88,5 +87,85 @@ export const razorpayAdapter: IntegrationAdapter = {
     }
 
     return { ok: true, status: 200, message: "Webhook processed." }
+  },
+
+  async createPaymentOrder(credentials, _environment, input) {
+    const { keyId, keySecret } = credentials
+    const order = await getRazorpayClient(keyId, keySecret).orders.create({
+      amount: input.amountPaise,
+      currency: input.currency,
+      receipt: input.receiptId,
+      notes: { buyerId: input.buyerId },
+    })
+    return {
+      gatewayOrderId: order.id,
+      clientParams: {
+        keyId,
+        amount: input.amountPaise,
+        currency: input.currency,
+        orderId: order.id,
+        method: razorpayMethodFlags(input.method),
+        prefill: { name: input.buyerName, email: input.buyerEmail, contact: input.buyerPhone },
+      },
+    }
+  },
+
+  async verifyPayment(credentials, _environment, input) {
+    const Razorpay = (await import("razorpay")).default
+    const { keySecret } = credentials
+    const paymentId = input.payload.razorpay_payment_id
+    const signature = input.payload.razorpay_signature
+    if (!paymentId || !signature) {
+      return { ok: false, gatewayPaymentId: "", status: "failed", message: "Missing payment id/signature." }
+    }
+
+    const signatureValid = Razorpay.validateWebhookSignature(`${input.gatewayOrderId}|${paymentId}`, signature, keySecret)
+    if (!signatureValid) {
+      return { ok: false, gatewayPaymentId: paymentId, status: "failed", message: "Payment signature verification failed." }
+    }
+
+    const payment = await getRazorpayClient(credentials.keyId, keySecret).payments.fetch(paymentId)
+    if (payment.order_id !== input.gatewayOrderId) {
+      return { ok: false, gatewayPaymentId: paymentId, status: "failed", message: "Payment does not match the order." }
+    }
+    if (payment.status !== "captured") {
+      return { ok: false, gatewayPaymentId: paymentId, status: "pending", message: `Payment not captured (status: ${payment.status}).` }
+    }
+    if (Number(payment.amount) !== input.expectedAmountPaise) {
+      return { ok: false, gatewayPaymentId: paymentId, status: "failed", message: "Paid amount does not match the order total." }
+    }
+
+    return { ok: true, gatewayPaymentId: paymentId, status: "captured" }
+  },
+
+  async refundPayment(credentials, _environment, input) {
+    try {
+      const refund = await getRazorpayClient(credentials.keyId, credentials.keySecret).payments.refund(input.gatewayPaymentId, {
+        amount: input.amountPaise,
+        notes: input.reason ? { reason: input.reason } : undefined,
+      })
+      return { ok: true, gatewayRefundId: refund.id, message: "Refund issued." }
+    } catch (error) {
+      const message = (error as { error?: { description?: string } })?.error?.description
+      return { ok: false, message: message ?? "Razorpay refund failed." }
+    }
+  },
+
+  async syncPaymentStatus(credentials, _environment, input) {
+    if (!input.gatewayPaymentId) return { status: "unknown" }
+    try {
+      const payment = await getRazorpayClient(credentials.keyId, credentials.keySecret).payments.fetch(input.gatewayPaymentId)
+      const status =
+        payment.status === "captured"
+          ? "captured"
+          : payment.status === "refunded"
+            ? "refunded"
+            : payment.status === "failed"
+              ? "failed"
+              : "pending"
+      return { status, gatewayPaymentId: payment.id }
+    } catch {
+      return { status: "unknown" }
+    }
   },
 }

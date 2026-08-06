@@ -1,4 +1,5 @@
 import "server-only"
+import type { PaymentMethod } from "@/types/order"
 
 const BASE_URL = "https://apiv2.shiprocket.in/v1/external"
 
@@ -12,7 +13,7 @@ interface ShiprocketOrderItemInput {
 export interface CreateShiprocketShipmentInput {
   orderId: string
   pickupLocationName: string
-  paymentMethod: "cod" | "razorpay"
+  paymentMethod: PaymentMethod
   subTotal: number
   customerName: string
   phone: string

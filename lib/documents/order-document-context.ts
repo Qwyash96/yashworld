@@ -71,7 +71,10 @@ export function buildOrderDocumentContext(
     payoutAmount: sellerOrder.payoutAmount,
     deliveryCharge: order.totals.shipping,
     total: Math.round((subtotal - discount + order.totals.shipping) * 100) / 100,
-    paymentMethod: order.paymentMethod === "cod" ? "Cash on Delivery" : "Razorpay (Prepaid)",
+    // Invoices/packing slips can end up in the customer's hands (shipped
+    // with the package) — never name a specific gateway there, only
+    // whether the seller needs to collect cash at delivery.
+    paymentMethod: order.paymentMethod === "cod" ? "Cash on Delivery" : "Online Payment (Prepaid)",
     paymentStatus: order.paymentStatus,
     courierPartner: sellerOrder.courierPartner,
     trackingNumber: sellerOrder.trackingNumber,

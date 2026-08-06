@@ -12,7 +12,12 @@ import type {
 // is only one definition of each; this is not a duplicate.
 export type { OrderStatus, OrderTimelineEvent, PaymentStatus, RefundStatus, SellerPayoutStatus }
 
-export type PaymentMethod = "cod" | "razorpay"
+export type PaymentMethod = "cod" | "razorpay" | "cashfree" | "phonepe" | "payu" | "stripe" | "paypal"
+
+/** Any PaymentMethod that isn't "cod" — i.e. one the payment router
+ * (lib/payment-router.ts) actually processes through a gateway adapter. */
+export type PaymentGatewayId = Exclude<PaymentMethod, "cod">
+export const PAYMENT_GATEWAY_IDS: PaymentGatewayId[] = ["razorpay", "cashfree", "phonepe", "payu", "stripe", "paypal"]
 
 export type ShippingMethod = "standard" | "express"
 
@@ -132,7 +137,21 @@ export interface Order {
   shippingMethod: ShippingMethod
   paymentMethod: PaymentMethod
   paymentStatus: PaymentStatus
-  /** Set only for paymentMethod "razorpay" — the verified gateway order/payment pair, for reconciliation. */
+  /** Which gateway actually processed this payment — set for every non-cod
+   * order going forward, chosen by lib/payment-router.ts at checkout time,
+   * never client-supplied. Equal to `paymentMethod` for any non-cod order
+   * (paymentMethod IS the gateway id here; kept as two fields since
+   * paymentMethod predates the multi-gateway router and other code already
+   * reads it as "how did the buyer pay"). Used by the admin refund flow and
+   * order-status sync to know which adapter to call. */
+  gatewayId?: PaymentGatewayId
+  gatewayOrderId?: string
+  gatewayPaymentId?: string
+  /** Deprecated aliases of gatewayOrderId/gatewayPaymentId — still populated
+   * for paymentMethod "razorpay" orders (old and new) so existing readers
+   * (admin refund route, invoice/document context, the legacy Razorpay
+   * webhook receiver) keep resolving them without changes. New code should
+   * read gatewayOrderId/gatewayPaymentId instead. */
   razorpayOrderId?: string
   razorpayPaymentId?: string
   /** An admin-authored note on the whole order, visible to every seller on

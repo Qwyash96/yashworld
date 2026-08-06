@@ -32,6 +32,28 @@ export interface ShippingSettings {
   updatedAt: string
 }
 
+/**
+ * Firestore `platformSettings/paymentMethods` — which checkout instruments
+ * the storefront offers, admin-controlled and completely independent of any
+ * specific payment gateway's credentials. Previously these lived as
+ * settingFields on the Razorpay integration itself (a leftover of the old
+ * paymentSettings/config -> integrations/razorpay migration) — moved here so
+ * "is UPI on" isn't tied to which gateway happens to process it. See
+ * lib/payment-router.ts for how an enabled method is actually routed to a
+ * gateway at checkout.
+ */
+export interface PaymentMethodsSettings {
+  methods: {
+    upi: boolean
+    cards: boolean
+    netbanking: boolean
+    wallet: boolean
+    emi: boolean
+    cod: boolean
+  }
+  updatedAt: string
+}
+
 export interface TrustBadge {
   icon: "shield" | "truck" | "rotate-ccw" | "badge-check" | "headset" | "leaf"
   title: string

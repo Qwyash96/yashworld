@@ -39,11 +39,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   // A successful Verify Connection proves these credentials genuinely work
   // right now — auto-activate instead of requiring a separate Enable click.
+  // Applies to every gateway equally; IntegrationConfig.enabled is the one
+  // "is this gateway usable" flag the payment router reads.
   if (result.ok) {
     await saveIntegrationConfig(providerId, { enabled: true }, auth.uid)
-    if (providerId === "razorpay") {
-      await saveIntegrationConfig(providerId, { settings: { razorpayEnabled: true } }, auth.uid)
-    }
   }
 
   return NextResponse.json(result)

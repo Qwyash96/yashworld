@@ -10,6 +10,28 @@ function tokenUrl(environment: "live" | "sandbox") {
     : "https://api-preprod.phonepe.com/apis/pg-sandbox/v1/oauth/token"
 }
 
+// The Checkout v2 host is separate from the OAuth token host above. Same
+// "verify against current docs" caveat applies.
+function payBaseUrl(environment: "live" | "sandbox") {
+  return environment === "live" ? "https://api.phonepe.com/apis/pg" : "https://api-preprod.phonepe.com/apis/pg-sandbox"
+}
+
+async function fetchAccessToken(credentials: Record<string, string>, environment: "live" | "sandbox") {
+  const response = await fetch(tokenUrl(environment), {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: credentials.clientId,
+      client_version: credentials.clientVersion,
+      client_secret: credentials.clientSecret,
+      grant_type: "client_credentials",
+    }).toString(),
+  })
+  const body = await response.json().catch(() => ({}))
+  if (!response.ok || !body.access_token) throw new Error(body?.message ?? "PhonePe OAuth token fetch failed.")
+  return body.access_token as string
+}
+
 export const phonepeAdapter: IntegrationAdapter = {
   id: "phonepe",
   name: "PhonePe PG",
@@ -71,7 +93,91 @@ export const phonepeAdapter: IntegrationAdapter = {
     if (a.length !== b.length || !timingSafeEqual(a, b)) {
       return { ok: false, status: 400, message: "Invalid callback authorization." }
     }
-    void rawBody
+
+    const event = JSON.parse(rawBody) as { payload?: { merchantOrderId?: string; state?: string } }
+    const gatewayOrderId = event.payload?.merchantOrderId
+    const newStatus = event.payload?.state === "COMPLETED" ? "Paid" : event.payload?.state === "FAILED" ? "Failed" : null
+    if (gatewayOrderId && newStatus) {
+      const { getAdminDb } = await import("@/lib/firebase-admin")
+      const db = getAdminDb()
+      const matches = await db.collection("orders").where("gatewayOrderId", "==", gatewayOrderId).limit(1).get()
+      if (!matches.empty) await matches.docs[0]!.ref.update({ paymentStatus: newStatus })
+    }
+
     return { ok: true, status: 200, message: "Callback authorization verified." }
+  },
+
+  async createPaymentOrder(credentials, environment, input) {
+    const token = await fetchAccessToken(credentials, environment)
+    const response = await fetch(`${payBaseUrl(environment)}/checkout/v2/pay`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `O-Bearer ${token}` },
+      body: JSON.stringify({
+        merchantOrderId: input.receiptId,
+        amount: input.amountPaise,
+        paymentFlow: {
+          type: "PG_CHECKOUT",
+          message: "Order payment",
+          merchantUrls: { redirectUrl: input.returnUrl },
+        },
+      }),
+    })
+    const body = await response.json().catch(() => ({}))
+    if (!response.ok || !body.redirectUrl) throw new Error(body?.message ?? "PhonePe order creation failed.")
+    return {
+      gatewayOrderId: input.receiptId,
+      clientParams: { redirectUrl: body.redirectUrl },
+    }
+  },
+
+  async verifyPayment(credentials, environment, input) {
+    const token = await fetchAccessToken(credentials, environment)
+    const response = await fetch(`${payBaseUrl(environment)}/checkout/v2/order/${input.gatewayOrderId}/status`, {
+      headers: { Authorization: `O-Bearer ${token}` },
+    })
+    const body = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      return { ok: false, gatewayPaymentId: "", status: "failed", message: body?.message ?? "PhonePe status check failed." }
+    }
+    const gatewayPaymentId = body.paymentDetails?.[0]?.transactionId ?? input.gatewayOrderId
+    if (body.state !== "COMPLETED") {
+      return { ok: false, gatewayPaymentId, status: body.state === "FAILED" ? "failed" : "pending", message: `Payment state: ${body.state}.` }
+    }
+    if (Number(body.amount) !== input.expectedAmountPaise) {
+      return { ok: false, gatewayPaymentId, status: "failed", message: "Paid amount does not match the order total." }
+    }
+    return { ok: true, gatewayPaymentId, status: "captured" }
+  },
+
+  async refundPayment(credentials, environment, input) {
+    const token = await fetchAccessToken(credentials, environment)
+    const response = await fetch(`${payBaseUrl(environment)}/payments/v2/refund`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `O-Bearer ${token}` },
+      body: JSON.stringify({
+        merchantRefundId: `refund_${Date.now()}`,
+        originalMerchantOrderId: input.gatewayOrderId,
+        amount: input.amountPaise,
+      }),
+    })
+    const body = await response.json().catch(() => ({}))
+    if (!response.ok) return { ok: false, message: body?.message ?? "PhonePe refund failed." }
+    return { ok: true, gatewayRefundId: body.refundId, message: "Refund issued." }
+  },
+
+  async syncPaymentStatus(credentials, environment, input) {
+    if (!input.gatewayOrderId) return { status: "unknown" }
+    try {
+      const token = await fetchAccessToken(credentials, environment)
+      const response = await fetch(`${payBaseUrl(environment)}/checkout/v2/order/${input.gatewayOrderId}/status`, {
+        headers: { Authorization: `O-Bearer ${token}` },
+      })
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok) return { status: "unknown" }
+      const status = body.state === "COMPLETED" ? "captured" : body.state === "FAILED" ? "failed" : body.state === "REFUNDED" ? "refunded" : "pending"
+      return { status, gatewayPaymentId: body.paymentDetails?.[0]?.transactionId }
+    } catch {
+      return { status: "unknown" }
+    }
   },
 }

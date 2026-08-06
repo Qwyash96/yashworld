@@ -29,11 +29,6 @@ import { isCancellable, isReturnable } from "@/types/order-lifecycle"
 import { formatPrice } from "@/lib/products"
 import { getDeliveryEstimate } from "@/lib/delivery-estimate"
 import { buildOrderDocumentContext } from "@/lib/documents/order-document-context"
-import { generateInvoicePdf } from "@/lib/documents/invoice"
-import { generateShippingLabelPdf } from "@/lib/documents/shipping-label"
-import { generatePackingSlipPdf } from "@/lib/documents/packing-slip"
-import { generateOrderQrCodeDataUrl } from "@/lib/documents/qr-code"
-import { generateBarcodeDataUrl } from "@/lib/documents/barcode"
 import type { OrderStatus } from "@/types/order"
 import type { SellerFacingOrder } from "@/lib/seller-order-redaction"
 import { Button } from "@/components/ui/button"
@@ -220,12 +215,36 @@ export default function SellerOrderDetailPage() {
     }
   }
 
+  // jsPDF/jsbarcode/qrcode are only ever needed once a seller actually
+  // clicks one of these — dynamically imported here instead of statically
+  // at the top of the file so every seller viewing an order doesn't pay
+  // for all three libraries in this page's initial JS bundle.
+  async function handleGenerateInvoice() {
+    if (!documentContext) return
+    const { generateInvoicePdf } = await import("@/lib/documents/invoice")
+    generateInvoicePdf(documentContext)
+  }
+
+  async function handleGeneratePackingSlip() {
+    if (!documentContext) return
+    const { generatePackingSlipPdf } = await import("@/lib/documents/packing-slip")
+    generatePackingSlipPdf(documentContext)
+  }
+
+  async function handleGenerateShippingLabel() {
+    if (!documentContext) return
+    const { generateShippingLabelPdf } = await import("@/lib/documents/shipping-label")
+    generateShippingLabelPdf(documentContext)
+  }
+
   async function handleGenerateQr() {
+    const { generateOrderQrCodeDataUrl } = await import("@/lib/documents/qr-code")
     const dataUrl = await generateOrderQrCodeDataUrl(order!.id)
     setPreviewImage({ title: "Order QR Code", dataUrl, filename: `order-qr-${order!.id.slice(0, 8)}.png` })
   }
 
-  function handleGenerateBarcode() {
+  async function handleGenerateBarcode() {
+    const { generateBarcodeDataUrl } = await import("@/lib/documents/barcode")
     const dataUrl = generateBarcodeDataUrl(mine!.trackingNumber ?? order!.id)
     setPreviewImage({ title: "Order Barcode", dataUrl, filename: `order-barcode-${order!.id.slice(0, 8)}.png` })
   }
@@ -249,7 +268,7 @@ export default function SellerOrderDetailPage() {
               <span>Placed {new Date(order.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span>
               <span>{getDeliveryEstimate(order.shippingMethod)}</span>
               <span>Payment: {order.paymentStatus}</span>
-              <span>{order.paymentMethod === "cod" ? "Cash on Delivery" : "Razorpay"}</span>
+              <span>{order.paymentMethod === "cod" ? "Cash on Delivery" : "Online Payment"}</span>
             </div>
           </div>
           <OrderStatusBadge status={status} />
@@ -331,15 +350,15 @@ export default function SellerOrderDetailPage() {
           <Card title="Action Panel">
             {status !== "Pending" && (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-                <Button size="sm" variant="outline" className="h-9" onClick={() => documentContext && generateInvoicePdf(documentContext)}>
+                <Button size="sm" variant="outline" className="h-9" onClick={handleGenerateInvoice}>
                   <FileText className="size-3.5" />
                   Print Invoice
                 </Button>
-                <Button size="sm" variant="outline" className="h-9" onClick={() => documentContext && generatePackingSlipPdf(documentContext)}>
+                <Button size="sm" variant="outline" className="h-9" onClick={handleGeneratePackingSlip}>
                   <Package className="size-3.5" />
                   Packing Slip
                 </Button>
-                <Button size="sm" variant="outline" className="h-9" onClick={() => documentContext && generateShippingLabelPdf(documentContext)}>
+                <Button size="sm" variant="outline" className="h-9" onClick={handleGenerateShippingLabel}>
                   <FileDown className="size-3.5" />
                   Generate Label
                 </Button>

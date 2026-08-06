@@ -9,9 +9,21 @@ import { getOrderById, updateOrderStatus } from "@/services/order.service"
 import { refundOrder } from "@/lib/admin-orders-client"
 import { formatPrice } from "@/lib/products"
 import { OrderStatusBadge } from "@/components/orders/order-status-badge"
-import type { Order, OrderStatus } from "@/types/order"
+import type { Order, OrderStatus, PaymentMethod } from "@/types/order"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
+// Admin-facing only — mirrors each adapter's own `name` in
+// lib/integrations/registry.ts (server-only, can't import that here).
+const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  cod: "Cash on Delivery",
+  razorpay: "Razorpay",
+  cashfree: "Cashfree",
+  phonepe: "PhonePe PG",
+  payu: "PayU",
+  stripe: "Stripe",
+  paypal: "PayPal",
+}
 
 const STATUS_OPTIONS: OrderStatus[] = [
   "Pending",
@@ -136,7 +148,7 @@ export default function AdminOrderDetailPage() {
             </div>
           </div>
           <p className="mt-3 text-xs text-[#444444]">
-            {order.paymentMethod === "cod" ? "Cash on Delivery" : "Razorpay"} · {order.paymentStatus}
+            {PAYMENT_METHOD_LABELS[order.paymentMethod] ?? order.paymentMethod} · {order.paymentStatus}
           </p>
         </div>
 

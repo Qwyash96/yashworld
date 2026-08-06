@@ -2,29 +2,48 @@
 
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useStore } from "@/components/store-provider"
 import {
   fetchCheckoutConfig,
   placeCodOrder,
-  createRazorpayOrder,
-  verifyRazorpayPayment,
-  loadRazorpayCheckoutScript,
+  createPaymentOrder,
+  verifyPayment,
   previewOrderPricing,
+  type CheckoutAddressInput,
   type CheckoutItemInput,
   type OrderPricingPreview,
+  type PaymentInstrument,
 } from "@/lib/checkout-client"
+import { launchGateway } from "@/lib/payment-gateway-client"
 import { SHIPPING_OPTIONS } from "@/lib/shipping"
 import { formatPrice } from "@/lib/products"
 import { sanitizeIndianMobile, sanitizeDigits } from "@/lib/numeric-input"
 import { cn } from "@/lib/utils"
 import { getUserProfile, updateUserAddresses } from "@/services/user.service"
-import type { PaymentMethod, ShippingMethod } from "@/types/order"
+import type { PaymentGatewayId, ShippingMethod } from "@/types/order"
 import type { PublicCheckoutConfig } from "@/types/checkout-config"
 import type { Address } from "@/types/user"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+
+// Persisted across the full-page redirect that Stripe/PayPal/PhonePe/PayU/
+// Cashfree all use to collect payment on their own hosted page — restored
+// on return (see the ?gatewayReturn=1 effect below) since this is a fresh
+// page load, not a continuation of the same JS session. Razorpay never
+// needs this; its modal resolves without leaving the page.
+const PENDING_PAYMENT_KEY = "yashworld.pendingGatewayPayment"
+
+interface PendingGatewayPayment {
+  gatewayId: PaymentGatewayId
+  gatewayOrderId: string
+  items: CheckoutItemInput[]
+  contactEmail: string
+  shippingMethod: ShippingMethod
+  shippingAddress: CheckoutAddressInput
+  couponCode?: string
+}
 
 type CheckoutForm = {
   email: string
@@ -38,33 +57,39 @@ type CheckoutForm = {
   postalCode: string
   country: string
   shippingMethod: ShippingMethod
-  paymentMethod: PaymentMethod
+  paymentMethod: PaymentInstrument
 }
 
 type FormErrors = Partial<Record<keyof CheckoutForm, string>>
 
 const SHIPPING_METHODS = SHIPPING_OPTIONS
 
+const METHOD_INFO: Record<PaymentInstrument, { label: string; description: string }> = {
+  cod: { label: "Cash on Delivery", description: "Pay in cash when your order arrives." },
+  upi: { label: "UPI", description: "Google Pay, PhonePe, Paytm and other UPI apps." },
+  cards: { label: "Cards", description: "Credit and debit cards." },
+  netbanking: { label: "Net Banking", description: "Direct bank transfer via net banking." },
+  wallet: { label: "Wallet", description: "Paytm Wallet, Amazon Pay and similar." },
+  emi: { label: "EMI", description: "Card and cardless EMI options." },
+}
+const METHOD_ORDER: PaymentInstrument[] = ["upi", "cards", "netbanking", "wallet", "emi", "cod"]
+
 /** Derives the checkout page's method list from admin-controlled settings —
  * this is the only place that decides what a buyer can pick, so "no code
  * changes to change payment methods" holds: toggling settings in
- * /admin/settings/payments is enough. */
+ * /admin/settings/payment-methods is enough. Never shows a gateway name —
+ * the router (lib/payment-router.ts) decides which one actually processes
+ * an online instrument, entirely server-side. */
 function buildAvailableMethods(
   config: PublicCheckoutConfig,
-): { id: PaymentMethod; label: string; description: string }[] {
-  const list: { id: PaymentMethod; label: string; description: string }[] = []
-  if (config.checkout.codEnabled && config.methods.cod) {
-    list.push({ id: "cod", label: "Cash on Delivery", description: "Pay in cash when your order arrives." })
-  }
-  const anyRazorpayInstrument =
-    config.methods.upi || config.methods.cards || config.methods.netbanking || config.methods.wallet || config.methods.emi
-  if (config.checkout.razorpayEnabled && anyRazorpayInstrument) {
-    list.push({ id: "razorpay", label: "Pay Online (Razorpay)", description: "UPI, Cards, Net Banking & more." })
-  }
-  return list
+): { id: PaymentInstrument; label: string; description: string }[] {
+  return METHOD_ORDER.filter((id) => {
+    if (id === "cod") return config.methods.cod
+    return config.methods[id] && config.checkout.anyGatewayAvailable
+  }).map((id) => ({ id, ...METHOD_INFO[id] }))
 }
 
-function validate(form: CheckoutForm, availableMethodIds: PaymentMethod[]): FormErrors {
+function validate(form: CheckoutForm, availableMethodIds: PaymentInstrument[]): FormErrors {
   const errors: FormErrors = {}
 
   if (!form.email.trim()) errors.email = "Email is required."
@@ -110,6 +135,7 @@ const emptyForm = (email: string): CheckoutForm => ({
 
 export default function CheckoutPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user, cart, cartSubtotal, getProductById, clearCart } = useStore()
   const [form, setForm] = useState<CheckoutForm>(() => emptyForm(user?.email ?? ""))
   const [errors, setErrors] = useState<FormErrors>({})
@@ -117,6 +143,32 @@ export default function CheckoutPage() {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [config, setConfig] = useState<PublicCheckoutConfig | null>(null)
   const [configError, setConfigError] = useState<string | null>(null)
+  // True only right after returning from a redirect-based gateway
+  // (Stripe/PayPal/PhonePe/PayU/Cashfree) — Razorpay's modal never leaves
+  // the page, so it never sets this.
+  const [resumingPayment, setResumingPayment] = useState(false)
+
+  useEffect(() => {
+    if (searchParams.get("gatewayReturn") !== "1") return
+    const raw = sessionStorage.getItem(PENDING_PAYMENT_KEY)
+    sessionStorage.removeItem(PENDING_PAYMENT_KEY)
+    if (!raw) {
+      setSubmitError("We couldn't confirm your payment. If you were charged, contact support.")
+      return
+    }
+    const pending = JSON.parse(raw) as PendingGatewayPayment
+    setResumingPayment(true)
+    verifyPayment({ ...pending, payload: {} }).then((result) => {
+      setResumingPayment(false)
+      if (!result.ok) {
+        setSubmitError(result.error)
+        return
+      }
+      clearCart()
+      router.push(`/orders/${result.orderId}?confirmed=1`)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const [couponInput, setCouponInput] = useState("")
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null)
@@ -261,7 +313,7 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (!config) return
     if (availableMethods.some((m) => m.id === form.paymentMethod)) return
-    const preferred = availableMethods.find((m) => m.id === config.checkout.defaultMethod) ?? availableMethods[0]
+    const preferred = availableMethods[0]
     if (preferred) setField("paymentMethod", preferred.id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config, availableMethods])
@@ -362,10 +414,18 @@ export default function CheckoutPage() {
       return
     }
 
-    // Razorpay — never write anything to Firestore until payment is verified.
-    const created = await createRazorpayOrder({
+    // Online instrument — the customer only ever picked UPI/Cards/Net
+    // Banking/Wallet/EMI; the router (lib/payment-router.ts) decides which
+    // enabled+connected gateway actually processes it, server-side, with
+    // automatic fallback. Never writes anything to Firestore until payment
+    // is verified.
+    const created = await createPaymentOrder({
       items,
       shippingMethod: form.shippingMethod,
+      method: form.paymentMethod,
+      contactEmail,
+      buyerName: form.fullName.trim(),
+      buyerPhone: form.phone.trim(),
       ...(appliedCoupon ? { couponCode: appliedCoupon } : {}),
     })
     if (!created.ok) {
@@ -373,71 +433,56 @@ export default function CheckoutPage() {
       setSubmitError(created.error)
       return
     }
+    const { order } = created
 
-    try {
-      await loadRazorpayCheckoutScript()
-    } catch {
+    // Persisted before launching, in case this gateway redirects the browser
+    // away entirely (Stripe/PayPal/PhonePe/PayU/Cashfree) — restored by the
+    // ?gatewayReturn=1 effect above on a fresh page load. Razorpay's modal
+    // never leaves the page, so this is just unused-but-harmless for it.
+    sessionStorage.setItem(
+      PENDING_PAYMENT_KEY,
+      JSON.stringify({
+        gatewayId: order.gatewayId,
+        gatewayOrderId: order.gatewayOrderId,
+        items,
+        contactEmail,
+        shippingMethod: form.shippingMethod,
+        shippingAddress,
+        ...(appliedCoupon ? { couponCode: appliedCoupon } : {}),
+      } satisfies PendingGatewayPayment),
+    )
+
+    const launch = await launchGateway(order, { name: form.fullName.trim(), email: contactEmail, phone: form.phone.trim() })
+    if (!launch.ok && !launch.error) {
+      // The browser is mid-navigation to a redirect-based gateway's hosted
+      // page (or Cashfree's SDK just took over) — nothing more to do here.
+      return
+    }
+    sessionStorage.removeItem(PENDING_PAYMENT_KEY)
+    if (!launch.ok) {
       setSubmitting(false)
-      setSubmitError("Couldn't load the payment gateway. Please try again.")
+      setSubmitError(launch.error ?? "Payment cancelled.")
       return
     }
 
-    const RazorpayCheckout = (window as any).Razorpay
-    const rzp = new RazorpayCheckout({
-      key: created.keyId,
-      amount: created.amount,
-      currency: created.currency,
-      order_id: created.razorpayOrderId,
-      name: "IXOFLORA",
-      description: "Order payment",
-      // Driven entirely by admin-controlled settings (Payment Methods in
-      // /admin/settings/payments) — toggling those is enough, no code or
-      // architecture change needed to enable/disable an instrument.
-      method: {
-        upi: created.methods.upi,
-        card: created.methods.cards,
-        netbanking: created.methods.netbanking,
-        wallet: created.methods.wallet,
-        emi: created.methods.emi,
-        paylater: false,
-      },
-      prefill: { name: form.fullName.trim(), email: contactEmail, contact: form.phone.trim() },
-      handler: async (response: {
-        razorpay_order_id: string
-        razorpay_payment_id: string
-        razorpay_signature: string
-      }) => {
-        const result = await verifyRazorpayPayment({
-          ...response,
-          items,
-          contactEmail,
-          shippingMethod: form.shippingMethod,
-          shippingAddress,
-          ...(appliedCoupon ? { couponCode: appliedCoupon } : {}),
-        })
-        setSubmitting(false)
-        if (!result.ok) {
-          setSubmitError(result.error)
-          return
-        }
-        await persistAddressIfNew()
-        clearCart()
-        router.push(`/orders/${result.orderId}?confirmed=1`)
-      },
-      modal: {
-        ondismiss: () => {
-          setSubmitting(false)
-          setSubmitError("Payment cancelled.")
-        },
-      },
+    const result = await verifyPayment({
+      gatewayId: order.gatewayId,
+      gatewayOrderId: order.gatewayOrderId,
+      payload: launch.payload,
+      items,
+      contactEmail,
+      shippingMethod: form.shippingMethod,
+      shippingAddress,
+      ...(appliedCoupon ? { couponCode: appliedCoupon } : {}),
     })
-
-    rzp.on("payment.failed", (response: { error: { description: string } }) => {
-      setSubmitting(false)
-      setSubmitError(`Payment failed: ${response.error.description}`)
-    })
-
-    rzp.open()
+    setSubmitting(false)
+    if (!result.ok) {
+      setSubmitError(result.error)
+      return
+    }
+    await persistAddressIfNew()
+    clearCart()
+    router.push(`/orders/${result.orderId}?confirmed=1`)
   }
 
   if (!user) {
@@ -449,6 +494,10 @@ export default function CheckoutPage() {
         </Link>
       </div>
     )
+  }
+
+  if (resumingPayment) {
+    return <div className="mx-auto max-w-lg px-4 py-16 text-center">Confirming your payment...</div>
   }
 
   if (cart.length === 0) {

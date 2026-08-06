@@ -1,4 +1,5 @@
 import "server-only"
+import type { PaymentMethod } from "@/types/order"
 
 // Ekart Logistics — unlike Shiprocket/Delhivery, Ekart doesn't publish a
 // stable, self-serve public API reference; API access is provisioned
@@ -27,7 +28,7 @@ export interface EkartCredentials {
 
 export interface CreateEkartShipmentInput {
   orderId: string
-  paymentMethod: "cod" | "razorpay"
+  paymentMethod: PaymentMethod
   subTotal: number
   customerName: string
   phone: string

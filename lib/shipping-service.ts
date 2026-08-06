@@ -34,7 +34,7 @@ import {
   mapShiftLogisticsStatusToOrderStatus,
   type ShiftLogisticsCredentials,
 } from "@/lib/shift-logistics-client"
-import type { OrderStatus } from "@/types/order"
+import type { OrderStatus, PaymentMethod } from "@/types/order"
 
 /**
  * The common shipping interface — every auto-AWB-capable courier
@@ -61,7 +61,7 @@ export interface CommonOrderItemInput {
 
 export interface CommonShipmentInput {
   orderId: string
-  paymentMethod: "cod" | "razorpay"
+  paymentMethod: PaymentMethod
   subTotal: number
   customerName: string
   phone: string

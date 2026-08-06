@@ -1,17 +1,19 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { requireAdminPermission } from "@/lib/admin-api-auth"
 import { getAdminDb } from "@/lib/firebase-admin"
-import type { Order } from "@/types/order"
+import { PAYMENT_GATEWAY_IDS, type Order } from "@/types/order"
 
 const PAGE_SIZE = 25
 
 /**
- * "Settlements" = every gateway-captured payment (paymentMethod == "razorpay"
- * && paymentStatus == "Paid"), platform-wide — the real, non-fabricated data
- * this app actually has. True bank-settlement timing/UTR reference numbers
- * require Razorpay's own Settlements API (a separate, not-yet-integrated
- * reconciliation call, distinct from the order-capture data available here);
- * the client page says so plainly rather than inventing settlement dates.
+ * "Settlements" = every gateway-captured payment (paymentMethod is any of
+ * PAYMENT_GATEWAY_IDS — every registered gateway, not just Razorpay, since
+ * the multi-gateway router — && paymentStatus == "Paid"), platform-wide —
+ * the real, non-fabricated data this app actually has. True bank-settlement
+ * timing/UTR reference numbers require each gateway's own Settlements API (a
+ * separate, not-yet-integrated reconciliation call, distinct from the
+ * order-capture data available here); the client page says so plainly
+ * rather than inventing settlement dates.
  */
 export async function GET(request: NextRequest) {
   const auth = await requireAdminPermission(request, "payments")
@@ -24,7 +26,7 @@ export async function GET(request: NextRequest) {
     const db = getAdminDb()
     let query: FirebaseFirestore.Query = db
       .collection("orders")
-      .where("paymentMethod", "==", "razorpay")
+      .where("paymentMethod", "in", PAYMENT_GATEWAY_IDS)
       .where("paymentStatus", "==", "Paid")
       .orderBy("createdAt", "desc")
     if (cursor) query = query.startAfter(cursor)

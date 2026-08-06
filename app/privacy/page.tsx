@@ -29,8 +29,9 @@ export default function PrivacyPage() {
 
       <PolicySection heading="Payment Information">
         <p>
-          Card and UPI payments are processed by our payment partner (Razorpay); IXOFLORA does not store your full
-          card or bank details on its own servers. Cash on Delivery orders are settled at the time of delivery.
+          Card, UPI, net banking, wallet and EMI payments are processed by our payment processing partners
+          (which may include Razorpay, Cashfree, PhonePe, PayU, Stripe and PayPal); IXOFLORA does not store your
+          full card or bank details on its own servers. Cash on Delivery orders are settled at the time of delivery.
         </p>
       </PolicySection>
 

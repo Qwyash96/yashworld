@@ -67,8 +67,10 @@ export const adminSections: AdminSection[] = [
     // The finance role's primary section — every item here is reachable by
     // "payments"-permission roles (finance, admin), NOT superAdminOnly,
     // since finance's whole job is exactly this content. "Payment Settings"
-    // is deliberately first. Each of the 6 payment-gateway links points at
-    // its own /admin/integrations/{id} page (the generic Plug-and-Play
+    // is deliberately first — the global checkout-methods toggle page
+    // (platformSettings/paymentMethods), separate from any one gateway's own
+    // credentials. Each of the 6 payment-gateway links below points at its
+    // own /admin/integrations/{id} page (the generic Plug-and-Play
     // Integration System) — registering these specific paths here is what
     // gives "payments"-holders a route-guard override on those exact pages
     // without opening the rest of /admin/integrations (still settings-only,
@@ -76,7 +78,7 @@ export const adminSections: AdminSection[] = [
     label: "Payments",
     permission: "payments",
     items: [
-      { label: "Payment Settings", href: "/admin/integrations/razorpay" },
+      { label: "Payment Settings", href: "/admin/settings/payment-methods" },
       { label: "Cashfree", href: "/admin/integrations/cashfree" },
       { label: "PhonePe PG", href: "/admin/integrations/phonepe" },
       { label: "PayU", href: "/admin/integrations/payu" },

@@ -1,4 +1,5 @@
 import "server-only"
+import type { PaymentMethod } from "@/types/order"
 
 // Shift Logistics — no stable, publicly-documented API reference was
 // available to build this against, unlike Shiprocket/Delhivery/Amazon
@@ -25,7 +26,7 @@ export interface ShiftLogisticsCredentials {
 
 export interface CreateShiftLogisticsShipmentInput {
   orderId: string
-  paymentMethod: "cod" | "razorpay"
+  paymentMethod: PaymentMethod
   subTotal: number
   customerName: string
   phone: string

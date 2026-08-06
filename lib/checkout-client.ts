@@ -1,6 +1,11 @@
 import { auth } from "@/services/firebase/client"
-import type { ShippingMethod } from "@/types/order"
-import type { PublicCheckoutConfig } from "@/types/checkout-config"
+import type { PaymentGatewayId, ShippingMethod } from "@/types/order"
+import type { PaymentMethodFlags, PublicCheckoutConfig } from "@/types/checkout-config"
+
+// lib/integrations/types.ts is "server-only" (can't be imported into this
+// client-bundled file) — PaymentMethodFlags' own keys are the identical
+// buyer-facing instrument vocabulary, so this is derived from there instead.
+export type PaymentInstrument = keyof PaymentMethodFlags
 
 export interface CheckoutItemInput {
   productId: string
@@ -78,42 +83,44 @@ export async function placeCodOrder(input: {
   return { ok: true, orderId: result.data.orderId }
 }
 
-export async function createRazorpayOrder(input: {
+export interface RoutedPaymentOrder {
+  /** Server-internal — which gateway the router actually chose. Never
+   * rendered as text; lib/payment-gateway-client.ts switches on it purely
+   * to know which checkout SDK/flow to invoke. */
+  gatewayId: PaymentGatewayId
+  gatewayOrderId: string
+  clientParams: Record<string, unknown>
+  amount: number
+  currency: string
+}
+
+/** Gateway-agnostic — the customer picks an instrument (UPI/Cards/Net
+ * Banking/Wallet/EMI), never a gateway. lib/payment-router.ts decides which
+ * enabled+connected gateway processes it (with automatic fallback), server-side. */
+export async function createPaymentOrder(input: {
   items: CheckoutItemInput[]
   shippingMethod: ShippingMethod
+  method: PaymentInstrument
+  contactEmail: string
+  buyerName: string
+  buyerPhone: string
   couponCode?: string
-}): Promise<
-  | {
-      ok: true
-      razorpayOrderId: string
-      amount: number
-      currency: string
-      keyId: string
-      methods: PublicCheckoutConfig["methods"]
-    }
-  | { ok: false; error: string }
-> {
+}): Promise<{ ok: true; order: RoutedPaymentOrder } | { ok: false; error: string }> {
   const headers = await authHeaders()
-  const response = await fetch("/api/payments/razorpay/create-order", {
+  const response = await fetch("/api/payments/create-order", {
     method: "POST",
     headers,
     body: JSON.stringify(input),
   })
-  const result = await parseResult<{
-    razorpayOrderId: string
-    amount: number
-    currency: string
-    keyId: string
-    methods: PublicCheckoutConfig["methods"]
-  }>(response)
+  const result = await parseResult<RoutedPaymentOrder>(response)
   if (!result.ok) return result
-  return { ok: true, ...result.data }
+  return { ok: true, order: result.data }
 }
 
-export async function verifyRazorpayPayment(input: {
-  razorpay_order_id: string
-  razorpay_payment_id: string
-  razorpay_signature: string
+export async function verifyPayment(input: {
+  gatewayId: PaymentGatewayId
+  gatewayOrderId: string
+  payload: Record<string, string>
   items: CheckoutItemInput[]
   contactEmail: string
   shippingMethod: ShippingMethod
@@ -121,7 +128,7 @@ export async function verifyRazorpayPayment(input: {
   couponCode?: string
 }): Promise<{ ok: true; orderId: string } | { ok: false; error: string }> {
   const headers = await authHeaders()
-  const response = await fetch("/api/payments/razorpay/verify", {
+  const response = await fetch("/api/payments/verify", {
     method: "POST",
     headers,
     body: JSON.stringify(input),
@@ -129,23 +136,4 @@ export async function verifyRazorpayPayment(input: {
   const result = await parseResult<{ orderId: string }>(response)
   if (!result.ok) return result
   return { ok: true, orderId: result.data.orderId }
-}
-
-let razorpayScriptPromise: Promise<void> | null = null
-
-/** Injects the Razorpay Checkout.js script tag once, however many times this is called. */
-export function loadRazorpayCheckoutScript(): Promise<void> {
-  if (typeof window !== "undefined" && (window as any).Razorpay) {
-    return Promise.resolve()
-  }
-  if (razorpayScriptPromise) return razorpayScriptPromise
-
-  razorpayScriptPromise = new Promise((resolve, reject) => {
-    const script = document.createElement("script")
-    script.src = "https://checkout.razorpay.com/v1/checkout.js"
-    script.onload = () => resolve()
-    script.onerror = () => reject(new Error("Failed to load Razorpay checkout script."))
-    document.body.appendChild(script)
-  })
-  return razorpayScriptPromise
 }

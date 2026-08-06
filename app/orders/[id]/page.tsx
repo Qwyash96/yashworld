@@ -120,7 +120,7 @@ export default function OrderDetailPage() {
         <div>
           <p className="text-xs uppercase tracking-widest text-muted-foreground">Payment</p>
           <p className="mt-1">
-            {order.paymentMethod === "cod" ? "Cash on Delivery" : "Razorpay"} ·{" "}
+            {order.paymentMethod === "cod" ? "Cash on Delivery" : "Online Payment"} ·{" "}
             {order.paymentStatus}
           </p>
         </div>

@@ -26,6 +26,13 @@ export interface IntegrationConfig {
   /** Payment category only — which gateway checkout falls back to, and in what order. */
   isDefault?: boolean
   priority?: number
+  /** Payment category only — set by lib/payment-router.ts after every real
+   * createPaymentOrder/verifyPayment attempt (not by the manual "Verify
+   * Connection" button, which only ever touches lastVerifiedAt/health/connected).
+   * Drives the admin Gateway Manager's "Last successful/failed transaction" display. */
+  lastSuccessAt?: string
+  lastFailureAt?: string
+  lastFailureMessage?: string
   updatedAt: string
   updatedBy: string
 }

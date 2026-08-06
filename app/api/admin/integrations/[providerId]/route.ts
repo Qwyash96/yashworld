@@ -81,12 +81,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (verifyResult?.ok) {
     await markVerified(providerId, true, verifyResult.health)
     await writeIntegrationLog({ providerId, category: adapter.category, level: "info", type: "verify", message: verifyResult.message })
-    // Razorpay is the one gateway actually wired into live checkout — a
-    // verified save should genuinely start processing payments, not just
-    // flip an inert admin-panel flag.
-    if (providerId === "razorpay") {
-      await saveIntegrationConfig(providerId, { settings: { razorpayEnabled: true } }, auth.uid)
-    }
   }
 
   if (adapter.category === "payment" && body.isDefault) {

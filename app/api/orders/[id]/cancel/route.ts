@@ -64,7 +64,10 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         throw new Error(`This order can no longer be cancelled — it is already "${sellerOrder.status}".`)
       }
 
-      refundNowPending = order.paymentMethod === "razorpay" && order.paymentStatus === "Paid"
+      // Any gateway (not just Razorpay) — order.paymentMethod is a
+      // PaymentGatewayId for every prepaid order since the multi-gateway
+      // refactor, "cod" being the only non-gateway value.
+      refundNowPending = order.paymentMethod !== "cod" && order.paymentStatus === "Paid"
 
       const updatedSellerOrder: SellerOrder = {
         ...buildTransitionedSellerOrder(sellerOrder, "Cancelled", { reason }),

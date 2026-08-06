@@ -1,10 +1,11 @@
-/** The public, buyer-facing shape of Razorpay checkout availability — no
- * credentials, ever. Sourced from integrations/razorpay's settings (see
- * lib/integrations/adapters/razorpay.ts, app/api/checkout/config/route.ts).
- * Kept as its own type rather than folded into types/integrations.ts because
- * it's Razorpay/COD-specific shape, not a generic adapter concept — the
- * other 5 payment adapters don't wire into checkout yet (admin-manageable
- * only, see the Plug-and-Play Integration System plan). */
+/** The public, buyer-facing shape of checkout availability — no credentials,
+ * no gateway name, ever. `methods` is sourced from
+ * platformSettings/paymentMethods (admin-controlled, gateway-agnostic — see
+ * types/platform-settings.ts's PaymentMethodsSettings); `checkout.anyGatewayAvailable`
+ * just says whether ANY enabled+connected payment gateway currently exists
+ * for the router (lib/payment-router.ts) to use for the 5 online instruments
+ * — which gateway that ends up being is never surfaced here or anywhere
+ * buyer-facing. */
 export interface PaymentMethodFlags {
   upi: boolean
   cards: boolean
@@ -15,9 +16,7 @@ export interface PaymentMethodFlags {
 }
 
 export interface CheckoutSettings {
-  razorpayEnabled: boolean
-  codEnabled: boolean
-  defaultMethod: "razorpay" | "cod"
+  anyGatewayAvailable: boolean
   currency: "INR"
 }
 

@@ -60,6 +60,93 @@ export const stripeAdapter: IntegrationAdapter = {
       return { ok: false, status: 400, message: "Invalid webhook signature." }
     }
 
+    const event = JSON.parse(rawBody) as { type?: string; data?: { object?: { id?: string } } }
+    const gatewayOrderId = event.data?.object?.id
+    const newStatus =
+      event.type === "payment_intent.succeeded" ? "Paid" : event.type === "payment_intent.payment_failed" ? "Failed" : null
+
+    if (gatewayOrderId && newStatus) {
+      const { getAdminDb } = await import("@/lib/firebase-admin")
+      const db = getAdminDb()
+      const matches = await db.collection("orders").where("gatewayOrderId", "==", gatewayOrderId).limit(1).get()
+      if (!matches.empty) await matches.docs[0]!.ref.update({ paymentStatus: newStatus })
+    }
+
     return { ok: true, status: 200, message: "Webhook signature verified." }
+  },
+
+  // Uses Checkout Sessions (Stripe's own hosted-redirect quick-integration
+  // path) rather than raw PaymentIntents + Elements — this app has no
+  // custom embedded card-field UI, and Checkout Sessions fit the same
+  // "redirect out, redirect back, verify server-side" pattern as
+  // PhonePe/PayU/PayPal, kept consistent across every gateway that isn't
+  // Razorpay's own in-page modal. Amounts are already in the smallest
+  // currency unit (paise for INR) — matches Stripe's own convention for
+  // non-zero-decimal currencies, no conversion needed.
+  async createPaymentOrder(credentials, _environment, input) {
+    const response = await fetch("https://api.stripe.com/v1/checkout/sessions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${credentials.secretKey}`, "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        mode: "payment",
+        "line_items[0][price_data][currency]": input.currency.toLowerCase(),
+        "line_items[0][price_data][product_data][name]": "Order Payment",
+        "line_items[0][price_data][unit_amount]": String(input.amountPaise),
+        "line_items[0][quantity]": "1",
+        success_url: input.returnUrl,
+        cancel_url: input.returnUrl,
+        customer_email: input.buyerEmail,
+        "metadata[buyerId]": input.buyerId,
+        "metadata[receiptId]": input.receiptId,
+      }).toString(),
+    })
+    const body = await response.json().catch(() => ({}))
+    if (!response.ok || !body.url) throw new Error(body?.error?.message ?? "Stripe Checkout Session creation failed.")
+    return { gatewayOrderId: body.id, clientParams: { checkoutUrl: body.url } }
+  },
+
+  async verifyPayment(credentials, _environment, input) {
+    const response = await fetch(`https://api.stripe.com/v1/checkout/sessions/${input.gatewayOrderId}`, {
+      headers: { Authorization: `Bearer ${credentials.secretKey}` },
+    })
+    const body = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      return { ok: false, gatewayPaymentId: "", status: "failed", message: body?.error?.message ?? "Stripe Checkout Session lookup failed." }
+    }
+    const gatewayPaymentId = typeof body.payment_intent === "string" ? body.payment_intent : (body.payment_intent?.id ?? "")
+    if (body.payment_status !== "paid") {
+      return { ok: false, gatewayPaymentId, status: body.status === "expired" ? "failed" : "pending", message: `Checkout Session payment status: ${body.payment_status}.` }
+    }
+    if (Number(body.amount_total) !== input.expectedAmountPaise) {
+      return { ok: false, gatewayPaymentId, status: "failed", message: "Paid amount does not match the order total." }
+    }
+    return { ok: true, gatewayPaymentId, status: "captured" }
+  },
+
+  async refundPayment(credentials, _environment, input) {
+    const response = await fetch("https://api.stripe.com/v1/refunds", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${credentials.secretKey}`, "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        payment_intent: input.gatewayPaymentId,
+        amount: String(input.amountPaise),
+        ...(input.reason ? { "metadata[reason]": input.reason } : {}),
+      }).toString(),
+    })
+    const body = await response.json().catch(() => ({}))
+    if (!response.ok) return { ok: false, message: body?.error?.message ?? "Stripe refund failed." }
+    return { ok: true, gatewayRefundId: body.id, message: "Refund issued." }
+  },
+
+  async syncPaymentStatus(credentials, _environment, input) {
+    if (!input.gatewayOrderId) return { status: "unknown" }
+    const response = await fetch(`https://api.stripe.com/v1/checkout/sessions/${input.gatewayOrderId}`, {
+      headers: { Authorization: `Bearer ${credentials.secretKey}` },
+    })
+    const body = await response.json().catch(() => ({}))
+    if (!response.ok) return { status: "unknown" }
+    const gatewayPaymentId = typeof body.payment_intent === "string" ? body.payment_intent : body.payment_intent?.id
+    const status = body.payment_status === "paid" ? "captured" : body.status === "expired" ? "failed" : "pending"
+    return { status, gatewayPaymentId }
   },
 }
