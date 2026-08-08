@@ -28,6 +28,7 @@ const CHART_DAYS = 30
 
 interface SellerOrderEntry {
   orderId: string
+  orderNumber?: string
   createdAt: string
   customerName: string
   productName: string
@@ -63,6 +64,7 @@ export default function SellerDashboardPage() {
         const firstItemName = getProductById(mine.items[0]?.productId ?? "")?.name ?? mine.items[0]?.productId ?? "—"
         rows.push({
           orderId: order.id,
+          orderNumber: order.orderNumber,
           createdAt: order.createdAt,
           customerName: order.shippingAddress.fullName,
           productName: mine.items.length > 1 ? `${firstItemName} +${mine.items.length - 1}` : firstItemName,
@@ -129,7 +131,7 @@ export default function SellerDashboardPage() {
       thisMonthTotal: thisMonth,
       trendLabel: trend,
       chartData: series,
-      recentRows: sorted.slice(0, 5).map((e) => ({ orderId: e.orderId, customerName: e.customerName, productName: e.productName, status: e.status })),
+      recentRows: sorted.slice(0, 5).map((e) => ({ orderId: e.orderId, orderNumber: e.orderNumber, customerName: e.customerName, productName: e.productName, status: e.status })),
     }
   }, [entries])
 

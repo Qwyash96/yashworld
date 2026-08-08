@@ -1,35 +1,8 @@
 import "server-only"
 import { getAdminDb } from "@/lib/firebase-admin"
+import { mintSequentialId } from "@/lib/sequential-id"
 import type { FinanceDocument, FinanceDocumentType } from "@/types/finance-document"
 import type { FinanceAdjustment } from "@/types/finance"
-
-const DOCUMENT_PREFIX: Record<FinanceDocumentType, string> = {
-  invoice: "INV",
-  payment_receipt: "PAY",
-  refund_receipt: "REF",
-  credit_note: "CRN",
-  debit_statement: "DBS",
-  credit_statement: "CRS",
-}
-
-/** Transactionally-incremented per-type, per-month counter — gives every
- * generated document a real, unique, sequential number (e.g.
- * "DBS-202608-000001") rather than a random id, matching what a Finance
- * team expects from a numbered financial document. */
-async function nextDocumentNumber(type: FinanceDocumentType): Promise<string> {
-  const db = getAdminDb()
-  const yearMonth = new Date().toISOString().slice(0, 7).replace("-", "")
-  const counterRef = db.collection("financeDocumentCounters").doc(`${type}-${yearMonth}`)
-
-  const seq = await db.runTransaction(async (tx) => {
-    const snap = await tx.get(counterRef)
-    const next = ((snap.data()?.seq as number | undefined) ?? 0) + 1
-    tx.set(counterRef, { seq: next }, { merge: true })
-    return next
-  })
-
-  return `${DOCUMENT_PREFIX[type]}-${yearMonth}-${String(seq).padStart(6, "0")}`
-}
 
 interface ActorInfo {
   uid: string
@@ -44,10 +17,31 @@ export interface CreateFinanceDocumentInput {
   relatedAdjustmentId?: string
   relatedRefundId?: string
   amount: number
+  /** Reuse an already-minted number (an adjustment's ADJnnnn or a refund's
+   * REFnnnn — one entity, one number, everywhere it's shown) instead of
+   * minting a fresh document number. When omitted, a new number is minted
+   * fresh via lib/sequential-id.ts, scoped by `type` (invoice -> INV,
+   * payment_receipt -> PAY — the only two document types that are their
+   * own standalone entity rather than paperwork for an adjustment/refund
+   * that already has its own number). */
+  documentNumber?: string
+}
+
+const MINTED_KIND: Partial<Record<FinanceDocumentType, "invoice" | "payment">> = {
+  invoice: "invoice",
+  payment_receipt: "payment",
 }
 
 export async function createFinanceDocumentRecord(input: CreateFinanceDocumentInput, actor: ActorInfo): Promise<FinanceDocument> {
-  const documentNumber = await nextDocumentNumber(input.type)
+  let documentNumber = input.documentNumber
+  if (!documentNumber) {
+    const kind = MINTED_KIND[input.type]
+    if (!kind) {
+      throw new Error(`Document type "${input.type}" must reuse an existing adjustment/refund number, not mint a new one.`)
+    }
+    documentNumber = await mintSequentialId(kind)
+  }
+
   const ref = getAdminDb().collection("financeDocuments").doc()
   const document: FinanceDocument = {
     id: ref.id,
@@ -68,7 +62,10 @@ export async function createFinanceDocumentRecord(input: CreateFinanceDocumentIn
 
 /** Charge/seller -> Debit Statement, Credit/seller -> Credit Statement, a
  * refund_adjustment (always buyer-scoped, always order-level) also reads as
- * a debit against the buyer's refund -> Debit Statement too. */
+ * a debit against the buyer's refund -> Debit Statement too. Always reuses
+ * the adjustment's own adjustmentNumber (ADJnnnn) as the document's number
+ * — the statement IS the adjustment's paperwork, not a separate numbered
+ * entity, so it never mints a number of its own. */
 export async function createFinanceDocumentForAdjustment(adjustment: FinanceAdjustment, actor: ActorInfo): Promise<FinanceDocument> {
   const type: FinanceDocumentType = adjustment.type === "credit" ? "credit_statement" : "debit_statement"
   return createFinanceDocumentRecord(
@@ -79,6 +76,7 @@ export async function createFinanceDocumentForAdjustment(adjustment: FinanceAdju
       partyId: adjustment.partyId,
       relatedAdjustmentId: adjustment.id,
       amount: adjustment.amount,
+      documentNumber: adjustment.adjustmentNumber,
     },
     actor,
   )
@@ -86,9 +84,11 @@ export async function createFinanceDocumentForAdjustment(adjustment: FinanceAdju
 
 /** Generated once a refund actually reaches "Refunded" (never earlier —
  * see lib/refund-service.ts, which only calls this after the gateway, or a
- * Finance Admin's manual COD decision, confirms the money actually moved). */
+ * Finance Admin's manual COD decision, confirms the money actually moved).
+ * Always reuses the refund's own refundNumber (REFnnnn) — one refund, one
+ * number, whether it's referenced as a RefundRequest or as this receipt. */
 export async function createFinanceDocumentForRefund(
-  refund: { id: string; orderId: string; amount: number },
+  refund: { id: string; refundNumber: string; orderId: string; amount: number },
   buyerId: string,
   actor: ActorInfo,
 ): Promise<FinanceDocument> {
@@ -100,6 +100,7 @@ export async function createFinanceDocumentForRefund(
       partyId: buyerId,
       relatedRefundId: refund.id,
       amount: refund.amount,
+      documentNumber: refund.refundNumber,
     },
     actor,
   )
@@ -121,6 +122,28 @@ export async function listFinanceDocuments(filter: ListFinanceDocumentsFilter): 
 
   const snap = await query.orderBy("createdAt", "desc").limit(200).get()
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as FinanceDocument)
+}
+
+/** Finds an already-generated Invoice/Payment Receipt for this exact
+ * (orderId, type, partyId), if one exists — used by the generate route to
+ * stay idempotent (re-clicking "Download Invoice" on the same order must
+ * never mint a second INV number for what is, functionally, the same
+ * document). Charges/credits/refunds don't need this: each real Finance
+ * approval or completed refund is a genuinely new, distinct event, so
+ * minting a fresh ADJ/REF number every time is correct there. */
+export async function findExistingFinanceDocument(
+  orderId: string,
+  type: FinanceDocumentType,
+  partyId: string,
+): Promise<FinanceDocument | null> {
+  const snap = await getAdminDb()
+    .collection("financeDocuments")
+    .where("orderId", "==", orderId)
+    .where("type", "==", type)
+    .where("partyId", "==", partyId)
+    .limit(1)
+    .get()
+  return snap.empty ? null : ({ id: snap.docs[0].id, ...snap.docs[0].data() } as FinanceDocument)
 }
 
 export async function getFinanceDocument(id: string): Promise<FinanceDocument | null> {

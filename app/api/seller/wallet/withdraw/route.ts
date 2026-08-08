@@ -2,16 +2,14 @@ import { NextResponse, type NextRequest } from "next/server"
 import { requireSignedInUser } from "@/lib/api-auth"
 import { getAdminDb } from "@/lib/firebase-admin"
 import { recomputeSellerWallet } from "@/lib/wallet-service"
+import { round2 } from "@/lib/utils"
+import { readSequentialIdForTransaction } from "@/lib/sequential-id"
 import type { Order } from "@/types/order"
 import type { WithdrawalRequest } from "@/types/wallet"
 import type { AdminNotificationInput } from "@/types/notification"
 
 interface WithdrawBody {
   amount?: number
-}
-
-function round2(value: number): number {
-  return Math.round(value * 100) / 100
 }
 
 export async function POST(request: NextRequest) {
@@ -42,9 +40,10 @@ export async function POST(request: NextRequest) {
     // recomputeSellerWallet also computes (released - reserved - withdrawn),
     // reading transactionally so it's atomic against a concurrent request.
     await db.runTransaction(async (tx) => {
-      const [ordersSnap, withdrawalsSnap] = await Promise.all([
+      const [ordersSnap, withdrawalsSnap, settlementNumberMint] = await Promise.all([
         tx.get(db.collection("orders").where("sellerIds", "array-contains", auth.uid)),
         tx.get(db.collection("withdrawalRequests").where("sellerId", "==", auth.uid)),
+        readSequentialIdForTransaction(tx, "settlement"),
       ])
 
       let releasedTotal = 0
@@ -67,7 +66,10 @@ export async function POST(request: NextRequest) {
         throw new Error(`You can withdraw up to ${available}.`)
       }
 
+      settlementNumberMint.commit()
+
       const withdrawalRequest: Omit<WithdrawalRequest, "id"> = {
+        settlementNumber: settlementNumberMint.id,
         sellerId: auth.uid,
         amount,
         status: "requested",

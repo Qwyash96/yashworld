@@ -7,6 +7,7 @@ import { Undo2 } from "lucide-react"
 import { fetchRefundableOrders } from "@/lib/admin-orders-client"
 import { PaginationControls } from "@/components/admin/pagination-controls"
 import { formatPrice } from "@/lib/products"
+import { orderDisplayId } from "@/lib/order-display"
 import type { Order, PaymentMethod } from "@/types/order"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -101,7 +102,7 @@ export default function AdminRefundsPage() {
             {orders?.map((order) => (
               <div key={order.id} className="flex flex-wrap items-center justify-between gap-3 p-4 text-sm">
                 <div>
-                  <span className="font-semibold text-black">#{order.id.slice(0, 8)}</span>
+                  <span className="font-semibold text-black">#{orderDisplayId(order)}</span>
                   <p className="text-xs text-[#888888]">
                     {order.contactEmail} · {new Date(order.createdAt).toLocaleString()}
                   </p>

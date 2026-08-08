@@ -6,6 +6,7 @@ import { Banknote, AlertTriangle } from "lucide-react"
 import { fetchSettlements } from "@/lib/admin-settlements-client"
 import { PaginationControls } from "@/components/admin/pagination-controls"
 import { formatPrice } from "@/lib/products"
+import { orderDisplayId } from "@/lib/order-display"
 import type { Order } from "@/types/order"
 
 export default function AdminSettlementsPage() {
@@ -85,7 +86,7 @@ export default function AdminSettlementsPage() {
             {orders?.map((order) => (
               <div key={order.id} className="flex flex-wrap items-center justify-between gap-3 p-4 text-sm">
                 <div>
-                  <span className="font-semibold text-black">#{order.id.slice(0, 8)}</span>
+                  <span className="font-semibold text-black">#{orderDisplayId(order)}</span>
                   <p className="text-xs text-[#888888]">{new Date(order.createdAt).toLocaleString()}</p>
                 </div>
                 <span className="font-mono text-xs text-[#888888]">

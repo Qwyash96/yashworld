@@ -1,7 +1,8 @@
 import "server-only"
 import { ORDER_FULFILMENT_SEQUENCE, isCancellable, isReturnable } from "@/types/order-lifecycle"
 import { writeSellerNotification } from "@/lib/seller-notifications"
-import type { OrderStatus, SellerOrder } from "@/types/order"
+import { getAdminDb } from "@/lib/firebase-admin"
+import type { Order, OrderStatus, SellerOrder } from "@/types/order"
 import type { SellerNotificationType } from "@/types/seller-notification"
 import type { AutoAwbResult } from "@/lib/shipping-service"
 
@@ -32,6 +33,12 @@ export interface SellerOrderTransitionExtra {
   pickupDate?: string
   pickupTime?: string
   trackingNumber?: string
+  /** Required (by convention — not type-enforced here) when nextStatus is
+   * "Returned" — a sequential, human-readable id minted by the caller via
+   * lib/sequential-id.ts's mintSequentialId("return") BEFORE this function
+   * runs, since minting is async and this function is deliberately kept
+   * pure/synchronous. See app/api/seller/orders/[id]/status/route.ts. */
+  returnNumber?: string
 }
 
 /** Drops the courier-assignment fields entirely (rather than setting them to
@@ -67,7 +74,7 @@ export function buildTransitionedSellerOrder(
     status: nextStatus,
     timeline: [...(sellerOrder.timeline ?? []), { status: nextStatus, at: now, ...(reason ? { note: reason } : {}) }],
     ...(nextStatus === "Delivered" ? { deliveredAt: now, payoutStatus: "Hold" as const } : {}),
-    ...(nextStatus === "Returned" ? { returnedAt: now } : {}),
+    ...(nextStatus === "Returned" ? { returnedAt: now, ...(extra.returnNumber ? { returnNumber: extra.returnNumber } : {}) } : {}),
     ...(nextStatus === "Cancelled" ? { cancelledAt: now, ...(reason ? { rejectionReason: reason } : {}) } : {}),
     ...(nextStatus === "Pickup Requested"
       ? {
@@ -123,43 +130,51 @@ export function buildAutoShippedSellerOrder(sellerOrder: SellerOrder, awb: AutoA
   }
 }
 
-const NOTIFY: Partial<Record<OrderStatus, { type: SellerNotificationType; title: string; message: (orderId: string) => string }>> = {
+const NOTIFY: Partial<Record<OrderStatus, { type: SellerNotificationType; title: string; message: (displayId: string) => string }>> = {
   "Pickup Requested": {
     type: "pickup_scheduled",
     title: "Pickup scheduled",
-    message: (id) => `Pickup scheduled for order #${id.slice(0, 8)}.`,
+    message: (displayId) => `Pickup scheduled for order #${displayId}.`,
   },
   "Picked Up": {
     type: "pickup_completed",
     title: "Pickup completed",
-    message: (id) => `Order #${id.slice(0, 8)} was picked up by the courier.`,
+    message: (displayId) => `Order #${displayId} was picked up by the courier.`,
   },
   Delivered: {
     type: "order_delivered",
     title: "Order delivered",
-    message: (id) => `Order #${id.slice(0, 8)} was delivered.`,
+    message: (displayId) => `Order #${displayId} was delivered.`,
   },
   Returned: {
     type: "order_returned",
     title: "Order returned",
-    message: (id) => `Order #${id.slice(0, 8)} was marked returned.`,
+    message: (displayId) => `Order #${displayId} was marked returned.`,
   },
   Cancelled: {
     type: "order_cancelled",
     title: "Order cancelled",
-    message: (id) => `Order #${id.slice(0, 8)} was cancelled.`,
+    message: (displayId) => `Order #${displayId} was cancelled.`,
   },
 }
 
-/** Fire-and-await after the transition's transaction has committed. No-op for statuses with no notification (e.g. "In Transit"). */
+/** Fire-and-await after the transition's transaction has committed. No-op
+ * for statuses with no notification (e.g. "In Transit"). Does its own
+ * cheap read of the order to get its real orderNumber for the message text
+ * — deliberately NOT threaded through this function's 4 call sites'
+ * signatures (some of which don't already have the order loaded at the
+ * call point), falling back to the truncated Firestore id for an order
+ * created before orderNumber existed. */
 export async function notifySellerOrderTransition(sellerId: string, orderId: string, nextStatus: OrderStatus): Promise<void> {
   const notify = NOTIFY[nextStatus]
   if (!notify) return
+  const orderSnap = await getAdminDb().collection("orders").doc(orderId).get()
+  const displayId = (orderSnap.data() as Order | undefined)?.orderNumber ?? orderId.slice(0, 8)
   await writeSellerNotification({
     sellerId,
     type: notify.type,
     title: notify.title,
-    message: notify.message(orderId),
+    message: notify.message(displayId),
     relatedType: "order",
     relatedId: orderId,
   })

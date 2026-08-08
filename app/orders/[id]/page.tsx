@@ -21,6 +21,7 @@ import { WriteReviewDialog } from "@/components/reviews/write-review-dialog"
 import { isCancellable } from "@/types/order-lifecycle"
 import { getDeliveryEstimate } from "@/lib/delivery-estimate"
 import { getPublicTrackingUrl } from "@/lib/public-tracking-url"
+import { orderDisplayId } from "@/lib/order-display"
 import { fetchFinanceDocuments, fetchFinanceDocumentDetail, generateFinanceDocument } from "@/lib/admin-finance-client"
 import { fetchBusinessInfo, type RefundDocumentContext } from "@/lib/documents/finance-document-context"
 import { buildPaymentReceiptPdf } from "@/lib/documents/payment-receipt"
@@ -137,6 +138,7 @@ export default function OrderDetailPage() {
         business,
         documentNumber: result.document.documentNumber,
         orderId: currentOrder.id,
+        orderNumber: currentOrder.orderNumber,
         createdAt: result.document.createdAt,
         customerName: currentOrder.shippingAddress.fullName,
         amount: currentOrder.totals.total,
@@ -175,7 +177,7 @@ export default function OrderDetailPage() {
       )}
       <div className="flex items-center justify-between">
         <h1 className="font-serif text-3xl font-semibold tracking-tight">
-          Order #{order.id.slice(0, 8)}
+          Order #{orderDisplayId(order)}
         </h1>
         <OrderStatusBadge status={order.status} />
       </div>

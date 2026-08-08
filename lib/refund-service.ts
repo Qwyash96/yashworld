@@ -3,6 +3,7 @@ import { getAdminDb } from "@/lib/firebase-admin"
 import { refundPaymentForGateway } from "@/lib/payment-router"
 import { round2 } from "@/lib/utils"
 import { listRefundHistory, listApprovedAdjustments } from "@/lib/finance-ledger-shared"
+import { mintSequentialId } from "@/lib/sequential-id"
 import type { Order } from "@/types/order"
 import type { RefundBreakdown, RefundRequest, RefundRequestStatus } from "@/types/refund"
 
@@ -101,6 +102,13 @@ async function applyOrderEffectsIfFullyRefunded(
   // what was still refundable for this scope BEFORE this refund — covering
   // all of it is what actually leaves nothing further to refund.
   const isFullForScope = amount >= breakdown.finalRefundAmount - 0.005
+  // One return number per return EVENT, not per seller-order — a whole-order
+  // refund that closes out several sellers at once is still one return.
+  // Minted here (before the transaction, since isFullForScope is already
+  // known) rather than reading the counter inside the transaction below —
+  // simpler, and this path only runs after a refund has already succeeded,
+  // so the rare wasted-number-on-failure tradeoff barely applies.
+  const returnNumber = isFullForScope ? await mintSequentialId("return") : undefined
 
   await db.runTransaction(async (tx) => {
     const ref = db.collection("orders").doc(orderId)
@@ -113,10 +121,14 @@ async function applyOrderEffectsIfFullyRefunded(
     }
 
     if (isFullForScope) {
+      // returnNumber is always set when isFullForScope is true (see above)
+      // — the conditional spread (rather than a plain field) is only to
+      // never write a literal `returnNumber: undefined`, which Firestore's
+      // Admin SDK rejects inside a nested array-of-objects field.
       update.paymentStatus = "Refunded"
       update.sellerOrders = sellerId
-        ? order.sellerOrders.map((so) => (so.sellerId === sellerId ? { ...so, status: "Returned" as const } : so))
-        : order.sellerOrders.map((so) => ({ ...so, status: "Returned" as const }))
+        ? order.sellerOrders.map((so) => (so.sellerId === sellerId ? { ...so, status: "Returned" as const, ...(returnNumber ? { returnNumber } : {}) } : so))
+        : order.sellerOrders.map((so) => ({ ...so, status: "Returned" as const, ...(returnNumber ? { returnNumber } : {}) }))
     }
 
     tx.update(ref, update)
@@ -127,10 +139,17 @@ async function applyOrderEffectsIfFullyRefunded(
  * reached "Refunded" — never earlier. A document-generation failure never
  * fails the refund itself (the money has already moved); logged instead,
  * same discipline as lib/audit-log.ts's writeAuditLog. */
-async function generateRefundReceipt(orderId: string, buyerId: string, refundId: string, amount: number, actor: ApproverInfo): Promise<void> {
+async function generateRefundReceipt(
+  orderId: string,
+  buyerId: string,
+  refundId: string,
+  refundNumber: string,
+  amount: number,
+  actor: ApproverInfo,
+): Promise<void> {
   try {
     const { createFinanceDocumentForRefund } = await import("@/lib/finance-documents")
-    await createFinanceDocumentForRefund({ id: refundId, orderId, amount }, buyerId, actor)
+    await createFinanceDocumentForRefund({ id: refundId, refundNumber, orderId, amount }, buyerId, actor)
   } catch (error) {
     console.error("[refund-service] failed to generate refund receipt:", error)
   }
@@ -197,10 +216,12 @@ export async function createRefundRequest(input: CreateRefundRequestInput): Prom
     }
   }
 
+  const refundNumber = await mintSequentialId("refund")
   const now = new Date().toISOString()
   const refundRef = db.collection("orders").doc(order.id).collection("refunds").doc()
   const baseRecord: RefundRequest = {
     id: refundRef.id,
+    refundNumber,
     orderId: order.id,
     ...(sellerId ? { sellerId } : {}),
     mode,
@@ -245,7 +266,7 @@ export async function createRefundRequest(input: CreateRefundRequestInput): Prom
       gatewayOrderId,
       gatewayPaymentId,
       amountPaise: Math.round(amount * 100),
-      reason: reason?.trim() || `Order #${order.id.slice(0, 8)} refund`,
+      reason: reason?.trim() || `Order #${order.orderNumber ?? order.id.slice(0, 8)} refund`,
     })
 
     if (!result.ok) {
@@ -262,7 +283,7 @@ export async function createRefundRequest(input: CreateRefundRequestInput): Prom
     }
     await updateRefundRequest(order.id, refundRef.id, refunded)
     await applyOrderEffectsIfFullyRefunded(order.id, sellerId, amount, breakdown)
-    await generateRefundReceipt(order.id, order.buyerId, refundRef.id, amount, approver)
+    await generateRefundReceipt(order.id, order.buyerId, refundRef.id, refundNumber, amount, approver)
     return { refund: { ...baseRecord, ...refunded } }
   } catch (error) {
     const failed: Partial<RefundRequest> = {
@@ -310,7 +331,7 @@ export async function decideRefundRequest(
     await applyOrderEffectsIfFullyRefunded(orderId, record.sellerId, record.amount, record.breakdown)
     const orderSnap = await db.collection("orders").doc(orderId).get()
     const buyerId = (orderSnap.data() as Order | undefined)?.buyerId
-    if (buyerId) await generateRefundReceipt(orderId, buyerId, refundId, record.amount, actor)
+    if (buyerId) await generateRefundReceipt(orderId, buyerId, refundId, record.refundNumber, record.amount, actor)
   }
 
   return { ...record, ...patch }

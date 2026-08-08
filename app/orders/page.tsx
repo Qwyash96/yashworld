@@ -5,6 +5,7 @@ import { useEffect, useState } from "react"
 import { useStore } from "@/components/store-provider"
 import { getOrdersByBuyer } from "@/services/order.service"
 import { formatPrice } from "@/lib/products"
+import { orderDisplayId } from "@/lib/order-display"
 import type { Order } from "@/types/order"
 import { OrderStatusBadge } from "@/components/orders/order-status-badge"
 
@@ -44,7 +45,7 @@ export default function OrdersPage() {
             <li key={order.id} className="flex items-center justify-between gap-4 py-4">
               <div>
                 <Link href={`/orders/${order.id}`} className="font-medium hover:underline">
-                  Order #{order.id.slice(0, 8)}
+                  Order #{orderDisplayId(order)}
                 </Link>
                 <p className="text-sm text-muted-foreground">
                   {new Date(order.createdAt).toLocaleDateString()} ·{" "}

@@ -23,6 +23,7 @@ export interface AdjustmentDocumentContext {
   documentTypeLabel: string
   createdAt: string
   orderId?: string
+  orderNumber?: string
   partyLabel: string
   type: AdjustmentType
   amount: number
@@ -45,6 +46,7 @@ export interface RefundDocumentContext {
   documentNumber: string
   createdAt: string
   orderId: string
+  orderNumber?: string
   customerName: string
   mode: "full" | "manual"
   amount: number
@@ -61,6 +63,7 @@ export interface PaymentReceiptContext {
   business: BusinessInfo
   documentNumber: string
   orderId: string
+  orderNumber?: string
   createdAt: string
   customerName: string
   amount: number

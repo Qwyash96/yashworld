@@ -13,6 +13,7 @@ import type { AdjustmentDocumentContext } from "@/lib/documents/finance-document
 import { buildAdjustmentStatementPdf } from "@/lib/documents/adjustment-statement"
 import { downloadPdf, viewPdf, printPdf } from "@/lib/documents/pdf-actions"
 import { formatPrice } from "@/lib/products"
+import { orderDisplayId } from "@/lib/order-display"
 import type { OrderStatus } from "@/types/order"
 import type { SellerFacingOrder } from "@/lib/seller-order-redaction"
 import type { SellerWallet, WithdrawalRequest } from "@/types/wallet"
@@ -208,7 +209,7 @@ export default function SellerOrdersPage() {
               {withdrawals.slice(0, 5).map((w) => (
                 <div key={w.id} className="flex justify-between">
                   <span>
-                    {formatPrice(w.amount)} — {new Date(w.requestedAt).toLocaleDateString()}
+                    {w.settlementNumber} · {formatPrice(w.amount)} — {new Date(w.requestedAt).toLocaleDateString()}
                   </span>
                   <span className="capitalize">{w.status}</span>
                 </div>
@@ -304,7 +305,7 @@ export default function SellerOrdersPage() {
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-black">
-                      #{order.id.slice(0, 8)} · {order.shippingAddress.fullName}
+                      #{orderDisplayId(order)} · {order.shippingAddress.fullName}
                     </p>
                     <p className="text-xs text-[#888888]">
                       {new Date(order.createdAt).toLocaleDateString()} · {mine.items.length} item{mine.items.length === 1 ? "" : "s"} ·{" "}

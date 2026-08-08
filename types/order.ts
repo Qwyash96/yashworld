@@ -98,6 +98,13 @@ export interface SellerOrder {
   deliveredAt?: string
   cancelledAt?: string
   returnedAt?: string
+  /** Sequential, human-readable id (RETnnnn) minted once, the moment this
+   * seller-order actually transitions to "Returned" — via
+   * lib/sequential-id.ts's mintSequentialId("return"). Unset for a
+   * seller-order that has never been returned; never regenerated or
+   * reused if this happens more than once across an order's lifetime
+   * (each real return event mints its own new number). */
+  returnNumber?: string
   /** Who cancelled this seller-order — "buyer" for a self-serve cancel via
    * app/api/orders/[id]/cancel, or a seller uid for a seller-initiated cancel
    * via app/api/seller/orders/[id]/status. Unset for non-cancelled orders. */
@@ -128,6 +135,14 @@ export interface SellerOrder {
 /** Firestore `orders/{id}` document shape. */
 export interface Order {
   id: string
+  /** Sequential, human-readable id (ORDnnnn) minted once at checkout — see
+   * lib/sequential-id.ts and lib/order-finalize.ts. This is the id shown to
+   * buyers/sellers/admins everywhere; `id` (the real Firestore document id)
+   * stays the only key ever used for reads/writes/queries. Optional only
+   * because it's unset on orders created before this field existed —
+   * every display site falls back to the old truncated-`id` format for
+   * those. */
+  orderNumber?: string
   buyerId: string
   /** Contact email for order communications — may differ from the account email. */
   contactEmail: string

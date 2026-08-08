@@ -35,7 +35,7 @@ export function buildAdjustmentStatementPdf(ctx: AdjustmentDocumentContext): jsP
   y += 20
   doc.text(`Party: ${ctx.partyLabel}`, marginX, y)
   if (ctx.orderId) {
-    doc.text(`Order ID: #${ctx.orderId.slice(0, 8)}`, 555 - marginX, y, { align: "right" })
+    doc.text(`Order ID: #${ctx.orderNumber ?? ctx.orderId.slice(0, 8)}`, 555 - marginX, y, { align: "right" })
   }
 
   y += 35

@@ -44,6 +44,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
   let cancelledSellerOrder: SellerOrder | null = null
   let refundNowPending = false
+  let orderNumber: string | undefined
 
   try {
     await db.runTransaction(async (tx) => {
@@ -51,6 +52,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       const snap = await tx.get(orderRef)
       if (!snap.exists) throw new Error("Order not found.")
       const order = snap.data() as Order
+      orderNumber = order.orderNumber
 
       if (order.buyerId !== auth.uid) {
         throw new Error("You don't have permission to cancel this order.")
@@ -125,7 +127,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     type: "order_cancelled",
     targetPermission: "order_management",
     title: "Order cancelled by buyer",
-    message: `Order #${orderId.slice(0, 8)} was cancelled by the buyer. Reason: ${reason}`,
+    message: `Order #${orderNumber ?? orderId.slice(0, 8)} was cancelled by the buyer. Reason: ${reason}`,
     relatedType: "order",
     relatedId: orderId,
   }

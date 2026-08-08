@@ -171,7 +171,7 @@ export default function AdminFinanceAdjustmentsPage() {
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <span className="font-semibold text-black">
-                      {TYPE_LABEL[a.type]} · {formatPrice(a.amount)}
+                      {a.adjustmentNumber} · {TYPE_LABEL[a.type]} · {formatPrice(a.amount)}
                     </span>
                     <p className="text-xs text-[#888888]">
                       {a.partyType === "seller" ? `Seller ${a.partyId}` : "Buyer"}

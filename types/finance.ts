@@ -30,6 +30,11 @@ export type AdjustmentParty = "buyer" | "seller"
  */
 export interface FinanceAdjustment {
   id: string
+  /** Sequential, human-readable id (ADJnnnn) minted once at creation — see
+   * lib/sequential-id.ts. Reused verbatim as the documentNumber of the
+   * Debit/Credit Adjustment Statement generated on approval
+   * (lib/finance-documents.ts) — one adjustment, one number, everywhere. */
+  adjustmentNumber: string
   /** Set for a seller charge/credit tied to one settlement, or a
    * refund_adjustment (always order-scoped). Omitted only for a rare
    * seller-wide (not order-specific) charge/credit. */

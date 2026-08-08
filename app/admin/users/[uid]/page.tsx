@@ -10,6 +10,7 @@ import { db } from "@/services/firebase/client"
 import { fetchBuyerDetail, suspendBuyer, banBuyer, activateBuyer, verifyBuyerEmail, verifyBuyerPhone } from "@/lib/admin-users-client"
 import { getOrdersByBuyer } from "@/services/order.service"
 import { formatPrice } from "@/lib/products"
+import { orderDisplayId } from "@/lib/order-display"
 import type { UserProfile } from "@/types/user"
 import type { Order } from "@/types/order"
 import type { LoginHistoryEntry } from "@/types/login-history"
@@ -163,7 +164,7 @@ export default function AdminUserDetailPage() {
                   href={`/orders/${order.id}`}
                   className="flex items-center justify-between rounded-xl border border-border bg-white p-3 text-sm shadow-sm hover:bg-green-50"
                 >
-                  <span className="text-black">Order #{order.id.slice(0, 8)} — {new Date(order.createdAt).toLocaleDateString()}</span>
+                  <span className="text-black">Order #{orderDisplayId(order)} — {new Date(order.createdAt).toLocaleDateString()}</span>
                   <span className="flex items-center gap-3">
                     <span className="font-semibold text-black">{formatPrice(order.totals.total)}</span>
                     <OrderStatusBadge status={order.status} />

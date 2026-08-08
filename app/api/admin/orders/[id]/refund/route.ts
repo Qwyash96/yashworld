@@ -42,6 +42,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
   return NextResponse.json({
     order: {
       id: order.id,
+      orderNumber: order.orderNumber,
       contactEmail: order.contactEmail,
       createdAt: order.createdAt,
       paymentMethod: order.paymentMethod,
@@ -97,7 +98,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         type: "refund_issued",
         targetPermission: "payments",
         title: "Refund issued",
-        message: `Order #${id.slice(0, 8)} was refunded (${refund.amount})${body.sellerId ? " — one seller" : ""}.`,
+        message: `Order #${order.orderNumber ?? id.slice(0, 8)} was refunded (${refund.amount})${body.sellerId ? " — one seller" : ""}.`,
         relatedType: "order",
         relatedId: id,
       }

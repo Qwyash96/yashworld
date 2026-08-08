@@ -52,7 +52,7 @@ export function generateShippingLabelPdf(ctx: OrderDocumentContext): void {
   y += 25
   doc.setFontSize(11)
   doc.setFont("helvetica", "normal")
-  doc.text(`Order ID: #${ctx.orderId.slice(0, 8)}`, marginX, y)
+  doc.text(`Order ID: #${ctx.orderNumber ?? ctx.orderId.slice(0, 8)}`, marginX, y)
   y += 18
   doc.text(`Courier: ${ctx.courierPartner ?? "Not yet assigned"}`, marginX, y)
   y += 18
@@ -63,5 +63,5 @@ export function generateShippingLabelPdf(ctx: OrderDocumentContext): void {
   const barcodeDataUrl = generateBarcodeDataUrl(barcodeValue)
   doc.addImage(barcodeDataUrl, "PNG", marginX, y, 340, 70)
 
-  doc.save(`shipping-label-${ctx.orderId.slice(0, 8)}.pdf`)
+  doc.save(`shipping-label-${ctx.orderNumber ?? ctx.orderId.slice(0, 8)}.pdf`)
 }

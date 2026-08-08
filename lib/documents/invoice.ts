@@ -22,7 +22,7 @@ export function generateInvoicePdf(ctx: OrderDocumentContext): void {
 
   y += 25
   doc.setFontSize(10)
-  doc.text(`Order ID: #${ctx.orderId.slice(0, 8)}`, marginX, y)
+  doc.text(`Order ID: #${ctx.orderNumber ?? ctx.orderId.slice(0, 8)}`, marginX, y)
   doc.text(`Order Date: ${new Date(ctx.createdAt).toLocaleString()}`, 555 - marginX, y, { align: "right" })
 
   y += 30
@@ -88,5 +88,5 @@ export function generateInvoicePdf(ctx: OrderDocumentContext): void {
   y += 14
   doc.text(`Payment Status: ${ctx.paymentStatus}`, marginX, y)
 
-  doc.save(`invoice-${ctx.orderId.slice(0, 8)}.pdf`)
+  doc.save(`invoice-${ctx.orderNumber ?? ctx.orderId.slice(0, 8)}.pdf`)
 }

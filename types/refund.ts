@@ -49,6 +49,11 @@ export interface RefundBreakdown {
  * survives (never overwritten/deleted). */
 export interface RefundRequest {
   id: string
+  /** Sequential, human-readable id (REFnnnn) minted once at creation — see
+   * lib/sequential-id.ts. Reused verbatim as the documentNumber of the
+   * Refund Receipt generated once this refund actually reaches "Refunded"
+   * (lib/finance-documents.ts) — one refund, one number, everywhere. */
+  refundNumber: string
   orderId: string
   /** Scopes the refund to one seller's portion of a multi-seller order — undefined refunds the whole order. */
   sellerId?: string

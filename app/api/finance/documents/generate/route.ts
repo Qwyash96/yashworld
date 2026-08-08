@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { requireSignedInUser } from "@/lib/api-auth"
 import { getAdminDb } from "@/lib/firebase-admin"
-import { createFinanceDocumentRecord } from "@/lib/finance-documents"
+import { createFinanceDocumentRecord, findExistingFinanceDocument } from "@/lib/finance-documents"
 import type { Order } from "@/types/order"
 
 interface GenerateBody {
@@ -39,10 +39,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No payment has been received for this order yet." }, { status: 400 })
   }
 
-  const document = await createFinanceDocumentRecord(
-    { type: body.type, orderId: order.id, partyType: "buyer", partyId: order.buyerId, amount: order.totals.total },
-    { uid: auth.uid, email: order.contactEmail },
-  )
+  // Idempotent: re-generating the same order's Invoice/Payment Receipt
+  // (e.g. clicking "Download" again) must return the SAME document number
+  // every time, never mint a fresh one for what is functionally the same
+  // document.
+  const existing = await findExistingFinanceDocument(order.id, body.type, order.buyerId)
+  const document =
+    existing ??
+    (await createFinanceDocumentRecord(
+      { type: body.type, orderId: order.id, partyType: "buyer", partyId: order.buyerId, amount: order.totals.total },
+      { uid: auth.uid, email: order.contactEmail },
+    ))
 
   return NextResponse.json({ ok: true, document })
 }

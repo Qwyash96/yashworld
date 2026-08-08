@@ -4,6 +4,7 @@ import { getAdminDb } from "@/lib/firebase-admin"
 import { cancelShipment as cancelShipmentCommon } from "@/lib/shipping-service"
 import { attemptAutoShipment, type AutoShipmentAttempt } from "@/lib/order-auto-fulfillment"
 import { buildTransitionedSellerOrder, buildAutoShippedSellerOrder, notifySellerOrderTransition } from "@/lib/order-status-transition"
+import { mintSequentialId } from "@/lib/sequential-id"
 import type { Order, OrderStatus } from "@/types/order"
 
 type RouteContext = { params: Promise<{ id: string }> }
@@ -85,6 +86,13 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     isRetry = currentSellerOrder?.status === "Accepted"
   }
 
+  // Minted before the transaction (nextStatus is already known) since
+  // buildTransitionedSellerOrder is deliberately kept pure/synchronous —
+  // see lib/sequential-id.ts's own doc comment on the accepted tradeoff
+  // (an infrequent transaction failure here would skip a RET number, never
+  // reuse one).
+  const returnNumber = nextStatus === "Returned" ? await mintSequentialId("return") : undefined
+
   try {
     if (!isRetry) {
       await db.runTransaction(async (tx) => {
@@ -97,7 +105,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         if (index === -1) throw new Error("You don't have any items on this order.")
         const sellerOrder = order.sellerOrders[index]
 
-        const updatedSellerOrder = buildTransitionedSellerOrder(sellerOrder, nextStatus, { reason: body.reason })
+        const updatedSellerOrder = buildTransitionedSellerOrder(sellerOrder, nextStatus, { reason: body.reason, returnNumber })
 
         const sellerOrders = [...order.sellerOrders]
         sellerOrders[index] = updatedSellerOrder

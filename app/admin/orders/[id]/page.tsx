@@ -8,6 +8,7 @@ import { ArrowLeft, RefreshCw } from "lucide-react"
 import { getOrderById, updateOrderStatus } from "@/services/order.service"
 import { syncAdminOrderTracking } from "@/lib/admin-orders-client"
 import { formatPrice } from "@/lib/products"
+import { orderDisplayId } from "@/lib/order-display"
 import { OrderStatusBadge } from "@/components/orders/order-status-badge"
 import type { Order, OrderStatus, PaymentMethod } from "@/types/order"
 import { Button } from "@/components/ui/button"
@@ -95,7 +96,7 @@ export default function AdminOrderDetailPage() {
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-black">Order #{order.id.slice(0, 8)}</h1>
+          <h1 className="text-2xl font-bold text-black">Order #{orderDisplayId(order)}</h1>
           <p className="text-sm text-[#444444]">Placed {new Date(order.createdAt).toLocaleString()}</p>
         </div>
         <div className="flex items-center gap-2">

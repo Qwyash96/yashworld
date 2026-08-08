@@ -11,6 +11,7 @@ import type { RefundDocumentContext } from "@/lib/documents/finance-document-con
 import { buildRefundReceiptPdf } from "@/lib/documents/refund-receipt"
 import { downloadPdf, viewPdf, printPdf } from "@/lib/documents/pdf-actions"
 import { formatPrice } from "@/lib/products"
+import { orderDisplayId } from "@/lib/order-display"
 import type { PaymentMethod } from "@/types/order"
 import type { RefundBreakdown } from "@/types/refund"
 import type { FinanceDocument } from "@/types/finance-document"
@@ -194,7 +195,7 @@ export default function AdminRefundDetailPage() {
         <div className="flex items-center gap-2">
           <Undo2 className="size-6 text-green-700" />
           <div>
-            <h1 className="text-2xl font-bold text-black">Order #{detail.order.id.slice(0, 8)}</h1>
+            <h1 className="text-2xl font-bold text-black">Order #{orderDisplayId(detail.order)}</h1>
             <p className="text-sm text-[#444444]">
               {detail.order.contactEmail} · {new Date(detail.order.createdAt).toLocaleString()}
             </p>
@@ -326,7 +327,7 @@ export default function AdminRefundDetailPage() {
                   <div key={r.id} className="flex flex-col gap-1.5 py-3 first:pt-0 last:pb-0 text-sm">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="font-semibold text-black">
-                        {formatPrice(r.amount)} · {r.mode === "full" ? "Full" : "Manual"}
+                        {r.refundNumber} · {formatPrice(r.amount)} · {r.mode === "full" ? "Full" : "Manual"}
                       </span>
                       <Badge variant={STATUS_BADGE[r.status] ?? "outline"}>{r.status}</Badge>
                     </div>

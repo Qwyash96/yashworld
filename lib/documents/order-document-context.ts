@@ -9,6 +9,9 @@ import type { SellerFacingOrder } from "@/lib/seller-order-redaction"
  * from every seller-facing surface. */
 export interface OrderDocumentContext {
   orderId: string
+  /** The sequential ORDnnnn number (lib/sequential-id.ts) — undefined only
+   * for an order created before that field existed. */
+  orderNumber?: string
   createdAt: string
   sellerShopName: string
   customerName: string
@@ -47,6 +50,7 @@ export function buildOrderDocumentContext(
 
   return {
     orderId: order.id,
+    orderNumber: order.orderNumber,
     createdAt: order.createdAt,
     sellerShopName,
     customerName: order.shippingAddress.fullName,

@@ -3,6 +3,7 @@ import { getAdminDb } from "@/lib/firebase-admin"
 import { round2 } from "@/lib/utils"
 import { recomputeSellerWallet } from "@/lib/wallet-service"
 import { listRefundHistory, listApprovedAdjustments } from "@/lib/finance-ledger-shared"
+import { mintSequentialId } from "@/lib/sequential-id"
 import { signedAmount } from "@/types/finance"
 import type { AdjustmentType, AdjustmentParty, FinanceAdjustment, FinanceAdjustmentInput } from "@/types/finance"
 import type { Order } from "@/types/order"
@@ -101,11 +102,13 @@ export async function createAdjustment(input: FinanceAdjustmentInput, actor: Act
   }
 
   const { previousBalance, newBalance } = await computeBalanceSnapshot(order, input)
+  const adjustmentNumber = await mintSequentialId("adjustment")
 
   const now = new Date().toISOString()
   const ref = db.collection("financeAdjustments").doc()
   const adjustment: FinanceAdjustment = {
     id: ref.id,
+    adjustmentNumber,
     ...(input.orderId ? { orderId: input.orderId } : {}),
     partyType: input.partyType,
     partyId: input.partyId,

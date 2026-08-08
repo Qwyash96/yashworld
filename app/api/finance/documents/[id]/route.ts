@@ -44,6 +44,8 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
   if (document.type === "debit_statement" || document.type === "credit_statement") {
     const adjustment = document.relatedAdjustmentId ? await getAdjustment(document.relatedAdjustmentId) : null
     if (!adjustment) return NextResponse.json({ error: "The underlying adjustment for this document was not found." }, { status: 404 })
+    const adjustmentOrderSnap = adjustment.orderId ? await getAdminDb().collection("orders").doc(adjustment.orderId).get() : null
+    const adjustmentOrder = adjustmentOrderSnap?.data() as Order | undefined
     return NextResponse.json({
       document,
       context: {
@@ -52,6 +54,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
         documentTypeLabel: document.type === "credit_statement" ? "Credit / Adjustment Statement" : "Debit / Adjustment Statement",
         createdAt: document.createdAt,
         orderId: adjustment.orderId,
+        orderNumber: adjustmentOrder?.orderNumber,
         partyLabel: adjustment.partyType === "seller" ? `Seller ${adjustment.partyId}` : "Buyer",
         type: adjustment.type,
         amount: adjustment.amount,
@@ -85,6 +88,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
         documentNumber: document.documentNumber,
         createdAt: document.createdAt,
         orderId: order.id,
+        orderNumber: order.orderNumber,
         customerName: order.shippingAddress.fullName,
         mode: refund.mode,
         amount: refund.amount,
@@ -110,6 +114,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
         business: businessInfo,
         documentNumber: document.documentNumber,
         orderId: order.id,
+        orderNumber: order.orderNumber,
         createdAt: document.createdAt,
         customerName: order.shippingAddress.fullName,
         amount: document.amount,

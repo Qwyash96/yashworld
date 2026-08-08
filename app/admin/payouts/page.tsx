@@ -113,7 +113,9 @@ export default function AdminPayoutsPage() {
             {payouts?.map((p) => (
               <div key={p.id} className="flex flex-wrap items-center justify-between gap-3 p-4 text-sm">
                 <div>
-                  <p className="font-semibold text-black">{p.sellerShopName}</p>
+                  <p className="font-semibold text-black">
+                    {p.settlementNumber} · {p.sellerShopName}
+                  </p>
                   <p className="text-xs text-[#888888]">Requested {new Date(p.requestedAt).toLocaleString()}</p>
                 </div>
                 <span className="font-semibold text-black">{formatPrice(p.amount)}</span>

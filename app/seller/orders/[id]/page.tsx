@@ -31,6 +31,7 @@ import { ProductImage } from "@/components/product-image"
 import { isCancellable, isReturnable } from "@/types/order-lifecycle"
 import { formatPrice } from "@/lib/products"
 import { getDeliveryEstimate } from "@/lib/delivery-estimate"
+import { orderDisplayId } from "@/lib/order-display"
 import { buildOrderDocumentContext } from "@/lib/documents/order-document-context"
 import type { SellerFacingOrder } from "@/lib/seller-order-redaction"
 import type { SellerOrder } from "@/types/order"
@@ -257,7 +258,7 @@ export default function SellerOrderDetailPage() {
       <section className="mt-3 rounded-xl border border-border bg-white p-3 shadow-sm sm:p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-lg font-bold text-black sm:text-xl">Order #{order.id.slice(0, 8)}</h1>
+            <h1 className="text-lg font-bold text-black sm:text-xl">Order #{orderDisplayId(order)}</h1>
             <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-[#444444] sm:grid-cols-4">
               <span>Placed {new Date(order.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span>
               <span>{getDeliveryEstimate(order.shippingMethod)}</span>

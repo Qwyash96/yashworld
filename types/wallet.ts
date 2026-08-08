@@ -29,6 +29,12 @@ export type WithdrawalRequestStatus = "requested" | "approved" | "paid" | "rejec
 /** Firestore `withdrawalRequests/{id}`. */
 export interface WithdrawalRequest {
   id: string
+  /** Sequential, human-readable id (SETnnnn) minted once at request time —
+   * see lib/sequential-id.ts. A withdrawal request IS the seller
+   * settlement in this codebase (there's no separate settlement entity),
+   * so this is what's shown to the seller/admin instead of the raw
+   * Firestore id. */
+  settlementNumber: string
   sellerId: string
   amount: number
   status: WithdrawalRequestStatus

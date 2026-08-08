@@ -28,7 +28,7 @@ export function buildRefundReceiptPdf(ctx: RefundDocumentContext): jsPDF {
   doc.text(`Date: ${new Date(ctx.createdAt).toLocaleString()}`, 555 - marginX, y, { align: "right" })
 
   y += 20
-  doc.text(`Order ID: #${ctx.orderId.slice(0, 8)}`, marginX, y)
+  doc.text(`Order ID: #${ctx.orderNumber ?? ctx.orderId.slice(0, 8)}`, marginX, y)
   doc.text(`Refunded To: ${ctx.customerName}`, 555 - marginX, y, { align: "right" })
 
   y += 35

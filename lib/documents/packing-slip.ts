@@ -20,7 +20,7 @@ export function generatePackingSlipPdf(ctx: OrderDocumentContext): void {
   y += 25
   doc.setFontSize(10)
   doc.setFont("helvetica", "normal")
-  doc.text(`Order ID: #${ctx.orderId.slice(0, 8)}`, marginX, y)
+  doc.text(`Order ID: #${ctx.orderNumber ?? ctx.orderId.slice(0, 8)}`, marginX, y)
   doc.text(`Order Date: ${new Date(ctx.createdAt).toLocaleDateString()}`, 555 - marginX, y, { align: "right" })
 
   y += 30
@@ -64,5 +64,5 @@ export function generatePackingSlipPdf(ctx: OrderDocumentContext): void {
   doc.setTextColor(120)
   doc.text("This slip is for packing verification only — no pricing information included.", marginX, y)
 
-  doc.save(`packing-slip-${ctx.orderId.slice(0, 8)}.pdf`)
+  doc.save(`packing-slip-${ctx.orderNumber ?? ctx.orderId.slice(0, 8)}.pdf`)
 }

@@ -40,6 +40,7 @@ export async function fetchOrders(
 export interface RefundDetail {
   order: {
     id: string
+    orderNumber?: string
     contactEmail: string
     createdAt: string
     paymentMethod: PaymentMethod

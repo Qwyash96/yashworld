@@ -20,6 +20,7 @@ import {
 import { ToggleSwitch } from "@/components/admin/toggle-switch"
 import { fetchSellerWallet, approveWithdrawal, rejectWithdrawal, markWithdrawalPaid } from "@/lib/admin-seller-wallet-client"
 import { formatPrice } from "@/lib/products"
+import { orderDisplayId } from "@/lib/order-display"
 import { useAdminAuth } from "@/components/admin/admin-auth-context"
 import { hasPermission, isAdminRole } from "@/lib/admin-roles"
 import type { Seller, SellerApplication, SellerApplicationStatus } from "@/types/seller"
@@ -423,7 +424,7 @@ export default function AdminSellerDetailPage() {
               if (!mine) return null
               return (
                 <div key={order.id} className="flex items-center justify-between rounded-xl border border-border bg-white p-3 text-sm shadow-sm">
-                  <span className="text-black">Order #{order.id.slice(0, 8)} — {new Date(order.createdAt).toLocaleDateString()}</span>
+                  <span className="text-black">Order #{orderDisplayId(order)} — {new Date(order.createdAt).toLocaleDateString()}</span>
                   <span className="flex items-center gap-3">
                     <span className="font-semibold text-black">
                       {formatPrice(mine.items.reduce((s, i) => s + i.price * i.quantity, 0))}
@@ -510,7 +511,7 @@ export default function AdminSellerDetailPage() {
               if (!mine) return null
               return (
                 <div key={order.id} className="flex items-center justify-between rounded-xl border border-border bg-white p-3 text-sm shadow-sm">
-                  <span className="text-black">Order #{order.id.slice(0, 8)}</span>
+                  <span className="text-black">Order #{orderDisplayId(order)}</span>
                   <span className="flex items-center gap-3 text-[#444444]">
                     <span>Commission {formatPrice(mine.commissionAmount)}</span>
                     <span className="font-semibold text-black">Payout {formatPrice(mine.payoutAmount)}</span>

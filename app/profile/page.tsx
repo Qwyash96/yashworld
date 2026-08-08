@@ -29,6 +29,7 @@ import { getUserProfile, updateUserProfile, updateUserAddresses } from "@/servic
 import { updateAuthPhoto } from "@/services/auth.service"
 import { uploadProfilePhoto } from "@/services/storage.service"
 import { sanitizeIndianMobile, sanitizeDigits } from "@/lib/numeric-input"
+import { orderDisplayId } from "@/lib/order-display"
 import type { Order, OrderStatus } from "@/types/order"
 import type { Address, UserProfile } from "@/types/user"
 import { OrderStatusBadge } from "@/components/orders/order-status-badge"
@@ -159,7 +160,7 @@ export default function ProfilePage() {
   const activityFeed = [
     ...orders.map((o) => ({
       id: `order-${o.id}`,
-      message: `Order #${o.id.slice(0, 8)} placed`,
+      message: `Order #${orderDisplayId(o)} placed`,
       createdAt: o.createdAt,
     })),
     ...(sellerCreatedAt
@@ -337,7 +338,7 @@ export default function ProfilePage() {
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-bold text-black">Order #{order.id.slice(0, 8)}</p>
+                      <p className="text-sm font-bold text-black">Order #{orderDisplayId(order)}</p>
                       <OrderStatusBadge status={order.status} />
                     </div>
                     <p className="text-[11px] text-[#888888]">

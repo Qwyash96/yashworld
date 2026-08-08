@@ -4,6 +4,10 @@ import type { OrderStatus } from "@/types/order"
 
 export interface RecentActivityRow {
   orderId: string
+  /** The sequential ORDnnnn number (lib/sequential-id.ts) — undefined only
+   * for an order created before that field existed, in which case the
+   * truncated orderId is shown instead. */
+  orderNumber?: string
   customerName: string
   productName: string
   status: OrderStatus
@@ -80,7 +84,7 @@ export function RecentOrderActivity({ rows }: { rows: RecentActivityRow[] }) {
             <tr key={row.orderId} className="border-b border-border/60 last:border-0">
               <td className="py-2.5 pr-2 whitespace-nowrap">
                 <Link href={`/seller/orders/${row.orderId}`} className="font-medium text-gray-900 hover:text-green-700 hover:underline">
-                  #{row.orderId.slice(0, 8)}
+                  #{row.orderNumber ?? row.orderId.slice(0, 8)}
                 </Link>
               </td>
               <td className="max-w-[70px] truncate py-2.5 pr-2 text-gray-700">{row.customerName}</td>

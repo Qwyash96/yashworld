@@ -9,6 +9,7 @@ import { fetchOrders } from "@/lib/admin-orders-client"
 import { PaginationControls } from "@/components/admin/pagination-controls"
 import { OrderStatusBadge } from "@/components/orders/order-status-badge"
 import { formatPrice } from "@/lib/products"
+import { orderDisplayId } from "@/lib/order-display"
 import type { Order, OrderStatus, PaymentStatus } from "@/types/order"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -154,7 +155,7 @@ export default function AdminOrdersPage() {
                 className="flex flex-col gap-2 p-4 transition-colors hover:bg-green-50 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
-                  <p className="font-semibold text-black">Order #{order.id.slice(0, 8)}</p>
+                  <p className="font-semibold text-black">Order #{orderDisplayId(order)}</p>
                   <p className="truncate text-sm text-[#444444]">{order.contactEmail}</p>
                   <p className="text-xs text-[#444444]">{new Date(order.createdAt).toLocaleString()}</p>
                 </div>

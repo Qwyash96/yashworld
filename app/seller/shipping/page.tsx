@@ -7,6 +7,7 @@ import { Truck, RefreshCw } from "lucide-react"
 import { useSellerGate } from "@/hooks/use-seller-status"
 import { syncSellerOrderTracking } from "@/services/order.service"
 import { fetchMySellerOrders } from "@/lib/seller-orders-client"
+import { orderDisplayId } from "@/lib/order-display"
 import { OrderStatusBadge } from "@/components/orders/order-status-badge"
 import type { OrderStatus } from "@/types/order"
 import type { SellerFacingOrder } from "@/lib/seller-order-redaction"
@@ -197,7 +198,7 @@ export default function SellerShippingDashboardPage() {
                         className="shrink-0"
                       />
                       <Link href={`/seller/orders/${order.id}`} className="truncate text-sm font-medium text-green-700 hover:underline">
-                        #{order.id.slice(0, 8)}
+                        #{orderDisplayId(order)}
                       </Link>
                     </label>
                     <OrderStatusBadge status={mine.status} />
@@ -238,7 +239,7 @@ export default function SellerShippingDashboardPage() {
                       </td>
                       <td className="px-4 py-3">
                         <Link href={`/seller/orders/${order.id}`} className="font-medium text-green-700 hover:underline">
-                          #{order.id.slice(0, 8)}
+                          #{orderDisplayId(order)}
                         </Link>
                         <p className="text-xs text-[#888888]">{mine.items.length} item(s)</p>
                       </td>

@@ -5,6 +5,7 @@ import { getAdminDb } from "@/lib/firebase-admin"
 import { getShippingRate } from "@/lib/shipping"
 import { isCouponCurrentlyValid } from "@/lib/coupons"
 import { round2 } from "@/lib/utils"
+import { readSequentialIdForTransaction } from "@/lib/sequential-id"
 import {
   InsufficientStockError,
   computeOrderPricing,
@@ -103,11 +104,17 @@ export async function finalizeOrder(input: FinalizeOrderInput): Promise<Finalize
   const total = await db.runTransaction(async (tx) => {
     const now = new Date()
 
-    const [productSnaps, commissionSnap, couponSnap, idempotencySnap] = await Promise.all([
+    // The order-number counter read happens here, alongside every other
+    // read this transaction needs (Firestore requires all reads before any
+    // write) — its `commit()` is only called once we're past the
+    // DuplicatePaymentError check below, so a routine double-click/gateway
+    // retry that gets caught as a duplicate never burns an order number.
+    const [productSnaps, commissionSnap, couponSnap, idempotencySnap, orderNumberMint] = await Promise.all([
       tx.getAll(...productRefs),
       tx.get(commissionRef),
       couponRef ? tx.get(couponRef) : Promise.resolve(null),
       tx.get(idempotencyRef),
+      readSequentialIdForTransaction(tx, "order"),
     ])
 
     if (idempotencySnap.exists) {
@@ -234,7 +241,10 @@ export async function finalizeOrder(input: FinalizeOrderInput): Promise<Finalize
       })
     }
 
+    orderNumberMint.commit()
+
     const order: Omit<Order, "id"> = {
+      orderNumber: orderNumberMint.id,
       buyerId: input.buyerId,
       contactEmail: input.contactEmail,
       sellerOrders,
@@ -269,7 +279,7 @@ export async function finalizeOrder(input: FinalizeOrderInput): Promise<Finalize
         type: "order_placed",
         targetPermission: "order_management",
         title: "New order placed",
-        message: `Order #${orderRef.id.slice(0, 8)} — ${round2(total)} — ${sellerIds.length} seller(s).`,
+        message: `Order #${orderNumberMint.id} — ${round2(total)} — ${sellerIds.length} seller(s).`,
         relatedType: "order",
         relatedId: orderRef.id,
       },
@@ -279,7 +289,7 @@ export async function finalizeOrder(input: FinalizeOrderInput): Promise<Finalize
         type: "payment_received",
         targetPermission: "payments",
         title: "Payment received",
-        message: `Payment of ${round2(total)} received for order #${orderRef.id.slice(0, 8)}.`,
+        message: `Payment of ${round2(total)} received for order #${orderNumberMint.id}.`,
         relatedType: "order",
         relatedId: orderRef.id,
       })
@@ -295,7 +305,7 @@ export async function finalizeOrder(input: FinalizeOrderInput): Promise<Finalize
         sellerId,
         type: "new_order",
         title: "New order received",
-        message: `You have a new order — #${orderRef.id.slice(0, 8)}.`,
+        message: `You have a new order — #${orderNumberMint.id}.`,
         relatedType: "order",
         relatedId: orderRef.id,
       }
