@@ -2,8 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { requireAdminPermission } from "@/lib/admin-api-auth"
 import { getAdminDb } from "@/lib/firebase-admin"
 import { writeAuditLog } from "@/lib/audit-log"
-import { refundPaymentForGateway } from "@/lib/payment-router"
-import { round2 } from "@/lib/utils"
+import { computeRefundBreakdown, createRefundRequest, getRefundHistory } from "@/lib/refund-service"
 import type { Order } from "@/types/order"
 import type { AdminNotificationInput } from "@/types/notification"
 
@@ -11,26 +10,59 @@ type RouteContext = { params: Promise<{ id: string }> }
 
 interface RefundBody {
   sellerId?: string
+  mode?: "full" | "manual"
+  amount?: number
+  reason?: string
 }
 
 /**
- * Sets paymentStatus/the targeted sellerOrder.status to "Refunded" AND —
- * for any prepaid order — actually returns the buyer's money via whichever
- * gateway processed the original payment (lib/payment-router.ts's
- * refundPaymentForGateway, never re-routed by priority — a refund always
- * targets the exact gateway that took the money). The gateway call happens
- * BEFORE any Firestore write so a failed refund never leaves the database
- * claiming money moved when it didn't.
- *
- * A sellerId scopes the refund to one seller's items on a multi-seller
- * order — that seller's own item total (what the buyer paid for exactly
- * those items, already post-discount), not the whole order. Omitting it
- * refunds the full order total. Shipping is not refunded on a partial,
- * matching typical return-policy practice.
- *
- * Does not implement the full ReturnRequestRecord/DisputeRecord
- * buyer-initiated-return workflow already sketched (unused) in
- * types/order-lifecycle.ts — that's a materially larger, separate feature.
+ * GET: everything Admin -> Finance -> Return/Refund needs to render one
+ * order's refund panel before any action is taken — the order itself, an
+ * eligible-refund breakdown for the whole order and (for a multi-seller
+ * order) each seller's own portion, and the full refund history/audit
+ * trail. Read-only, same "payments" permission gate as the mutating routes
+ * below, so this never leaks buyer/seller order data to an unrelated role.
+ */
+export async function GET(request: NextRequest, { params }: RouteContext) {
+  const auth = await requireAdminPermission(request, "payments")
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status })
+
+  const { id } = await params
+  const db = getAdminDb()
+  const snap = await db.collection("orders").doc(id).get()
+  if (!snap.exists) return NextResponse.json({ error: "Order not found." }, { status: 404 })
+  const order = { id: snap.id, ...snap.data() } as Order
+
+  const [orderScope, sellerScopes, refunds] = await Promise.all([
+    computeRefundBreakdown(order),
+    Promise.all(order.sellerOrders.map(async (so) => ({ sellerId: so.sellerId, breakdown: await computeRefundBreakdown(order, so.sellerId) }))),
+    getRefundHistory(id),
+  ])
+
+  return NextResponse.json({
+    order: {
+      id: order.id,
+      contactEmail: order.contactEmail,
+      createdAt: order.createdAt,
+      paymentMethod: order.paymentMethod,
+      paymentStatus: order.paymentStatus,
+      totals: order.totals,
+      totalRefundedAmount: order.totalRefundedAmount ?? 0,
+      sellerOrders: order.sellerOrders.map((so) => ({ sellerId: so.sellerId, status: so.status, itemCount: so.items.length })),
+    },
+    scopes: { order: orderScope, sellers: sellerScopes },
+    refunds,
+  })
+}
+
+/**
+ * POST: creates and (for a prepaid order) immediately processes one refund
+ * request — see lib/refund-service.ts's createRefundRequest for the full
+ * Pending->Approved->Processing->Refunded/Failed lifecycle, gateway call,
+ * and duplicate-refund guard. `approvedBy` is always the verified caller —
+ * never accepted from the request body, so a buyer or seller (who can't
+ * reach this "payments"-gated route at all) or even a spoofed admin
+ * request body can never attribute a refund to someone else.
  */
 export async function POST(request: NextRequest, { params }: RouteContext) {
   const auth = await requireAdminPermission(request, "payments")
@@ -38,77 +70,59 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
   const { id } = await params
   const db = getAdminDb()
-  const ref = db.collection("orders").doc(id)
-  const snap = await ref.get()
+  const snap = await db.collection("orders").doc(id).get()
   if (!snap.exists) return NextResponse.json({ error: "Order not found." }, { status: 404 })
-
-  const order = snap.data() as Order
-  if (order.paymentStatus === "Refunded") {
-    return NextResponse.json({ error: "This order has already been refunded." }, { status: 409 })
-  }
+  const order = { id: snap.id, ...snap.data() } as Order
 
   const body = (await request.json().catch(() => ({}))) as RefundBody
+  if (body.mode !== "full" && body.mode !== "manual") {
+    return NextResponse.json({ error: "A refund mode ('full' or 'manual') is required." }, { status: 400 })
+  }
   if (body.sellerId && !order.sellerOrders.some((so) => so.sellerId === body.sellerId)) {
     return NextResponse.json({ error: "That seller has no items on this order." }, { status: 400 })
   }
 
-  const refundAmount = body.sellerId
-    ? round2(
-        order.sellerOrders
-          .find((so) => so.sellerId === body.sellerId)!
-          .items.reduce((sum, item) => sum + item.price * item.quantity, 0),
-      )
-    : order.totals.total
-
-  if (order.paymentMethod !== "cod") {
-    // gatewayId/gatewayOrderId/gatewayPaymentId are the current fields; a
-    // pre-refactor razorpay order only has the old razorpayOrderId/
-    // razorpayPaymentId aliases (still populated for those, see
-    // types/order.ts) — fall back to those so old orders keep refunding.
-    const gatewayId = order.gatewayId ?? (order.paymentMethod === "razorpay" ? "razorpay" : undefined)
-    const gatewayOrderId = order.gatewayOrderId ?? order.razorpayOrderId
-    const gatewayPaymentId = order.gatewayPaymentId ?? order.razorpayPaymentId
-    if (!gatewayId || !gatewayOrderId || !gatewayPaymentId) {
-      return NextResponse.json({ error: "This order has no recorded gateway payment to refund." }, { status: 400 })
-    }
-    const result = await refundPaymentForGateway(gatewayId, {
-      gatewayOrderId,
-      gatewayPaymentId,
-      amountPaise: Math.round(refundAmount * 100),
-      reason: `Order #${id.slice(0, 8)}${body.sellerId ? ` — seller ${body.sellerId}` : ""}`,
+  try {
+    const { refund } = await createRefundRequest({
+      order,
+      sellerId: body.sellerId,
+      mode: body.mode,
+      amount: body.amount,
+      reason: body.reason,
+      approver: { uid: auth.uid, email: auth.email },
     })
-    if (!result.ok) {
-      return NextResponse.json({ error: result.message }, { status: 502 })
+
+    if (refund.status === "Refunded") {
+      const notification: AdminNotificationInput = {
+        type: "refund_issued",
+        targetPermission: "payments",
+        title: "Refund issued",
+        message: `Order #${id.slice(0, 8)} was refunded (${refund.amount})${body.sellerId ? " — one seller" : ""}.`,
+        relatedType: "order",
+        relatedId: id,
+      }
+      await db.collection("notifications").add({ ...notification, createdAt: new Date().toISOString() })
     }
+
+    await writeAuditLog({
+      actorUid: auth.uid,
+      actorEmail: auth.email,
+      actorRole: auth.role,
+      action: "order.refund_request",
+      targetType: "order",
+      targetId: id,
+      after: {
+        refundId: refund.id,
+        sellerId: body.sellerId,
+        mode: refund.mode,
+        amount: refund.amount,
+        reason: refund.reason,
+        status: refund.status,
+      },
+    })
+
+    return NextResponse.json({ ok: true, refund })
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to process refund." }, { status: 400 })
   }
-  // COD: no gateway payment was ever taken, so there's nothing to call —
-  // this is a cash refund handled outside the system; only the record updates.
-
-  const sellerOrders = body.sellerId
-    ? order.sellerOrders.map((so) => (so.sellerId === body.sellerId ? { ...so, status: "Returned" as const } : so))
-    : order.sellerOrders.map((so) => ({ ...so, status: "Returned" as const }))
-
-  await ref.update({ paymentStatus: "Refunded", sellerOrders })
-
-  const notification: AdminNotificationInput = {
-    type: "refund_issued",
-    targetPermission: "payments",
-    title: "Refund issued",
-    message: `Order #${id.slice(0, 8)} was refunded (${round2(refundAmount)})${body.sellerId ? " — one seller" : ""}.`,
-    relatedType: "order",
-    relatedId: id,
-  }
-  await db.collection("notifications").add({ ...notification, createdAt: new Date().toISOString() })
-
-  await writeAuditLog({
-    actorUid: auth.uid,
-    actorEmail: auth.email,
-    actorRole: auth.role,
-    action: "order.refund",
-    targetType: "order",
-    targetId: id,
-    after: { paymentStatus: "Refunded", sellerId: body.sellerId, refundAmount },
-  })
-
-  return NextResponse.json({ ok: true, refundAmount })
 }

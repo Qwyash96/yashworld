@@ -157,6 +157,13 @@ export interface Order {
    * candidates without scanning every order. Set/cleared by
    * app/api/seller/orders/[id]/status/route.ts. */
   hasHeldPayouts?: boolean
+  /** Denormalized sum of every "Refunded" (completed) record in this
+   * order's orders/{id}/refunds subcollection — lets the eligible-refund
+   * calculation and the Refunds list page read one number instead of
+   * summing the subcollection on every request. Written transactionally
+   * alongside each refund record by lib/refund-service.ts; never set
+   * directly anywhere else. */
+  totalRefundedAmount?: number
   shippingAddress: Address
   shippingMethod: ShippingMethod
   paymentMethod: PaymentMethod

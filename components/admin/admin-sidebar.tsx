@@ -75,9 +75,11 @@ export const adminSections: AdminSection[] = [
     // gives "payments"-holders a route-guard override on those exact pages
     // without opening the rest of /admin/integrations (still settings-only,
     // see the Integrations section below).
-    label: "Payments",
+    label: "Finance",
     permission: "payments",
     items: [
+      { label: "Finance Dashboard", href: "/admin/finance" },
+      { label: "Adjustments", href: "/admin/finance/adjustments" },
       { label: "Payment Settings", href: "/admin/settings/payment-methods" },
       { label: "Cashfree", href: "/admin/integrations/cashfree" },
       { label: "PhonePe PG", href: "/admin/integrations/phonepe" },
@@ -85,7 +87,7 @@ export const adminSections: AdminSection[] = [
       { label: "Stripe", href: "/admin/integrations/stripe" },
       { label: "PayPal", href: "/admin/integrations/paypal" },
       { label: "Payouts", href: "/admin/payouts" },
-      { label: "Refunds", href: "/admin/refunds" },
+      { label: "Return/Refund", href: "/admin/refunds" },
       { label: "Settlements", href: "/admin/settlements" },
     ],
   },

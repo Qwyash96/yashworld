@@ -64,6 +64,25 @@ export async function requireAdminPermission(request: NextRequest, permission: A
   return { ok: true, uid: caller.uid, email: caller.email, role: caller.role }
 }
 
+/** Like requireAdminPermission, but passes if the caller holds ANY of the
+ * given permissions — used by finance read routes (Admin -> Finance
+ * dashboard/ledger/adjustments list) that Operations Admin can view for
+ * return-case context even though only "payments" holders can mutate. */
+export async function requireAnyPermission(request: NextRequest, permissions: AdminPermission[]): Promise<AuthResult> {
+  const caller = await verifyCaller(request)
+  if (!caller.ok) return caller
+
+  if (caller.role === "super_admin") {
+    return { ok: true, uid: caller.uid, email: caller.email, role: "super_admin" }
+  }
+
+  if (!isAdminRole(caller.role) || !permissions.some((p) => hasPermission(caller.role as AdminRole, p))) {
+    return { ok: false, status: 403, error: "You don't have permission to perform this action." }
+  }
+
+  return { ok: true, uid: caller.uid, email: caller.email, role: caller.role }
+}
+
 /** Verifies the caller's Firebase ID token and requires ANY admin role (no specific permission) —
  * used by routes like the dashboard/notifications, where the page itself decides what to show per role. */
 export async function requireAnyAdmin(request: NextRequest): Promise<AuthResult> {

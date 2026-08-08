@@ -3,7 +3,8 @@
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { useParams, useSearchParams } from "next/navigation"
-import { CheckCircle2 } from "lucide-react"
+import { toast } from "sonner"
+import { CheckCircle2, FileText, Receipt, Download } from "lucide-react"
 import { useStore } from "@/components/store-provider"
 import { getOrderById } from "@/services/order.service"
 import { getReview } from "@/services/review.service"
@@ -20,6 +21,13 @@ import { WriteReviewDialog } from "@/components/reviews/write-review-dialog"
 import { isCancellable } from "@/types/order-lifecycle"
 import { getDeliveryEstimate } from "@/lib/delivery-estimate"
 import { getPublicTrackingUrl } from "@/lib/public-tracking-url"
+import { fetchFinanceDocuments, fetchFinanceDocumentDetail, generateFinanceDocument } from "@/lib/admin-finance-client"
+import { fetchBusinessInfo, type RefundDocumentContext } from "@/lib/documents/finance-document-context"
+import { buildPaymentReceiptPdf } from "@/lib/documents/payment-receipt"
+import { buildRefundReceiptPdf } from "@/lib/documents/refund-receipt"
+import { downloadPdf } from "@/lib/documents/pdf-actions"
+import { buildOrderDocumentContext } from "@/lib/documents/order-document-context"
+import { FINANCE_DOCUMENT_LABELS, type FinanceDocument } from "@/types/finance-document"
 import type { DiscountSource } from "@/types/order"
 
 const DISCOUNT_SOURCE_LABELS: Partial<Record<DiscountSource, string>> = {
@@ -37,9 +45,17 @@ export default function OrderDetailPage() {
   const [reviewsByProduct, setReviewsByProduct] = useState<Record<string, Review | null>>({})
   const [reviewDialogProductId, setReviewDialogProductId] = useState<string | null>(null)
   const [cancelDialogSellerId, setCancelDialogSellerId] = useState<string | null>(null)
+  const [documents, setDocuments] = useState<FinanceDocument[]>([])
+  const [docBusy, setDocBusy] = useState<string | null>(null)
 
   useEffect(() => {
     getOrderById(params.id).then(setOrder)
+  }, [params.id])
+
+  useEffect(() => {
+    fetchFinanceDocuments({ orderId: params.id }).then((result) => {
+      if (result.ok) setDocuments(result.documents)
+    })
   }, [params.id])
 
   useEffect(() => {
@@ -77,6 +93,76 @@ export default function OrderDetailPage() {
         </Link>
       </div>
     )
+  }
+
+  // TS can't carry the narrowing from the guard above into the nested
+  // function declarations below (their closure re-widens `order` back to
+  // its full `Order | null | "loading"` declared type) — this local const
+  // is a real `Order` for the rest of this render, used by those handlers.
+  const currentOrder: Order = order
+
+  async function handleGenerateInvoice(sellerOrder: Order["sellerOrders"][number]) {
+    setDocBusy(`invoice-${sellerOrder.sellerId}`)
+    try {
+      const result = await generateFinanceDocument("invoice", currentOrder.id)
+      if (!result.ok) {
+        toast.error(result.error)
+        return
+      }
+      const productNames = new Map(sellerOrder.items.map((i) => [i.productId, getProductById(i.productId)?.name ?? i.productId]))
+      const ctx = buildOrderDocumentContext(
+        currentOrder,
+        sellerOrder,
+        sellerOrder.sellerId === "yashworld" ? "IXOFLORA" : sellerOrder.sellerId,
+        productNames,
+      )
+      const { generateInvoicePdf } = await import("@/lib/documents/invoice")
+      generateInvoicePdf(ctx)
+      setDocuments((prev) => [...prev, result.document])
+    } finally {
+      setDocBusy(null)
+    }
+  }
+
+  async function handleGeneratePaymentReceipt() {
+    setDocBusy("payment-receipt")
+    try {
+      const result = await generateFinanceDocument("payment_receipt", currentOrder.id)
+      if (!result.ok) {
+        toast.error(result.error)
+        return
+      }
+      const business = await fetchBusinessInfo()
+      const doc = buildPaymentReceiptPdf({
+        business,
+        documentNumber: result.document.documentNumber,
+        orderId: currentOrder.id,
+        createdAt: result.document.createdAt,
+        customerName: currentOrder.shippingAddress.fullName,
+        amount: currentOrder.totals.total,
+        paymentMethod: currentOrder.paymentMethod === "cod" ? "Cash on Delivery" : "Online Payment",
+        paymentStatus: currentOrder.paymentStatus,
+      })
+      downloadPdf(doc, `${result.document.documentNumber}.pdf`)
+      setDocuments((prev) => [...prev, result.document])
+    } finally {
+      setDocBusy(null)
+    }
+  }
+
+  async function handleDownloadRefundReceipt(document: FinanceDocument) {
+    setDocBusy(document.id)
+    try {
+      const result = await fetchFinanceDocumentDetail<RefundDocumentContext>(document.id)
+      if (!result.ok) {
+        toast.error(result.error)
+        return
+      }
+      const doc = buildRefundReceiptPdf(result.context)
+      downloadPdf(doc, `${result.context.documentNumber}.pdf`)
+    } finally {
+      setDocBusy(null)
+    }
   }
 
   return (
@@ -244,6 +330,52 @@ export default function OrderDetailPage() {
           onSaved={(review) => setReviewsByProduct((prev) => ({ ...prev, [reviewDialogProductId]: review }))}
         />
       )}
+
+      <Separator className="my-6" />
+
+      <h2 className="font-medium">Documents</h2>
+      <div className="mt-4 space-y-2">
+        {order.sellerOrders.map((so) => (
+          <Button
+            key={so.sellerId}
+            type="button"
+            variant="outline"
+            className="h-9 w-full justify-start sm:w-auto"
+            disabled={docBusy === `invoice-${so.sellerId}`}
+            onClick={() => handleGenerateInvoice(so)}
+          >
+            <FileText className="size-4" />
+            Invoice {order.sellerOrders.length > 1 ? `— Seller ${so.sellerId}` : ""}
+          </Button>
+        ))}
+        {(order.paymentStatus === "Paid" || order.paymentStatus === "Refunded") && (
+          <Button
+            type="button"
+            variant="outline"
+            className="h-9 w-full justify-start sm:w-auto"
+            disabled={docBusy === "payment-receipt"}
+            onClick={handleGeneratePaymentReceipt}
+          >
+            <Receipt className="size-4" />
+            Payment Receipt
+          </Button>
+        )}
+        {documents
+          .filter((d) => d.type === "refund_receipt" || d.type === "credit_note")
+          .map((d) => (
+            <Button
+              key={d.id}
+              type="button"
+              variant="outline"
+              className="h-9 w-full justify-start sm:w-auto"
+              disabled={docBusy === d.id}
+              onClick={() => handleDownloadRefundReceipt(d)}
+            >
+              <Download className="size-4" />
+              {FINANCE_DOCUMENT_LABELS[d.type]} — {d.documentNumber}
+            </Button>
+          ))}
+      </div>
 
       <Separator className="my-6" />
 

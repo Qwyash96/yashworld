@@ -1,5 +1,6 @@
 import { auth } from "@/services/firebase/client"
-import type { Order } from "@/types/order"
+import type { Order, PaymentMethod } from "@/types/order"
+import type { RefundBreakdown, RefundRequest } from "@/types/refund"
 
 async function authHeaders(): Promise<HeadersInit> {
   const token = await auth.currentUser?.getIdToken()
@@ -36,14 +37,74 @@ export async function fetchOrders(
   return { ok: true, ...result.data }
 }
 
-export async function refundOrder(orderId: string, sellerId?: string): Promise<{ ok: true } | { ok: false; error: string }> {
+export interface RefundDetail {
+  order: {
+    id: string
+    contactEmail: string
+    createdAt: string
+    paymentMethod: PaymentMethod
+    paymentStatus: string
+    totals: { subtotal: number; discount: number; shipping: number; total: number }
+    totalRefundedAmount: number
+    sellerOrders: { sellerId: string; status: string; itemCount: number }[]
+  }
+  scopes: {
+    order: RefundBreakdown
+    sellers: { sellerId: string; breakdown: RefundBreakdown }[]
+  }
+  refunds: RefundRequest[]
+}
+
+/** Admin -> Finance -> Return/Refund's per-order detail: order summary,
+ * an eligible-refund breakdown for the whole order and each seller's own
+ * portion, and the full refund history/audit trail. */
+export async function fetchRefundDetail(orderId: string): Promise<{ ok: true; data: RefundDetail } | { ok: false; error: string }> {
+  const headers = await authHeaders()
+  const response = await fetch(`/api/admin/orders/${orderId}/refund`, { headers })
+  return parseResult<RefundDetail>(response)
+}
+
+export interface SubmitRefundInput {
+  sellerId?: string
+  mode: "full" | "manual"
+  amount?: number
+  reason?: string
+}
+
+/** Creates and (for a prepaid order) immediately processes one refund —
+ * see lib/refund-service.ts's createRefundRequest for the full lifecycle. */
+export async function submitRefund(
+  orderId: string,
+  input: SubmitRefundInput,
+): Promise<{ ok: true; refund: RefundRequest } | { ok: false; error: string }> {
   const headers = await authHeaders()
   const response = await fetch(`/api/admin/orders/${orderId}/refund`, {
     method: "POST",
     headers,
-    body: JSON.stringify({ sellerId }),
+    body: JSON.stringify(input),
   })
-  return parseResult<{ ok: true }>(response)
+  const result = await parseResult<{ ok: true; refund: RefundRequest }>(response)
+  if (!result.ok) return result
+  return { ok: true, refund: result.data.refund }
+}
+
+/** Finance Admin's manual completion of a COD refund record (no live
+ * gateway exists to confirm cash the courier collected). */
+export async function decideRefund(
+  orderId: string,
+  refundId: string,
+  decision: "Refunded" | "Failed" | "Rejected",
+  note?: string,
+): Promise<{ ok: true; refund: RefundRequest } | { ok: false; error: string }> {
+  const headers = await authHeaders()
+  const response = await fetch(`/api/admin/orders/${orderId}/refund/${refundId}/decision`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ decision, note }),
+  })
+  const result = await parseResult<{ ok: true; refund: RefundRequest }>(response)
+  if (!result.ok) return result
+  return { ok: true, refund: result.data.refund }
 }
 
 /** Admin "Sync Tracking" — live-pulls the current status from whichever

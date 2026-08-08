@@ -6,7 +6,7 @@ import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { ArrowLeft, RefreshCw } from "lucide-react"
 import { getOrderById, updateOrderStatus } from "@/services/order.service"
-import { refundOrder, syncAdminOrderTracking } from "@/lib/admin-orders-client"
+import { syncAdminOrderTracking } from "@/lib/admin-orders-client"
 import { formatPrice } from "@/lib/products"
 import { OrderStatusBadge } from "@/components/orders/order-status-badge"
 import type { Order, OrderStatus, PaymentMethod } from "@/types/order"
@@ -86,17 +86,6 @@ export default function AdminOrderDetailPage() {
     refresh()
   }
 
-  async function handleRefund(sellerId?: string) {
-    if (!window.confirm(sellerId ? "Refund this seller's portion of the order?" : "Refund the entire order?")) return
-    const result = await refundOrder(order!.id, sellerId)
-    if (!result.ok) {
-      toast.error(result.error)
-      return
-    }
-    toast.success("Refund issued.")
-    refresh()
-  }
-
   return (
     <div>
       <Link href="/admin/orders" className="flex items-center gap-1 text-sm text-[#444444] hover:text-green-700">
@@ -123,9 +112,11 @@ export default function AdminOrderDetailPage() {
               ))}
             </SelectContent>
           </Select>
-          <Button size="sm" variant="destructive" className="h-9" onClick={() => handleRefund()}>
-            Refund Order
-          </Button>
+          <Link href={`/admin/refunds/${order.id}`}>
+            <Button size="sm" variant="destructive" className="h-9">
+              Refund Order
+            </Button>
+          </Link>
         </div>
       </div>
 
@@ -176,9 +167,11 @@ export default function AdminOrderDetailPage() {
                 <div className="flex items-center gap-2">
                   <OrderStatusBadge status={so.status} />
                   {so.status !== "Returned" && (
-                    <Button size="sm" variant="outline" className="h-8" onClick={() => handleRefund(so.sellerId)}>
-                      Refund
-                    </Button>
+                    <Link href={`/admin/refunds/${order.id}`}>
+                      <Button size="sm" variant="outline" className="h-8">
+                        Refund
+                      </Button>
+                    </Link>
                   )}
                 </div>
               </div>

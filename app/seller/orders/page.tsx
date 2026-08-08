@@ -3,15 +3,20 @@
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
-import { Search, Wallet as WalletIcon, PackageSearch } from "lucide-react"
+import { Search, Wallet as WalletIcon, PackageSearch, FileText, Eye, Download, Printer } from "lucide-react"
 import { useSellerGate } from "@/hooks/use-seller-status"
 import { useStore } from "@/components/store-provider"
 import { fetchMySellerOrders } from "@/lib/seller-orders-client"
 import { fetchMyWallet, requestWithdrawal } from "@/lib/seller-wallet-client"
+import { fetchFinanceDocuments, fetchFinanceDocumentDetail } from "@/lib/admin-finance-client"
+import type { AdjustmentDocumentContext } from "@/lib/documents/finance-document-context"
+import { buildAdjustmentStatementPdf } from "@/lib/documents/adjustment-statement"
+import { downloadPdf, viewPdf, printPdf } from "@/lib/documents/pdf-actions"
 import { formatPrice } from "@/lib/products"
 import type { OrderStatus } from "@/types/order"
 import type { SellerFacingOrder } from "@/lib/seller-order-redaction"
 import type { SellerWallet, WithdrawalRequest } from "@/types/wallet"
+import { FINANCE_DOCUMENT_LABELS, type FinanceDocument } from "@/types/finance-document"
 import { OrderStatusBadge } from "@/components/orders/order-status-badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -48,6 +53,8 @@ export default function SellerOrdersPage() {
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[] | null>(null)
   const [withdrawAmount, setWithdrawAmount] = useState("")
   const [requesting, setRequesting] = useState(false)
+  const [financeDocuments, setFinanceDocuments] = useState<FinanceDocument[]>([])
+  const [docBusyId, setDocBusyId] = useState<string | null>(null)
 
   const [filter, setFilter] = useState<FilterKey>("all")
   const [search, setSearch] = useState("")
@@ -66,7 +73,27 @@ export default function SellerOrdersPage() {
     if (!sellerUid) return
     fetchMySellerOrders().then(setOrders)
     refreshWallet()
+    fetchFinanceDocuments().then((result) => {
+      if (result.ok) setFinanceDocuments(result.documents)
+    })
   }, [sellerUid])
+
+  async function handleFinanceDocumentAction(document: FinanceDocument, action: "view" | "download" | "print") {
+    setDocBusyId(document.id)
+    try {
+      const result = await fetchFinanceDocumentDetail<AdjustmentDocumentContext>(document.id)
+      if (!result.ok) {
+        toast.error(result.error)
+        return
+      }
+      const doc = buildAdjustmentStatementPdf(result.context)
+      if (action === "view") viewPdf(doc)
+      else if (action === "print") printPdf(doc)
+      else downloadPdf(doc, `${result.context.documentNumber}.pdf`)
+    } finally {
+      setDocBusyId(null)
+    }
+  }
 
   async function handleRequestWithdrawal() {
     const amount = Number(withdrawAmount)
@@ -186,6 +213,41 @@ export default function SellerOrdersPage() {
                   <span className="capitalize">{w.status}</span>
                 </div>
               ))}
+            </div>
+          )}
+
+          {financeDocuments.length > 0 && (
+            <div className="mt-4 border-t border-border pt-3 sm:mt-6 sm:pt-4">
+              <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-[#444444]">
+                <FileText className="size-3.5 text-green-700" />
+                Charges, Credits & Adjustment Documents
+              </h3>
+              <div className="mt-2 flex flex-col divide-y divide-border">
+                {financeDocuments.map((d) => (
+                  <div key={d.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-xs sm:text-sm">
+                    <div>
+                      <p className="text-black">
+                        {FINANCE_DOCUMENT_LABELS[d.type]} — {formatPrice(d.amount)}
+                      </p>
+                      <p className="text-[#888888]">
+                        {d.documentNumber} · {new Date(d.createdAt).toLocaleDateString()}
+                        {d.orderId ? ` · Order #${d.orderId.slice(0, 8)}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <Button size="sm" variant="outline" className="h-7" disabled={docBusyId === d.id} onClick={() => handleFinanceDocumentAction(d, "view")}>
+                        <Eye className="size-3" />
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-7" disabled={docBusyId === d.id} onClick={() => handleFinanceDocumentAction(d, "download")}>
+                        <Download className="size-3" />
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-7" disabled={docBusyId === d.id} onClick={() => handleFinanceDocumentAction(d, "print")}>
+                        <Printer className="size-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </section>

@@ -1,9 +1,10 @@
 "use client"
 
+import Link from "next/link"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { Undo2 } from "lucide-react"
-import { fetchRefundableOrders, refundOrder } from "@/lib/admin-orders-client"
+import { fetchRefundableOrders } from "@/lib/admin-orders-client"
 import { PaginationControls } from "@/components/admin/pagination-controls"
 import { formatPrice } from "@/lib/products"
 import type { Order, PaymentMethod } from "@/types/order"
@@ -31,7 +32,6 @@ export default function AdminRefundsPage() {
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [hasMore, setHasMore] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [busyId, setBusyId] = useState<string | null>(null)
 
   async function loadPage(cursor: string | null) {
     setLoading(true)
@@ -67,24 +67,11 @@ export default function AdminRefundsPage() {
     loadPage(cursorStack[pageIndex - 1])
   }
 
-  async function handleRefund(orderId: string) {
-    if (!window.confirm("Refund the entire order?")) return
-    setBusyId(orderId)
-    const result = await refundOrder(orderId)
-    setBusyId(null)
-    if (!result.ok) {
-      toast.error(result.error)
-      return
-    }
-    toast.success("Refund issued.")
-    loadPage(cursorStack[pageIndex])
-  }
-
   return (
     <div>
       <div className="flex items-center gap-3">
         <Undo2 className="size-6 text-green-700" />
-        <h1 className="text-2xl font-bold text-black">Refunds</h1>
+        <h1 className="text-2xl font-bold text-black">Return/Refund</h1>
       </div>
       <p className="mt-1 text-sm text-[#444444]">Paid orders eligible for refund, and refund history.</p>
 
@@ -122,11 +109,11 @@ export default function AdminRefundsPage() {
                 <span className="font-semibold text-black">{formatPrice(order.totals.total)}</span>
                 <Badge variant={order.paymentStatus === "Refunded" ? "destructive" : "default"}>{order.paymentStatus}</Badge>
                 <span className="text-xs text-[#888888]">{PAYMENT_METHOD_LABELS[order.paymentMethod] ?? order.paymentMethod}</span>
-                {order.paymentStatus === "Paid" && (
-                  <Button size="sm" variant="destructive" className="h-8" disabled={busyId === order.id} onClick={() => handleRefund(order.id)}>
-                    Refund
+                <Link href={`/admin/refunds/${order.id}`}>
+                  <Button size="sm" variant={order.paymentStatus === "Paid" ? "destructive" : "outline"} className="h-8">
+                    {order.paymentStatus === "Paid" ? "Manage Refund" : "View Refund History"}
                   </Button>
-                )}
+                </Link>
               </div>
             ))}
           </div>
