@@ -8,6 +8,7 @@ import { CheckCircle2, FileText, Receipt, Download } from "lucide-react"
 import { useStore } from "@/components/store-provider"
 import { getOrderById } from "@/services/order.service"
 import { getReview } from "@/services/review.service"
+import { getSellerProfile } from "@/services/seller.service"
 import { formatPrice } from "@/lib/products"
 import type { Order } from "@/types/order"
 import type { Review } from "@/types/review"
@@ -48,10 +49,29 @@ export default function OrderDetailPage() {
   const [cancelDialogSellerId, setCancelDialogSellerId] = useState<string | null>(null)
   const [documents, setDocuments] = useState<FinanceDocument[]>([])
   const [docBusy, setDocBusy] = useState<string | null>(null)
+  const [sellerShopNames, setSellerShopNames] = useState<Record<string, string>>({})
 
   useEffect(() => {
     getOrderById(params.id).then(setOrder)
   }, [params.id])
+
+  // Marketplace-style "Sold by: [Seller Business Name]" — resolved here,
+  // once the order loads, straight from sellers/{uid}.shopName (public-read,
+  // see services/seller.service.ts) rather than ever showing the raw
+  // sellerId. "yashworld" is the platform's own first-party fulfilment,
+  // not a real seller doc, so it's special-cased to "IXOFLORA" below.
+  useEffect(() => {
+    if (order === "loading" || !order) return
+    const sellerIds = Array.from(new Set(order.sellerOrders.map((so) => so.sellerId))).filter((id) => id !== "yashworld")
+    sellerIds.forEach((sellerId) => {
+      getSellerProfile(sellerId)
+        .then((seller) => {
+          if (seller) setSellerShopNames((prev) => ({ ...prev, [sellerId]: seller.shopName }))
+        })
+        .catch(() => {})
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order === "loading" ? null : order?.id])
 
   useEffect(() => {
     fetchFinanceDocuments({ orderId: params.id }).then((result) => {
@@ -102,6 +122,15 @@ export default function OrderDetailPage() {
   // is a real `Order` for the rest of this render, used by those handlers.
   const currentOrder: Order = order
 
+  // Marketplace-style seller display name — NEVER the raw sellerId. Falls
+  // back to "Seller" only for the brief moment before getSellerProfile
+  // resolves (or if it's genuinely unavailable), matching the "never show
+  // an internal identifier" requirement even in that edge case.
+  function sellerDisplayName(sellerId: string): string {
+    if (sellerId === "yashworld") return "IXOFLORA"
+    return sellerShopNames[sellerId] ?? "Seller"
+  }
+
   async function handleGenerateInvoice(sellerOrder: Order["sellerOrders"][number]) {
     setDocBusy(`invoice-${sellerOrder.sellerId}`)
     try {
@@ -114,7 +143,7 @@ export default function OrderDetailPage() {
       const ctx = buildOrderDocumentContext(
         currentOrder,
         sellerOrder,
-        sellerOrder.sellerId === "yashworld" ? "IXOFLORA" : sellerOrder.sellerId,
+        sellerDisplayName(sellerOrder.sellerId),
         productNames,
       )
       const { generateInvoicePdf } = await import("@/lib/documents/invoice")
@@ -224,7 +253,7 @@ export default function OrderDetailPage() {
           <div key={sellerOrder.sellerId} className="rounded-md border border-border p-4">
             <div className="flex items-center justify-between">
               <p className="text-xs uppercase tracking-widest text-muted-foreground">
-                Sold by {sellerOrder.sellerId === "yashworld" ? "IXOFLORA" : sellerOrder.sellerId}
+                Sold by: {sellerDisplayName(sellerOrder.sellerId)}
               </p>
               <OrderStatusBadge status={sellerOrder.status} />
             </div>
@@ -347,7 +376,7 @@ export default function OrderDetailPage() {
             onClick={() => handleGenerateInvoice(so)}
           >
             <FileText className="size-4" />
-            Invoice {order.sellerOrders.length > 1 ? `— Seller ${so.sellerId}` : ""}
+            Invoice {order.sellerOrders.length > 1 ? `— ${sellerDisplayName(so.sellerId)}` : ""}
           </Button>
         ))}
         {(order.paymentStatus === "Paid" || order.paymentStatus === "Refunded") && (

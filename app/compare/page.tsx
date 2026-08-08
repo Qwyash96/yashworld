@@ -80,14 +80,6 @@ export default function ComparePage() {
             ))}
           </CompareRow>
 
-          <CompareRow label="Seller">
-            {products.map((p) => (
-              <span key={p.id} className="text-sm text-black">
-                {p.sellerName || "—"}
-              </span>
-            ))}
-          </CompareRow>
-
           <CompareRow label="Delivery">
             {products.map((p) => (
               <span key={p.id} className="text-sm text-black">

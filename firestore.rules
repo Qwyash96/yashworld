@@ -398,10 +398,17 @@ service cloud.firestore {
     // other field fixed by the batch write at the call site.
     match /notifications/{id} {
       allow read: if isAdmin();
+      // A brand-new doc on `create` has no prior `resource` (it's null), so
+      // `.diff(resource.data)` here always threw a null-reference rule
+      // evaluation error — surfaced to the client as a generic
+      // PERMISSION_DENIED on every seller-application submission and every
+      // support-ticket creation. `create` never has a "before", so just
+      // check the new doc's own keys directly instead of diffing against
+      // a document that doesn't exist yet.
       allow create: if isSignedIn()
         && request.resource.data.type in ['seller_application_submitted', 'support_ticket_created']
         && request.resource.data.relatedId == request.auth.uid
-        && request.resource.data.diff(resource.data).affectedKeys()
+        && request.resource.data.keys()
              .hasOnly(['id', 'type', 'targetPermission', 'title', 'message', 'relatedType', 'relatedId', 'createdAt']);
       allow update, delete: if false;
     }

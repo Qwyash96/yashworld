@@ -38,12 +38,6 @@ export async function getApprovedSellers(): Promise<Seller[]> {
   }
 }
 
-/** Admin-curated subset of getApprovedSellers() for the homepage's Featured Sellers section. */
-export async function getFeaturedSellers(): Promise<Seller[]> {
-  const sellers = await getApprovedSellers()
-  return sellers.filter((s) => s.featured)
-}
-
 /** The caller's own KYC application (or an admin's view of someone else's). */
 export async function getSellerApplication(uid: string): Promise<SellerApplication | null> {
   try {

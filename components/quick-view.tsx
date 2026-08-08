@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Star, Heart, Truck, Store } from "lucide-react"
+import { Star, Heart, Truck } from "lucide-react"
 import { useStore } from "@/components/store-provider"
 import { type Product } from "@/lib/products"
 import { Price } from "@/components/price"
@@ -63,12 +63,6 @@ export function QuickView({
                 <Truck className="size-3.5 text-green-700" />
                 {getDeliveryEstimate()}
               </span>
-              {product.sellerName && (
-                <span className="flex items-center gap-1.5">
-                  <Store className="size-3.5 text-green-700" />
-                  Sold by {product.sellerName}
-                </span>
-              )}
             </div>
 
             <ProductCardActions product={product} />

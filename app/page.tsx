@@ -1,7 +1,6 @@
 import { getProductCatalog, getCategoryCatalog } from "@/services/catalog.service"
 import { getActiveBanners } from "@/services/banner.service"
 import { getActiveFlashSales } from "@/services/campaign.service"
-import { getFeaturedSellers } from "@/services/seller.service"
 import { getRunningAdsByPosition } from "@/services/sponsored-ad.service"
 import { getTrustBadgesSettings } from "@/lib/platform-settings"
 import { calculateDiscountPercent } from "@/lib/discount"
@@ -9,7 +8,6 @@ import { HeroSlider } from "@/components/marketplace/hero-slider"
 import { CategoryPillBar } from "@/components/marketplace/category-pill-bar"
 import { TrustBadges } from "@/components/marketplace/trust-badges"
 import { FlashDeals } from "@/components/marketplace/flash-deals"
-import { FeaturedSellers } from "@/components/marketplace/featured-sellers"
 import { ProductRail } from "@/components/marketplace/product-rail"
 import { RecentlyViewedSection } from "@/components/marketplace/recently-viewed-section"
 import { FullCatalogBrowser } from "@/components/marketplace/full-catalog-browser"
@@ -27,8 +25,12 @@ export const revalidate = 60
  * The homepage — every section below is real, admin-editable, database-
  * backed data (or renders nothing at all): banners from Admin → Banners,
  * categories from Admin → Categories, flash deals from active
- * `flash_sale` campaigns, featured sellers from Admin → Sellers, trust
- * badges from Admin → Settings → General. Trending / Best Sellers / Indoor
+ * `flash_sale` campaigns, trust badges from Admin → Settings → General.
+ * Seller identity is deliberately never surfaced anywhere on this page or
+ * any other buyer browsing/listing surface (product cards, quick view,
+ * compare) — a buyer only ever sees which seller fulfilled an order on
+ * their own Order Details page, after purchase (app/orders/[id]/page.tsx).
+ * Trending / Best Sellers / Indoor
  * / Outdoor / New Arrivals / Today's Deals are all derived from the same
  * real product catalog the full browse grid below uses — no separate
  * fetch, no fabricated data.
@@ -46,12 +48,11 @@ export const revalidate = 60
  * each slot renders nothing at all when no ad is currently running there.
  */
 export default async function HomePage() {
-  const [products, categories, banners, flashSales, featuredSellers, trustBadgesSettings, sponsoredAds] = await Promise.all([
+  const [products, categories, banners, flashSales, trustBadgesSettings, sponsoredAds] = await Promise.all([
     getProductCatalog(),
     getCategoryCatalog(),
     getActiveBanners(),
     getActiveFlashSales(),
-    getFeaturedSellers(),
     getTrustBadgesSettings(),
     getRunningAdsByPosition(),
   ])
@@ -118,7 +119,6 @@ export default async function HomePage() {
 
       <RecentlyViewedSection />
 
-      <FeaturedSellers sellers={featuredSellers} />
       <SponsoredAdSlot ads={sponsoredAds.middle} />
 
       <FullCatalogBrowser categories={categories} />

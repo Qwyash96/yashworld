@@ -51,6 +51,19 @@ export function LiveSelfieCapture({
 
   useEffect(() => stopStream, [])
 
+  // `useState(value ? "done" : "idle")` above only seeds `phase` from
+  // `value` on the very first render — it never re-syncs if `value` only
+  // becomes available (or changes) afterward, which is exactly the "captures
+  // fine, then disappears" failure mode: the persisted selfie path is real
+  // and correct in the parent's state, but this component's own local
+  // `phase` never gets told about it. Only auto-advances FROM "idle" (never
+  // interrupts an in-progress capture/upload, and never fights a deliberate
+  // "Retake") so this is purely additive — a no-op whenever the mount-time
+  // initializer already got it right.
+  useEffect(() => {
+    if (value && phase === "idle") setPhase("done")
+  }, [value, phase])
+
   async function startCamera() {
     setError("")
     setPhase("requesting")
