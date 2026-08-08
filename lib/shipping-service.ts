@@ -3,6 +3,8 @@ import { getDecryptedCredentials, getIntegrationConfig } from "@/lib/integration
 import {
   createShiprocketShipment,
   assignShiprocketAwb,
+  generateShiprocketPickup,
+  generateShiprocketLabel,
   trackShiprocketAwb,
   cancelShiprocketShipment,
   mapShiprocketStatusToOrderStatus,
@@ -93,12 +95,30 @@ export interface CommonTrackingResult {
   mappedStatus: Extract<OrderStatus, "Picked Up" | "In Transit" | "Out For Delivery" | "Delivered"> | null
 }
 
+/** Only ever populated from a real provider response — every field is
+ * optional on purpose, and the caller must never invent a value for one
+ * that's missing (see SellerOrder.pickupWindow/pickupDate/pickupTime doc
+ * comments in types/order.ts). `confirmed` is true only when the provider's
+ * own response explicitly says pickup is scheduled, not merely requested. */
+export interface CommonPickupResult {
+  pickupDate?: string
+  pickupTime?: string
+  pickupWindow?: string
+  confirmed: boolean
+}
+
+export interface CommonLabelResult {
+  labelUrl: string
+}
+
 export interface ShippingProviderAdapter {
   displayName: string
   createShipment(credentials: Record<string, string>, input: CommonShipmentInput): Promise<CommonShipment>
   assignAwb(credentials: Record<string, string>, shipment: CommonShipment): Promise<CommonAwbAssignment>
-  /** Not every provider needs a separate pickup call (some assign a pickup slot as part of AWB assignment) — omit when there's nothing more to do. */
-  requestPickup?(credentials: Record<string, string>, shipment: CommonShipment, pickupDate?: string): Promise<void>
+  /** Not every provider needs a separate pickup call (some assign a pickup slot as part of AWB assignment) — omit when there's nothing more to do. Returns real pickup confirmation details when the provider's API reports any; omit/return nothing rather than guess. */
+  requestPickup?(credentials: Record<string, string>, shipment: CommonShipment, pickupDate?: string): Promise<CommonPickupResult | void>
+  /** Not every provider exposes a fetchable label through its API — omit entirely rather than fabricate one. */
+  fetchLabel?(credentials: Record<string, string>, shipment: CommonShipment): Promise<CommonLabelResult | null>
   trackShipment(credentials: Record<string, string>, awbCode: string): Promise<CommonTrackingResult>
   cancelShipment(credentials: Record<string, string>, shipment: CommonShipment): Promise<void>
 }
@@ -129,6 +149,14 @@ const SHIPPING_PROVIDERS: Record<ShippingProviderId, ShippingProviderAdapter> = 
     },
     async assignAwb(credentials, shipment) {
       return assignShiprocketAwb(credentials as { email: string; password: string }, Number(shipment.shipmentId))
+    },
+    async requestPickup(credentials, shipment) {
+      const result = await generateShiprocketPickup(credentials as { email: string; password: string }, Number(shipment.shipmentId))
+      return { confirmed: result.confirmed, ...(result.pickupDate ? { pickupDate: result.pickupDate } : {}), ...(result.pickupTime ? { pickupTime: result.pickupTime } : {}) }
+    },
+    async fetchLabel(credentials, shipment) {
+      const result = await generateShiprocketLabel(credentials as { email: string; password: string }, Number(shipment.shipmentId))
+      return result.labelUrl ? { labelUrl: result.labelUrl } : null
     },
     async trackShipment(credentials, awbCode) {
       const result = await trackShiprocketAwb(credentials as { email: string; password: string }, awbCode)
@@ -221,6 +249,13 @@ export interface AutoAwbResult {
   providerShipmentId: string
   courierPartner: string
   trackingNumber: string
+  /** Real pickup confirmation from the provider, if any — see CommonPickupResult. Absent when the provider didn't confirm one at shipment-creation time. */
+  pickupDate?: string
+  pickupTime?: string
+  pickupWindow?: string
+  pickupConfirmed: boolean
+  /** Real label URL, if the provider returned one synchronously. Absent means "not yet available", never a placeholder. */
+  labelUrl?: string
 }
 
 /**
@@ -251,8 +286,27 @@ export async function tryAutoGenerateAwb(input: CommonShipmentInput): Promise<Au
   const credentials = await getDecryptedCredentials(chosen.id)
   const shipment = await provider.createShipment(credentials, { ...input, pickupLocationName: settings.pickupLocationName ?? input.pickupLocationName })
   const awb = await provider.assignAwb(credentials, shipment)
+
+  // Pickup and label are best-effort on top of a successful AWB — a real
+  // AWB is the critical outcome (the buyer/seller need a trackable
+  // shipment); if the provider's pickup or label call fails or is simply
+  // async on their end, that's surfaced as "Awaiting courier confirmation"/
+  // "Generating..." rather than failing the whole shipment-creation attempt.
+  let pickup: CommonPickupResult | void = undefined
   if (provider.requestPickup) {
-    await provider.requestPickup(credentials, shipment)
+    try {
+      pickup = await provider.requestPickup(credentials, shipment)
+    } catch {
+      pickup = undefined
+    }
+  }
+  let label: CommonLabelResult | null = null
+  if (provider.fetchLabel) {
+    try {
+      label = await provider.fetchLabel(credentials, shipment)
+    } catch {
+      label = null
+    }
   }
 
   return {
@@ -260,6 +314,11 @@ export async function tryAutoGenerateAwb(input: CommonShipmentInput): Promise<Au
     providerShipmentId: encodeShipmentRef(shipment),
     courierPartner: `${awb.courierName} (${provider.displayName})`,
     trackingNumber: awb.awbCode,
+    ...(pickup?.pickupDate ? { pickupDate: pickup.pickupDate } : {}),
+    ...(pickup?.pickupTime ? { pickupTime: pickup.pickupTime } : {}),
+    ...(pickup?.pickupWindow ? { pickupWindow: pickup.pickupWindow } : {}),
+    pickupConfirmed: pickup?.confirmed ?? false,
+    ...(label?.labelUrl ? { labelUrl: label.labelUrl } : {}),
   }
 }
 

@@ -3,9 +3,9 @@
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
-import { Truck, RefreshCw, PackageCheck } from "lucide-react"
+import { Truck, RefreshCw } from "lucide-react"
 import { useSellerGate } from "@/hooks/use-seller-status"
-import { updateSellerOrderStatus, syncSellerOrderTracking } from "@/services/order.service"
+import { syncSellerOrderTracking } from "@/services/order.service"
 import { fetchMySellerOrders } from "@/lib/seller-orders-client"
 import { OrderStatusBadge } from "@/components/orders/order-status-badge"
 import type { OrderStatus } from "@/types/order"
@@ -14,18 +14,19 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
-type FilterKey = "shippable" | "Packed" | "Pickup Requested" | "In Transit" | "Delivered"
+type FilterKey = "shippable" | "Pickup Requested" | "In Transit" | "Delivered"
 
 const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "shippable", label: "All Shipments" },
-  { key: "Packed", label: "Ready to Ship" },
   { key: "Pickup Requested", label: "Pickup Requested" },
   { key: "In Transit", label: "In Transit" },
   { key: "Delivered", label: "Delivered" },
 ]
 
-// Only statuses relevant to shipping — pre-pack orders (Pending/Accepted/Ready
-// To Pack) live on the Order Fulfillment dashboard, not here.
+// Only statuses relevant to shipping — pre-shipment orders (Pending/Accepted)
+// live on the Order Fulfillment dashboard, not here. "Packed" is kept in the
+// set (though unreachable by any seller action now) so a legacy order
+// created before the provider-driven workflow still shows up here.
 const SHIPPABLE_STATUSES = new Set<OrderStatus>(["Packed", "Pickup Requested", "Picked Up", "In Transit", "Out For Delivery", "Delivered"])
 
 function matchesFilter(status: OrderStatus, filter: FilterKey): boolean {
@@ -42,8 +43,6 @@ export default function SellerShippingDashboardPage() {
   const [filter, setFilter] = useState<FilterKey>("shippable")
   const [search, setSearch] = useState("")
   const [selected, setSelected] = useState<Set<string>>(new Set())
-  const [autoAwbEnabled, setAutoAwbEnabled] = useState(false)
-  const [bulkCourier, setBulkCourier] = useState("")
   const [busy, setBusy] = useState(false)
 
   function refresh() {
@@ -55,13 +54,6 @@ export default function SellerShippingDashboardPage() {
     refresh()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sellerUid])
-
-  useEffect(() => {
-    fetch("/api/seller/shipping/config")
-      .then((r) => r.json())
-      .then((body) => setAutoAwbEnabled(!!body.autoAwbEnabled))
-      .catch(() => setAutoAwbEnabled(false))
-  }, [])
 
   const rows = useMemo(() => {
     if (!orders || !sellerUid) return []
@@ -85,8 +77,7 @@ export default function SellerShippingDashboardPage() {
   }, [rows, filter, search])
 
   const selectedRows = useMemo(() => filtered.filter((r) => selected.has(r.order.id)), [filtered, selected])
-  const canBulkPickup = selectedRows.length > 0 && selectedRows.every((r) => r.mine.status === "Packed")
-  const canBulkSync = selectedRows.length > 0 && selectedRows.every((r) => r.mine.shippingProvider === "shiprocket")
+  const canBulkSync = selectedRows.length > 0 && selectedRows.every((r) => r.mine.shippingProvider)
 
   function toggleSelected(orderId: string) {
     setSelected((prev) => {
@@ -99,30 +90,6 @@ export default function SellerShippingDashboardPage() {
 
   function toggleSelectAll() {
     setSelected((prev) => (prev.size === filtered.length ? new Set() : new Set(filtered.map((r) => r.order.id))))
-  }
-
-  async function handleBulkSchedulePickup() {
-    if (!autoAwbEnabled && !bulkCourier.trim()) {
-      toast.error("Enter a courier partner for this batch.")
-      return
-    }
-    setBusy(true)
-    const results = await Promise.allSettled(
-      selectedRows.map(({ order }) =>
-        updateSellerOrderStatus(order.id, sellerUid!, {
-          status: "Pickup Requested",
-          ...(autoAwbEnabled ? {} : { courierPartner: bulkCourier.trim() }),
-        }),
-      ),
-    )
-    setBusy(false)
-    const failed = results.filter((r) => r.status === "rejected").length
-    toast[failed ? "error" : "success"](
-      failed ? `${results.length - failed} scheduled, ${failed} failed.` : `Pickup scheduled for ${results.length} order(s).`,
-    )
-    setSelected(new Set())
-    setBulkCourier("")
-    refresh()
   }
 
   async function handleBulkSync() {
@@ -200,30 +167,14 @@ export default function SellerShippingDashboardPage() {
       {selectedRows.length > 0 && (
         <div className="mt-3 flex flex-col items-start gap-2 rounded-xl border border-green-600/30 bg-green-50 p-3 sm:mt-4 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 sm:p-4">
           <span className="text-sm font-medium text-green-800">{selectedRows.length} selected</span>
-          {canBulkPickup && (
-            <>
-              {!autoAwbEnabled && (
-                <Input
-                  value={bulkCourier}
-                  onChange={(e) => setBulkCourier(e.target.value)}
-                  placeholder="Courier partner for this batch"
-                  className="h-9 w-full sm:w-56"
-                />
-              )}
-              <Button size="sm" className="h-9 w-full sm:w-auto" onClick={handleBulkSchedulePickup} disabled={busy}>
-                <PackageCheck className="size-3.5" />
-                Schedule Pickup ({selectedRows.length})
-              </Button>
-            </>
-          )}
           {canBulkSync && (
             <Button size="sm" variant="outline" className="h-9 w-full sm:w-auto" onClick={handleBulkSync} disabled={busy}>
               <RefreshCw className={busy ? "size-3.5 animate-spin" : "size-3.5"} />
               Sync Tracking ({selectedRows.length})
             </Button>
           )}
-          {!canBulkPickup && !canBulkSync && (
-            <span className="text-xs text-green-800">Select shipments in the same stage to enable bulk actions.</span>
+          {!canBulkSync && (
+            <span className="text-xs text-green-800">Select shipments with a connected shipping provider to sync tracking.</span>
           )}
         </div>
       )}

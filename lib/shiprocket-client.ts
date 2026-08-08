@@ -41,6 +41,17 @@ export interface ShiprocketTrackingResult {
   rawStatus: string
 }
 
+export interface ShiprocketPickupResult {
+  /** Split from Shiprocket's own "YYYY-MM-DD HH:mm:ss"-shaped `pickup_scheduled_date` — only set when that field is actually present in the response, never invented. */
+  pickupDate?: string
+  pickupTime?: string
+  confirmed: boolean
+}
+
+export interface ShiprocketLabelResult {
+  labelUrl?: string
+}
+
 class ShiprocketApiError extends Error {}
 
 // Shiprocket's login token is valid for 240 hours; caching per email avoids a
@@ -160,6 +171,55 @@ export async function assignShiprocketAwb(
     throw new ShiprocketApiError((result.message as string) ?? "Shiprocket did not return an AWB code.")
   }
   return { awbCode, courierName: courierName ?? "Shiprocket" }
+}
+
+/**
+ * Real Shiprocket "Generate Pickup" call (POST /courier/generate/pickup) —
+ * asks Shiprocket to schedule a courier pickup for an already-AWB-assigned
+ * shipment. Only ever returns a pickupScheduledAt when Shiprocket's own
+ * response actually includes one (`response.pickup_scheduled_date`); a
+ * successful call with no date in the response still returns
+ * `confirmed: true` with no date, since Shiprocket accepted the pickup
+ * request even though the exact slot isn't in this response — the caller
+ * must not invent a date/time in that case (see CommonPickupResult's doc
+ * comment in lib/shipping-service.ts).
+ */
+export async function generateShiprocketPickup(
+  credentials: { email: string; password: string },
+  shipmentId: number,
+): Promise<ShiprocketPickupResult> {
+  const token = await getToken(credentials.email, credentials.password)
+  const result = await shiprocketFetch("/courier/generate/pickup", token, {
+    method: "POST",
+    body: { shipment_id: [shipmentId] },
+  })
+  const confirmed = result.pickup_status === 1 || result.pickup_status === true
+  const response = result.response as Record<string, unknown> | undefined
+  const pickupScheduledAt = response?.pickup_scheduled_date as string | undefined
+  // "YYYY-MM-DD HH:mm:ss" — split rather than passing the raw string through,
+  // so the caller can display date/time separately without re-parsing.
+  const [pickupDate, pickupTime] = pickupScheduledAt ? pickupScheduledAt.split(" ") : [undefined, undefined]
+  return { confirmed, ...(pickupDate ? { pickupDate } : {}), ...(pickupTime ? { pickupTime } : {}) }
+}
+
+/**
+ * Real Shiprocket "Generate Label" call (POST /courier/generate/label) —
+ * label generation is sometimes asynchronous on Shiprocket's side even
+ * after a successful call, so a missing `label_url` here is a normal
+ * "not ready yet" outcome, not an error; the caller shows "Generating..."
+ * rather than treating this as a failure.
+ */
+export async function generateShiprocketLabel(
+  credentials: { email: string; password: string },
+  shipmentId: number,
+): Promise<ShiprocketLabelResult> {
+  const token = await getToken(credentials.email, credentials.password)
+  const result = await shiprocketFetch("/courier/generate/label", token, {
+    method: "POST",
+    body: { shipment_id: [shipmentId] },
+  })
+  const labelUrl = result.label_url as string | undefined
+  return { ...(labelUrl ? { labelUrl } : {}) }
 }
 
 /** Live tracking lookup by AWB — used by the seller's "Sync Tracking" action. */

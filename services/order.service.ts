@@ -56,30 +56,33 @@ export interface SellerOrderStatusUpdate {
   status: OrderStatus
   /** Required to reject a Pending order or cancel any cancellable order. */
   reason?: string
-  /** Required exactly when transitioning to "Pickup Requested" (Schedule Pickup). */
-  courierPartner?: string
-  pickupDate?: string
-  pickupTime?: string
-  trackingNumber?: string
+}
+
+export type SellerOrderStatusUpdateResult = {
+  shipment?: { ok: true; courierPartner: string } | { ok: false; error: string }
 }
 
 /**
- * Seller action: updates only their own entry within sellerOrders — every
- * fulfillment transition (accept/reject, mark packed, schedule pickup,
- * hand to courier, advance stages, mark returned, cancel) goes through this
- * one call. Goes through app/api/seller/orders/[id]/status (Admin SDK)
- * rather than a direct Firestore write — firestore.rules no longer lets a
- * seller write orders/{id} at all, since a direct write let them rewrite
- * the whole sellerOrders array including commissionAmount/payoutAmount. The
- * route derives the caller's own sellerId from their auth token; the
- * `sellerId` parameter here is kept only so existing call sites don't need
- * to change.
+ * Seller action: updates only their own entry within sellerOrders. Now
+ * covers only Accept/Reject, Cancel, and Mark Returned — every later
+ * fulfilment stage (shipment creation, pickup, in-transit, delivered) is
+ * driven automatically by the shipping provider once the seller accepts
+ * (see app/api/seller/orders/[id]/status's SELLER_POSTABLE_STATUSES). Goes
+ * through that route (Admin SDK) rather than a direct Firestore write —
+ * firestore.rules no longer lets a seller write orders/{id} at all, since a
+ * direct write let them rewrite the whole sellerOrders array including
+ * commissionAmount/payoutAmount. The route derives the caller's own
+ * sellerId from their auth token; the `sellerId` parameter here is kept
+ * only so existing call sites don't need to change. Posting `status:
+ * "Accepted"` again while the order is already "Accepted" retries shipment
+ * creation after a previous shippingSetupError, rather than being rejected
+ * as an illegal transition — see the route's `isRetry` handling.
  */
 export async function updateSellerOrderStatus(
   orderId: string,
   _sellerId: string,
   update: OrderStatus | SellerOrderStatusUpdate,
-): Promise<void> {
+): Promise<SellerOrderStatusUpdateResult> {
   const token = await auth.currentUser?.getIdToken()
   if (!token) throw new Error("Not signed in.")
 
@@ -90,10 +93,11 @@ export async function updateSellerOrderStatus(
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify(body),
   })
+  const responseBody = await response.json().catch(() => ({}))
   if (!response.ok) {
-    const responseBody = await response.json().catch(() => ({}))
     throw new Error(responseBody.error ?? `Failed to update seller order status for order "${orderId}"`)
   }
+  return responseBody
 }
 
 /** Live-pulls the AWB's current status from Shiprocket and advances the

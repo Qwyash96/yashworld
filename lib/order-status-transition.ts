@@ -3,6 +3,7 @@ import { ORDER_FULFILMENT_SEQUENCE, isCancellable, isReturnable } from "@/types/
 import { writeSellerNotification } from "@/lib/seller-notifications"
 import type { OrderStatus, SellerOrder } from "@/types/order"
 import type { SellerNotificationType } from "@/types/seller-notification"
+import type { AutoAwbResult } from "@/lib/shipping-service"
 
 /**
  * Single source of truth for "is this a legal fulfilment transition" and the
@@ -77,6 +78,48 @@ export function buildTransitionedSellerOrder(
         }
       : {}),
     ...(nextStatus === "Picked Up" && extra.trackingNumber?.trim() ? { trackingNumber: extra.trackingNumber.trim() } : {}),
+  }
+}
+
+/**
+ * System-driven jump straight to "Pickup Requested" once a real shipment
+ * has actually been created by the shipping provider — used only by
+ * lib/order-auto-fulfillment.ts's post-Accept flow, never exposed to a
+ * seller-clickable action or accepted by app/api/seller/orders/[id]/status's
+ * request body. Deliberately bypasses isAllowedOrderTransition's normal
+ * one-hop-only rule: under the new provider-driven workflow nothing
+ * meaningful ever happens at "Ready To Pack"/"Packed" (there's no seller
+ * action left that produces those states), so writing fake intermediate
+ * timeline entries for stages nobody actually performed would be exactly
+ * the kind of fabricated event this workflow must avoid. Valid from
+ * "Accepted", or — for backward compatibility with any order already
+ * sitting at "Ready To Pack"/"Packed" from before this change shipped —
+ * from either of those two as well.
+ */
+export function buildAutoShippedSellerOrder(sellerOrder: SellerOrder, awb: AutoAwbResult): SellerOrder {
+  if (!["Accepted", "Ready To Pack", "Packed"].includes(sellerOrder.status)) {
+    throw new Error(`Cannot auto-ship an order in "${sellerOrder.status}" status.`)
+  }
+  const now = new Date().toISOString()
+  // Drop any stale failure note from a previous failed attempt — Firestore's
+  // Admin SDK rejects `undefined` field values in a nested array object, so
+  // this has to be an omission via destructuring, not `shippingSetupError: undefined`.
+  const { shippingSetupError: _drop, ...rest } = sellerOrder
+  void _drop
+
+  return {
+    ...rest,
+    status: "Pickup Requested",
+    timeline: [...(sellerOrder.timeline ?? []), { status: "Pickup Requested" as const, at: now, note: `Shipment created with ${awb.courierPartner}` }],
+    shippingProvider: awb.shippingProvider,
+    providerShipmentId: awb.providerShipmentId,
+    courierPartner: awb.courierPartner,
+    trackingNumber: awb.trackingNumber,
+    ...(awb.pickupDate ? { pickupDate: awb.pickupDate } : {}),
+    ...(awb.pickupTime ? { pickupTime: awb.pickupTime } : {}),
+    ...(awb.pickupWindow ? { pickupWindow: awb.pickupWindow } : {}),
+    labelStatus: awb.labelUrl ? ("ready" as const) : ("pending" as const),
+    ...(awb.labelUrl ? { labelUrl: awb.labelUrl } : {}),
   }
 }
 

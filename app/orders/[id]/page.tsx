@@ -18,6 +18,8 @@ import { Button } from "@/components/ui/button"
 import { ReviewStars } from "@/components/reviews/review-stars"
 import { WriteReviewDialog } from "@/components/reviews/write-review-dialog"
 import { isCancellable } from "@/types/order-lifecycle"
+import { getDeliveryEstimate } from "@/lib/delivery-estimate"
+import { getPublicTrackingUrl } from "@/lib/public-tracking-url"
 import type { DiscountSource } from "@/types/order"
 
 const DISCOUNT_SOURCE_LABELS: Partial<Record<DiscountSource, string>> = {
@@ -193,15 +195,27 @@ export default function OrderDetailPage() {
             </ul>
 
             {(sellerOrder.courierPartner || sellerOrder.trackingNumber) && (
-              <p className="mt-3 text-xs text-muted-foreground">
-                {sellerOrder.courierPartner && <>Courier: {sellerOrder.courierPartner}</>}
-                {sellerOrder.courierPartner && sellerOrder.trackingNumber && " · "}
-                {sellerOrder.trackingNumber && <>AWB: {sellerOrder.trackingNumber}</>}
-              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                {sellerOrder.courierPartner && <span>Courier: {sellerOrder.courierPartner}</span>}
+                {sellerOrder.trackingNumber && <span>AWB: {sellerOrder.trackingNumber}</span>}
+                {sellerOrder.status !== "Delivered" && sellerOrder.status !== "Cancelled" && sellerOrder.status !== "Returned" && (
+                  <span>Estimated Delivery: {getDeliveryEstimate(order.shippingMethod)}</span>
+                )}
+                {getPublicTrackingUrl(sellerOrder.shippingProvider, sellerOrder.trackingNumber) && (
+                  <a
+                    href={getPublicTrackingUrl(sellerOrder.shippingProvider, sellerOrder.trackingNumber)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-green-700 underline underline-offset-2 hover:text-green-800"
+                  >
+                    Track Shipment
+                  </a>
+                )}
+              </div>
             )}
 
             <div className="mt-4 border-t border-border pt-4">
-              <OrderTrackingTimeline status={sellerOrder.status} timeline={sellerOrder.timeline} />
+              <OrderTrackingTimeline status={sellerOrder.status} timeline={sellerOrder.timeline} createdAt={order.createdAt} />
             </div>
           </div>
         ))}

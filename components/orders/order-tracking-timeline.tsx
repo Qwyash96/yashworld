@@ -14,10 +14,27 @@ const STEP_LABELS: Partial<Record<OrderStatus, string>> = { Pending: "Order Rece
 
 /** Vertical stepper through the real fulfilment pipeline (types/order-lifecycle.ts's
  * ORDER_FULFILMENT_SEQUENCE), timestamped from sellerOrder.timeline — the
- * same array every status transition appends to, including a live Shiprocket
- * sync (see app/api/seller/orders/[id]/track), so this reads as one honest
- * history regardless of whether a step was manual or courier-driven. */
-export function OrderTrackingTimeline({ status, timeline }: { status: OrderStatus; timeline?: OrderTimelineEvent[] }) {
+ * same array every status transition appends to, including a live courier
+ * sync/webhook (see lib/order-tracking-sync.ts), so this reads as one honest
+ * history regardless of whether a step was the seller's Accept click or a
+ * provider-driven update. A step's checkmark is driven by whether a real
+ * timeline event exists for it (`eventByStatus.has`), not by its position
+ * relative to the current status — so a gap in the data (e.g. an order
+ * whose stored timeline is missing an intermediate stage) is never shown as
+ * "done" just because a later status was reached. The one exception is
+ * "Pending" itself: it has no dedicated timeline entry (the array only
+ * starts once the seller's first action appends to it), so it falls back to
+ * the order's own real `createdAt` — still a genuine timestamp, never a
+ * fabricated one. */
+export function OrderTrackingTimeline({
+  status,
+  timeline,
+  createdAt,
+}: {
+  status: OrderStatus
+  timeline?: OrderTimelineEvent[]
+  createdAt?: string
+}) {
   const events = timeline ?? []
   const eventByStatus = new Map(events.map((e) => [e.status, e]))
 
@@ -35,14 +52,13 @@ export function OrderTrackingTimeline({ status, timeline }: { status: OrderStatu
     )
   }
 
-  const currentIndex = ORDER_FULFILMENT_SEQUENCE.indexOf(status)
-
   return (
     <ol className="flex flex-col">
       {ORDER_FULFILMENT_SEQUENCE.map((step, i) => {
-        const event = eventByStatus.get(step)
-        const done = i < currentIndex
-        const isCurrent = i === currentIndex
+        const isCurrent = step === status
+        const confirmed = step === "Pending" ? true : eventByStatus.has(step)
+        const event = eventByStatus.get(step) ?? (step === "Pending" && createdAt ? { status: "Pending" as const, at: createdAt } : undefined)
+        const done = confirmed && !isCurrent
         const isLast = i === ORDER_FULFILMENT_SEQUENCE.length - 1
         return (
           <li key={step} className="flex gap-3">
@@ -52,7 +68,7 @@ export function OrderTrackingTimeline({ status, timeline }: { status: OrderStatu
               ) : (
                 <Circle className="size-5 shrink-0 text-gray-300" />
               )}
-              {!isLast && <div className={cn("min-h-6 w-px flex-1", i < currentIndex ? "bg-green-600" : "bg-gray-200")} />}
+              {!isLast && <div className={cn("min-h-6 w-px flex-1", done ? "bg-green-600" : "bg-gray-200")} />}
             </div>
             <div className="pb-4">
               <p

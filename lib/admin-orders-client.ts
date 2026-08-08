@@ -46,6 +46,23 @@ export async function refundOrder(orderId: string, sellerId?: string): Promise<{
   return parseResult<{ ok: true }>(response)
 }
 
+/** Admin "Sync Tracking" — live-pulls the current status from whichever
+ * shipping provider auto-shipped this seller's portion of the order. */
+export async function syncAdminOrderTracking(
+  orderId: string,
+  sellerId: string,
+): Promise<{ ok: true; rawStatus: string; changed: boolean; status?: string } | { ok: false; error: string }> {
+  const headers = await authHeaders()
+  const response = await fetch(`/api/admin/orders/${orderId}/track`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ sellerId }),
+  })
+  const result = await parseResult<{ rawStatus: string; changed: boolean; status?: string }>(response)
+  if (!result.ok) return result
+  return { ok: true, ...result.data }
+}
+
 /** For /admin/refunds — "payments"-permission reachable (unlike fetchOrders
  * above, which requires order_management), scoped to just Paid/Refunded. */
 export async function fetchRefundableOrders(

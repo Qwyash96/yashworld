@@ -69,7 +69,43 @@ export const shiprocketAdapter: IntegrationAdapter = {
     if (apiKeyHeader !== credentials.webhookApiKey) {
       return { ok: false, status: 401, message: "Webhook API key mismatch." }
     }
-    void rawBody
+
+    // Best-effort payload parse — Shiprocket's real webhook shape includes
+    // `awb`, `current_status`, and (per their docs) echoes back whatever
+    // "order_id" this app submitted at shipment-creation time, typically as
+    // `channel_order_id`. VERIFY these exact field names against a real
+    // payload once a live Shiprocket webhook is actually configured and
+    // firing — this is best-effort against published shape, not yet
+    // confirmed against a real delivery like the rest of this adapter's
+    // create/assign/track/cancel calls are.
+    try {
+      const event = JSON.parse(rawBody) as {
+        awb?: string
+        current_status?: string
+        channel_order_id?: string
+        order_id?: string
+      }
+      const reference = event.channel_order_id ?? event.order_id
+      const rawStatus = event.current_status
+      if (reference && rawStatus) {
+        const [{ decomposeShipmentReference, applyTrackingUpdate }, { mapShiprocketStatusToOrderStatus }] = await Promise.all([
+          import("@/lib/order-tracking-sync"),
+          import("@/lib/shiprocket-client"),
+        ])
+        const decomposed = decomposeShipmentReference(reference)
+        const mappedStatus = mapShiprocketStatusToOrderStatus(rawStatus)
+        if (decomposed) {
+          await applyTrackingUpdate(decomposed.orderId, decomposed.sellerId, { rawStatus, mappedStatus }, "webhook")
+        }
+      }
+    } catch (error) {
+      // A malformed/unrecognized payload still gets a 200 (Shiprocket
+      // authenticated fine — the signature check above already passed) so
+      // it isn't retried forever, but the failure is logged for admin
+      // investigation via Admin -> Integrations -> Shiprocket's log feed.
+      console.error("[shiprocket-webhook] failed to parse/apply payload:", error)
+    }
+
     return { ok: true, status: 200, message: "Webhook authenticated." }
   },
 }

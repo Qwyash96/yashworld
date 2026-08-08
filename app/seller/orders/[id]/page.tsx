@@ -15,6 +15,9 @@ import {
   CheckCircle2,
   RefreshCw,
   StickyNote,
+  AlertTriangle,
+  Download,
+  Printer,
   type LucideIcon,
 } from "lucide-react"
 import { useSellerGate } from "@/hooks/use-seller-status"
@@ -29,25 +32,11 @@ import { isCancellable, isReturnable } from "@/types/order-lifecycle"
 import { formatPrice } from "@/lib/products"
 import { getDeliveryEstimate } from "@/lib/delivery-estimate"
 import { buildOrderDocumentContext } from "@/lib/documents/order-document-context"
-import type { OrderStatus } from "@/types/order"
 import type { SellerFacingOrder } from "@/lib/seller-order-redaction"
+import type { SellerOrder } from "@/types/order"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
-
-const COURIER_OPTIONS = ["Shiprocket", "Delhivery", "Blue Dart", "Xpressbees", "DTDC", "Amazon Shipping", "Ekart Logistics", "Shift Logistics", "Other"]
-
-/** From Pickup Requested onward, a Shiprocket shipment advances on its own
- * via handleSyncTracking (the courier's real tracking API) — this map is
- * only consulted for every OTHER courier, where there's no API to poll, so
- * the seller needs one manual "mark it done" action per stage instead. */
-const MANUAL_ADVANCE: Partial<Record<OrderStatus, { next: OrderStatus; label: string }>> = {
-  "Pickup Requested": { next: "Picked Up", label: "Mark Picked Up" },
-  "Picked Up": { next: "In Transit", label: "Mark In Transit" },
-  "In Transit": { next: "Out For Delivery", label: "Mark Out For Delivery" },
-  "Out For Delivery": { next: "Delivered", label: "Mark Delivered" },
-}
 
 export default function SellerOrderDetailPage() {
   const params = useParams<{ id: string }>()
@@ -60,14 +49,8 @@ export default function SellerOrderDetailPage() {
   const [busy, setBusy] = useState(false)
   const [rejectOpen, setRejectOpen] = useState(false)
   const [rejectReason, setRejectReason] = useState("")
-  const [pickupOpen, setPickupOpen] = useState(false)
-  const [courierPartner, setCourierPartner] = useState(COURIER_OPTIONS[0])
-  const [pickupDate, setPickupDate] = useState("")
-  const [pickupTime, setPickupTime] = useState("")
-  const [trackingNumber, setTrackingNumber] = useState("")
   const [previewImage, setPreviewImage] = useState<{ title: string; dataUrl: string; filename: string } | null>(null)
   const [syncing, setSyncing] = useState(false)
-  const [autoAwbEnabled, setAutoAwbEnabled] = useState(false)
   const [noteDraft, setNoteDraft] = useState("")
   const [savingNote, setSavingNote] = useState(false)
 
@@ -79,13 +62,6 @@ export default function SellerOrderDetailPage() {
     refresh()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id])
-
-  useEffect(() => {
-    fetch("/api/seller/shipping/config")
-      .then((r) => r.json())
-      .then((body) => setAutoAwbEnabled(!!body.autoAwbEnabled))
-      .catch(() => setAutoAwbEnabled(false))
-  }, [])
 
   useEffect(() => {
     if (!sellerUid) return
@@ -139,8 +115,49 @@ export default function SellerOrderDetailPage() {
     }
   }
 
-  function handleAccept() {
-    runTransition({ status: "Accepted" })
+  // Accept is the seller's only fulfilment action. It both moves the order
+  // to "Accepted" and (server-side, awaited) attempts real shipment
+  // creation with whichever provider is connected — see
+  // app/api/seller/orders/[id]/status. Reported here from the actual
+  // returned result rather than assumed, since the shipment attempt can
+  // fail independently of the Accept itself.
+  async function handleAccept() {
+    setBusy(true)
+    try {
+      const result = await updateSellerOrderStatus(order!.id, sellerUid!, { status: "Accepted" })
+      if (result.shipment?.ok) {
+        toast.success(`Order accepted — shipment created with ${result.shipment.courierPartner}.`)
+      } else if (result.shipment && !result.shipment.ok) {
+        toast.error(`Order accepted, but shipping setup failed: ${result.shipment.error}`)
+      } else {
+        toast.success("Order accepted.")
+      }
+      refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to accept order.")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** Retries shipment creation after a previous attempt left a real
+   * shippingSetupError — re-posts "Accepted" while already "Accepted",
+   * which the server treats as a retry rather than an illegal transition. */
+  async function handleRetryShipment() {
+    setBusy(true)
+    try {
+      const result = await updateSellerOrderStatus(order!.id, sellerUid!, { status: "Accepted" })
+      if (result.shipment?.ok) {
+        toast.success(`Shipment created with ${result.shipment.courierPartner}.`)
+      } else if (result.shipment && !result.shipment.ok) {
+        toast.error(`Shipping setup failed again: ${result.shipment.error}`)
+      }
+      refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to retry shipping setup.")
+    } finally {
+      setBusy(false)
+    }
   }
 
   function handleReject() {
@@ -152,30 +169,6 @@ export default function SellerOrderDetailPage() {
       setRejectOpen(false)
       setRejectReason("")
     })
-  }
-
-  function handleAdvance(next: OrderStatus) {
-    runTransition({ status: next })
-  }
-
-  function handleConfirmPickup() {
-    if (!autoAwbEnabled && !courierPartner) {
-      toast.error("Select a courier partner.")
-      return
-    }
-    runTransition({
-      status: "Pickup Requested",
-      ...(autoAwbEnabled
-        ? {}
-        : { courierPartner, ...(trackingNumber.trim() ? { trackingNumber: trackingNumber.trim() } : {}) }),
-      ...(pickupDate ? { pickupDate } : {}),
-      ...(pickupTime ? { pickupTime } : {}),
-    }).then(() => setPickupOpen(false))
-  }
-
-  function handleCancelPickup() {
-    if (!window.confirm("Cancel this pickup? The assigned courier and AWB will be cleared.")) return
-    runTransition({ status: "Packed" })
   }
 
   function handleCancel() {
@@ -193,7 +186,8 @@ export default function SellerOrderDetailPage() {
     setSyncing(true)
     try {
       const result = await syncSellerOrderTracking(order!.id)
-      toast.success(result.changed ? `Updated to "${result.status}" (Shiprocket: ${result.rawStatus}).` : `No change (Shiprocket: ${result.rawStatus}).`)
+      const courierLabel = mine?.courierPartner ?? "courier"
+      toast.success(result.changed ? `Updated to "${result.status}" (${courierLabel}: ${result.rawStatus}).` : `No change (${courierLabel}: ${result.rawStatus}).`)
       refresh()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to sync tracking.")
@@ -337,16 +331,17 @@ export default function SellerOrderDetailPage() {
 
           {/* Tracking Timeline */}
           <Card title="Tracking Timeline">
-            <OrderTrackingTimeline status={status} timeline={mine.timeline} />
+            <OrderTrackingTimeline status={status} timeline={mine.timeline} createdAt={order.createdAt} />
           </Card>
 
-          {/* Action Panel — exactly one primary action for the order's
-              current stage: Pending -> Accepted -> Ready To Pack -> Packed
-              -> Pickup Requested -> Picked Up -> In Transit -> Out For
-              Delivery -> Delivered. A Shiprocket shipment advances itself
-              from Pickup Requested onward via the courier's tracking API
-              (handleSyncTracking); every other courier falls back to
-              MANUAL_ADVANCE's one-button-per-stage so it's never stuck. */}
+          {/* Action Panel — the seller's only fulfilment action is Accept
+              (or Reject) a Pending order. Every stage after that —
+              shipment creation, pickup, in-transit, delivered — is driven
+              automatically by whichever shipping provider is connected
+              (see app/api/seller/orders/[id]/status and
+              lib/order-auto-fulfillment.ts); "Sync Now" pulls the real
+              current status from the provider rather than letting the
+              seller set it manually. */}
           <Card title="Action Panel">
             {status !== "Pending" && (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
@@ -385,34 +380,31 @@ export default function SellerOrderDetailPage() {
                 </div>
               )}
               {status === "Accepted" && (
-                <Button className="h-10 w-full sm:w-auto" onClick={() => handleAdvance("Ready To Pack")} disabled={busy}>
-                  Ready to Pack
-                </Button>
-              )}
-              {status === "Ready To Pack" && (
-                <Button className="h-10 w-full sm:w-auto" onClick={() => handleAdvance("Packed")} disabled={busy}>
-                  Pack Order
-                </Button>
-              )}
-              {status === "Packed" && (
-                <Button className="h-10 w-full sm:w-auto" onClick={() => setPickupOpen(true)} disabled={busy}>
-                  Request Pickup
-                </Button>
-              )}
-              {MANUAL_ADVANCE[status] &&
-                (mine.shippingProvider ? (
-                  <div className="flex flex-wrap items-center gap-3">
-                    <p className="text-sm text-[#444444]">Updates automatically from the courier&apos;s tracking API.</p>
-                    <Button size="sm" variant="outline" className="h-9" onClick={handleSyncTracking} disabled={syncing}>
-                      <RefreshCw className={syncing ? "size-3.5 animate-spin" : "size-3.5"} />
-                      Sync Now
-                    </Button>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
+                    <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                    <div>
+                      <p className="font-medium">Shipping setup pending</p>
+                      <p className="mt-0.5 text-xs text-amber-800">
+                        {mine.shippingSetupError ?? "The shipping provider hasn't confirmed this shipment yet."}
+                      </p>
+                    </div>
                   </div>
-                ) : (
-                  <Button className="h-10 w-full sm:w-auto" onClick={() => handleAdvance(MANUAL_ADVANCE[status]!.next)} disabled={busy}>
-                    {MANUAL_ADVANCE[status]!.label}
+                  <Button size="sm" variant="outline" className="h-9 w-fit" onClick={handleRetryShipment} disabled={busy}>
+                    <RefreshCw className={busy ? "size-3.5 animate-spin" : "size-3.5"} />
+                    Retry Shipping Setup
                   </Button>
-                ))}
+                </div>
+              )}
+              {(status === "Pickup Requested" || status === "Picked Up" || status === "In Transit" || status === "Out For Delivery") && (
+                <div className="flex flex-wrap items-center gap-3">
+                  <p className="text-sm text-[#444444]">Status updates automatically from the shipping provider.</p>
+                  <Button size="sm" variant="outline" className="h-9" onClick={handleSyncTracking} disabled={syncing}>
+                    <RefreshCw className={syncing ? "size-3.5 animate-spin" : "size-3.5"} />
+                    Sync Now
+                  </Button>
+                </div>
+              )}
               {status === "Delivered" && (
                 <p className="flex items-center gap-2 text-sm font-medium text-green-700">
                   <CheckCircle2 className="size-4" />
@@ -455,25 +447,47 @@ export default function SellerOrderDetailPage() {
             </div>
           </Card>
 
-          {/* Courier Section */}
+          {/* Courier Section — every value here is exactly what the shipping
+              provider returned (see lib/order-status-transition.ts's
+              buildAutoShippedSellerOrder and lib/order-tracking-sync.ts);
+              nothing is invented while the provider hasn't confirmed it. */}
           <Card title="Courier Section" icon={Truck}>
             {!mine.courierPartner ? (
               <p className="text-sm text-[#444444]">No courier assigned yet.</p>
             ) : (
-              <div className="flex flex-col gap-1.5 text-sm">
-                <Row label="Courier Partner" value={mine.courierPartner} />
-                <Row label="Tracking / AWB Number" value={mine.trackingNumber ?? "—"} />
-                <Row label="Pickup Date" value={mine.pickupDate ?? "—"} />
-                <Row label="Pickup Slot" value={mine.pickupTime ?? "—"} />
-                <Row label="Shipping Status" value={status} />
-              </div>
-            )}
-            {status === "Pickup Requested" && (
-              <div className="mt-3">
-                <Button size="sm" variant="outline" className="h-9" onClick={handleCancelPickup} disabled={busy}>
-                  Cancel Pickup
-                </Button>
-              </div>
+              <>
+                <div className="flex flex-col gap-1.5 text-sm">
+                  <Row label="Courier Partner" value={mine.courierPartner} />
+                  <Row label="Tracking / AWB Number" value={mine.trackingNumber ?? "—"} />
+                  <Row label="Pickup" value={pickupDisplay(mine)} />
+                  <Row label="Shipping Status" value={status} />
+                </div>
+
+                {pickupDisplay(mine) !== "Awaiting courier confirmation" && (
+                  <p className="mt-2.5 text-xs text-[#666666]">Please keep the parcel packed and ready before the scheduled pickup time.</p>
+                )}
+
+                <div className="mt-3 border-t border-border pt-3">
+                  {mine.labelUrl ? (
+                    <div className="flex flex-wrap gap-2">
+                      <a href={mine.labelUrl} download target="_blank" rel="noopener noreferrer">
+                        <Button size="sm" variant="outline" className="h-9">
+                          <Download className="size-3.5" />
+                          Download Label
+                        </Button>
+                      </a>
+                      <a href={mine.labelUrl} target="_blank" rel="noopener noreferrer">
+                        <Button size="sm" variant="outline" className="h-9">
+                          <Printer className="size-3.5" />
+                          Print Label
+                        </Button>
+                      </a>
+                    </div>
+                  ) : (
+                    mine.labelStatus === "pending" && <p className="text-sm text-[#444444]">Shipping label is being generated.</p>
+                  )}
+                </div>
+              </>
             )}
           </Card>
 
@@ -537,54 +551,6 @@ export default function SellerOrderDetailPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Schedule pickup dialog */}
-      <Dialog open={pickupOpen} onOpenChange={setPickupOpen}>
-        <DialogContent>
-          <DialogTitle>Schedule Pickup</DialogTitle>
-          <div className="mt-4 flex flex-col gap-3">
-            {autoAwbEnabled ? (
-              <p className="rounded-lg bg-green-50 p-3 text-sm text-green-800">
-                Shiprocket will automatically assign a courier and generate the AWB when you confirm.
-              </p>
-            ) : (
-              <>
-                <div className="flex flex-col gap-2">
-                  <Label>Courier Partner</Label>
-                  <select
-                    value={courierPartner}
-                    onChange={(e) => setCourierPartner(e.target.value)}
-                    className="h-10 rounded-lg border border-border px-3 text-sm"
-                  >
-                    {COURIER_OPTIONS.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="awb">Tracking Number / AWB (optional)</Label>
-                  <Input id="awb" value={trackingNumber} onChange={(e) => setTrackingNumber(e.target.value)} className="h-10" />
-                </div>
-              </>
-            )}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="pickup-date">Pickup Date</Label>
-                <Input id="pickup-date" type="date" value={pickupDate} onChange={(e) => setPickupDate(e.target.value)} className="h-10" />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="pickup-time">Pickup Slot</Label>
-                <Input id="pickup-time" type="time" value={pickupTime} onChange={(e) => setPickupTime(e.target.value)} className="h-10" />
-              </div>
-            </div>
-            <Button className="h-10" onClick={handleConfirmPickup} disabled={busy}>
-              Confirm Pickup Schedule
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
       {/* QR / Barcode preview dialog */}
       <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}>
         <DialogContent>
@@ -606,6 +572,16 @@ export default function SellerOrderDetailPage() {
       </Dialog>
     </div>
   )
+}
+
+/** Shows exactly what the shipping provider returned — an exact
+ * date+time, a window, or, absent either, an honest "awaiting
+ * confirmation" rather than a fabricated pickup time. */
+function pickupDisplay(mine: SellerOrder): string {
+  if (mine.pickupWindow) return mine.pickupWindow
+  if (mine.pickupDate && mine.pickupTime) return `${mine.pickupDate} ${mine.pickupTime}`
+  if (mine.pickupDate) return mine.pickupDate
+  return "Awaiting courier confirmation"
 }
 
 function Card({ title, icon: Icon, children }: { title: string; icon?: LucideIcon; children: React.ReactNode }) {

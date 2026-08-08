@@ -70,6 +70,30 @@ export interface SellerOrder {
   providerShipmentId?: string
   pickupDate?: string
   pickupTime?: string
+  /** Set instead of pickupDate/pickupTime when the provider only confirms a
+   * window ("Awaiting courier confirmation" style range), not an exact
+   * date+time — never fabricated; only ever copied verbatim from a real
+   * provider response (lib/shipping-service.ts's CommonPickupResult). */
+  pickupWindow?: string
+  /** Real shipping-label PDF/URL returned by the provider — never a
+   * generated/fake label. */
+  labelUrl?: string
+  labelStatus?: "pending" | "ready" | "unavailable"
+  /** Set when the automatic post-Accept shipment-creation attempt fails (no
+   * shipping provider configured, or a real provider API call failed) —
+   * cleared the moment a shipment is successfully created. Surfaced to the
+   * seller as "Shipping setup pending" with this real reason and a Retry
+   * action; never blocks the seller from seeing/preparing the order. See
+   * lib/order-auto-fulfillment.ts. */
+  shippingSetupError?: string
+  /** Last time a live tracking pull actually ran for this seller-order —
+   * seller "Sync Tracking", admin "Sync Tracking", or an inbound webhook —
+   * surfaced to admin (types/order.ts's own consumers, see app/admin/orders/[id]). */
+  lastTrackingSyncAt?: string
+  /** Outcome of the most recent inbound shipping-provider webhook call
+   * attributed to this seller-order, if any. */
+  lastWebhookAt?: string
+  lastWebhookStatus?: "ok" | "failed"
   shippedAt?: string
   deliveredAt?: string
   cancelledAt?: string

@@ -4,9 +4,9 @@ import Link from "next/link"
 import { useParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, RefreshCw } from "lucide-react"
 import { getOrderById, updateOrderStatus } from "@/services/order.service"
-import { refundOrder } from "@/lib/admin-orders-client"
+import { refundOrder, syncAdminOrderTracking } from "@/lib/admin-orders-client"
 import { formatPrice } from "@/lib/products"
 import { OrderStatusBadge } from "@/components/orders/order-status-badge"
 import type { Order, OrderStatus, PaymentMethod } from "@/types/order"
@@ -42,9 +42,25 @@ const STATUS_OPTIONS: OrderStatus[] = [
 export default function AdminOrderDetailPage() {
   const params = useParams<{ id: string }>()
   const [order, setOrder] = useState<Order | null | undefined>(undefined)
+  const [syncingSellerId, setSyncingSellerId] = useState<string | null>(null)
 
   function refresh() {
     getOrderById(params.id).then(setOrder)
+  }
+
+  async function handleSyncTracking(sellerId: string) {
+    setSyncingSellerId(sellerId)
+    try {
+      const result = await syncAdminOrderTracking(order!.id, sellerId)
+      if (!result.ok) {
+        toast.error(result.error)
+        return
+      }
+      toast.success(result.changed ? `Updated to "${result.status}" (raw: ${result.rawStatus}).` : `No change (raw: ${result.rawStatus}).`)
+      refresh()
+    } finally {
+      setSyncingSellerId(null)
+    }
   }
 
   useEffect(() => {
@@ -178,6 +194,47 @@ export default function AdminOrderDetailPage() {
                 Commission {formatPrice(so.commissionAmount)} · Payout {formatPrice(so.payoutAmount)}
                 {so.payoutStatus ? ` · ${so.payoutStatus}` : ""}
               </p>
+
+              {/* Shipping — every value below is exactly what the shipping
+                  provider returned (see lib/order-status-transition.ts and
+                  lib/order-tracking-sync.ts); "Not Connected" is shown
+                  rather than pretending a shipment exists. */}
+              <div className="mt-3 rounded-lg border border-border bg-[#f9faf8] p-3 text-xs text-[#444444]">
+                {so.shippingSetupError ? (
+                  <p className="text-amber-700">
+                    <span className="font-semibold">Not Connected —</span> {so.shippingSetupError}
+                  </p>
+                ) : !so.courierPartner ? (
+                  <p>No shipment created yet.</p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-3">
+                    <span>Courier: {so.courierPartner}</span>
+                    <span>Shipment ID: {so.providerShipmentId ?? "—"}</span>
+                    <span>AWB: {so.trackingNumber ?? "—"}</span>
+                    <span>Pickup Date: {so.pickupDate ?? "—"}</span>
+                    <span>Pickup Window: {so.pickupWindow ?? so.pickupTime ?? "—"}</span>
+                    <span>Pickup Status: {so.pickupDate || so.pickupWindow ? "Confirmed" : "Awaiting confirmation"}</span>
+                    <span>Label Status: {so.labelStatus ?? "—"}</span>
+                    <span>Tracking Status: {so.status}</span>
+                    <span>Last Sync: {so.lastTrackingSyncAt ? new Date(so.lastTrackingSyncAt).toLocaleString() : "—"}</span>
+                    <span>
+                      Webhook: {so.lastWebhookAt ? `${so.lastWebhookStatus ?? "ok"} · ${new Date(so.lastWebhookAt).toLocaleString()}` : "—"}
+                    </span>
+                  </div>
+                )}
+                {so.shippingProvider && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="mt-2.5 h-7"
+                    onClick={() => handleSyncTracking(so.sellerId)}
+                    disabled={syncingSellerId === so.sellerId}
+                  >
+                    <RefreshCw className={syncingSellerId === so.sellerId ? "size-3 animate-spin" : "size-3"} />
+                    Sync Tracking
+                  </Button>
+                )}
+              </div>
             </div>
           ))}
         </div>
