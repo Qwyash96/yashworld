@@ -31,37 +31,37 @@ export type Product = {
 export const categories: Category[] = [
   {
     slug: "plants",
-    name: "🌿 Plants",
+    name: "Plants",
     description: "Our full range of plants",
     image: "/placeholder.svg",
   },
   {
     slug: "indoor-plants",
-    name: "🪴 Indoor Plants",
+    name: "Indoor Plants",
     description: "Low-maintenance greenery for every room",
     image: "/placeholder.svg",
   },
   {
     slug: "outdoor-plants",
-    name: "🌳 Outdoor Plants",
+    name: "Outdoor Plants",
     description: "Hardy plants for gardens, balconies & terraces",
     image: "/placeholder.svg",
   },
   {
     slug: "pots-planters",
-    name: "🏺 Pots & Planters",
+    name: "Pots & Planters",
     description: "Ceramic, terracotta & decorative planters",
     image: "/placeholder.svg",
   },
   {
     slug: "plant-care",
-    name: "🌱 Plant Care",
+    name: "Plant Care",
     description: "Nutrients, soil mixes & plant care essentials",
     image: "/placeholder.svg",
   },
   {
     slug: "gardening-tools",
-    name: "🛠 Gardening Tools",
+    name: "Gardening Tools",
     description: "Everything you need to tend your garden",
     image: "/placeholder.svg",
   },
