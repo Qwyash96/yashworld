@@ -12,3 +12,8 @@ export function slugify(input: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '')
 }
+
+/** Rounds a rupee amount to 2 decimal places. */
+export function round2(value: number): number {
+  return Math.round(value * 100) / 100
+}
