@@ -2,16 +2,13 @@ import { NextResponse, type NextRequest } from "next/server"
 import { requireSignedInUser } from "@/lib/api-auth"
 import { computeOrderPricing, InsufficientStockError } from "@/lib/pricing-engine"
 import { getShippingRate } from "@/lib/shipping"
+import { round2 } from "@/lib/utils"
 import type { ShippingMethod } from "@/types/order"
 
 interface PreviewBody {
   items?: { productId?: string; quantity?: number }[]
   shippingMethod?: ShippingMethod
   couponCode?: string
-}
-
-function round2(value: number): number {
-  return Math.round(value * 100) / 100
 }
 
 /**

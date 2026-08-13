@@ -110,7 +110,7 @@ export default function AdminCategoriesPage() {
           >
             <div className="flex items-center gap-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={category.image || "/placeholder.svg"} alt="" className="h-14 w-14 rounded-lg object-cover" />
+              <img src={category.image || "/placeholder.svg"} alt={category.name} className="h-14 w-14 rounded-lg object-cover" />
               <div>
                 <p className="font-semibold text-black">{category.name}</p>
                 <p className="text-xs text-[#444444]">

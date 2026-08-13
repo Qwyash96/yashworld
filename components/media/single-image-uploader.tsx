@@ -79,7 +79,7 @@ export function SingleImageUploader({
 
       {value ? (
         <div className={`relative w-full overflow-hidden rounded-xl border border-border bg-gray-50 ${aspectClassName}`}>
-          <Image src={value} alt="" fill className="object-cover" />
+          <Image src={value} alt={label || "Uploaded image"} fill className="object-cover" />
           <button
             type="button"
             onClick={() => onChange("")}
@@ -156,7 +156,7 @@ export function SingleImageUploader({
                   }}
                   className="relative aspect-square overflow-hidden rounded-lg border border-border transition hover:border-green-600"
                 >
-                  <Image src={asset.url} alt="" fill className="object-cover" />
+                  <Image src={asset.url} alt={asset.fileName} fill className="object-cover" />
                 </button>
               ))}
             </div>

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { requireApprovedSeller } from "@/lib/seller-auth"
 import { getAdminDb } from "@/lib/firebase-admin"
 import { redactOrderForSeller } from "@/lib/seller-order-redaction"
+import { withApiErrorHandling } from "@/lib/api-error-handler"
 import type { Order } from "@/types/order"
 
 type RouteContext = { params: Promise<{ id: string }> }
@@ -12,7 +13,7 @@ type RouteContext = { params: Promise<{ id: string }> }
  * GET /api/seller/orders. Ownership is checked here explicitly since Admin
  * SDK reads bypass firestore.rules entirely.
  */
-export async function GET(request: NextRequest, { params }: RouteContext) {
+export const GET = withApiErrorHandling("seller/orders/[id]", async (request: NextRequest, { params }: RouteContext) => {
   const auth = await requireApprovedSeller(request)
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
@@ -27,4 +28,4 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
   }
 
   return NextResponse.json({ order: redactOrderForSeller(order) })
-}
+})

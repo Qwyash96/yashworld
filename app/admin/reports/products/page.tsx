@@ -34,33 +34,35 @@ export default function ProductsReportPage() {
             </Button>
           </div>
           <div className="mt-3 overflow-hidden rounded-2xl border border-border">
-            <table className="w-full text-sm">
-              <thead className="bg-[#f3f5f2] text-left text-xs uppercase tracking-widest text-[#444444]">
-                <tr>
-                  <th className="p-3">Product</th>
-                  <th className="p-3">Units Sold</th>
-                  <th className="p-3">Revenue</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {data.byProduct.length === 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-[#f3f5f2] text-left text-xs uppercase tracking-widest text-[#444444]">
                   <tr>
-                    <td colSpan={3} className="p-4 text-center text-[#444444]">No orders in this range.</td>
+                    <th className="p-3">Product</th>
+                    <th className="p-3">Units Sold</th>
+                    <th className="p-3">Revenue</th>
                   </tr>
-                )}
-                {data.byProduct.map((p) => (
-                  <tr key={p.productId}>
-                    <td className="p-3">
-                      <Link href={`/products/${p.productId}`} className="text-green-700 hover:underline">
-                        {p.productName}
-                      </Link>
-                    </td>
-                    <td className="p-3 text-black">{p.units}</td>
-                    <td className="p-3 text-black">{formatPrice(p.revenue)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {data.byProduct.length === 0 && (
+                    <tr>
+                      <td colSpan={3} className="p-4 text-center text-[#444444]">No orders in this range.</td>
+                    </tr>
+                  )}
+                  {data.byProduct.map((p) => (
+                    <tr key={p.productId}>
+                      <td className="p-3">
+                        <Link href={`/products/${p.productId}`} className="text-green-700 hover:underline">
+                          {p.productName}
+                        </Link>
+                      </td>
+                      <td className="p-3 text-black">{p.units}</td>
+                      <td className="p-3 text-black">{formatPrice(p.revenue)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
       )}

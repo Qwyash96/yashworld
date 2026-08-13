@@ -6,7 +6,10 @@ import { type Product } from "@/lib/products"
 /** Shared shell for every homepage product section — real products in, real
  * dense grid out (2/4/6 cols on mobile/tablet/desktop). Renders nothing
  * when there's no real data for this section, rather than padding it out
- * with placeholders. */
+ * with placeholders.
+ *
+ * Mobile is 2 columns (Flipkart-style) rather than 3 so each card gets
+ * enough width for the image/title/price/buttons to stay readable. */
 export function ProductRail({
   id,
   title,
@@ -37,7 +40,7 @@ export function ProductRail({
         )}
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-1.5 sm:gap-2.5 md:grid-cols-4 lg:grid-cols-6">
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:gap-2.5 md:grid-cols-4 lg:grid-cols-6">
         {products.map((product) => (
           <ProductCard key={product.id} product={product} />
         ))}

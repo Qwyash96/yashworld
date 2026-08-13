@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { requireSignedInUser } from "@/lib/api-auth"
 import { getAdminDb } from "@/lib/firebase-admin"
+import { withApiErrorHandling } from "@/lib/api-error-handler"
 import type { Order } from "@/types/order"
 import type { Review, ReviewInput } from "@/types/review"
 
@@ -27,7 +28,7 @@ interface SubmitBody extends Partial<ReviewInput> {
  * verification happens here, not just the rules' "any signed-in user" —
  * the order must be theirs, must contain this product, and that seller
  * portion must actually be Delivered. */
-export async function POST(request: NextRequest) {
+export const POST = withApiErrorHandling("reviews", async (request: NextRequest) => {
   const auth = await requireSignedInUser(request)
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
@@ -80,4 +81,4 @@ export async function POST(request: NextRequest) {
   await recomputeProductRating(body.productId)
 
   return NextResponse.json({ review: { id: reviewId, ...input } })
-}
+})

@@ -3,14 +3,11 @@ import { getAdminDb } from "@/lib/firebase-admin"
 import { getPlatformSettings } from "@/lib/platform-settings"
 import { getValidCoupon } from "@/lib/coupons"
 import { buildBaseCandidates, pickBestCandidate, type PriceCandidate } from "@/lib/price-candidates"
+import { round2 } from "@/lib/utils"
 import type { Product } from "@/types/product"
 import type { DiscountSource } from "@/types/order"
 import type { Coupon } from "@/types/coupon"
 import type { DiscountType } from "@/types/campaign"
-
-function round2(value: number): number {
-  return Math.round(value * 100) / 100
-}
 
 export class InsufficientStockError extends Error {
   constructor(public productName: string, public available: number) {

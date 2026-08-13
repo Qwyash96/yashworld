@@ -2,10 +2,11 @@ import { NextResponse, type NextRequest } from "next/server"
 import { requireSignedInUser } from "@/lib/api-auth"
 import { getAdminDb } from "@/lib/firebase-admin"
 import { recomputeSellerWallet } from "@/lib/wallet-service"
+import { withApiErrorHandling } from "@/lib/api-error-handler"
 import type { WithdrawalRequest } from "@/types/wallet"
 
 /** A seller's own wallet + their own withdrawal request history. */
-export async function GET(request: NextRequest) {
+export const GET = withApiErrorHandling("seller/wallet", async (request: NextRequest) => {
   const auth = await requireSignedInUser(request)
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
@@ -16,4 +17,4 @@ export async function GET(request: NextRequest) {
 
   const withdrawals = withdrawalsSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as WithdrawalRequest)
   return NextResponse.json({ wallet, withdrawals })
-}
+})

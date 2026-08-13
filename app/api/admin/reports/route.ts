@@ -1,12 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { requireAdminPermission } from "@/lib/admin-api-auth"
 import { getAdminDb } from "@/lib/firebase-admin"
+import { round2 } from "@/lib/utils"
 import type { Order } from "@/types/order"
 import type { ReportsData, ReportDailyPoint, ReportSellerRow, ReportProductRow, ReportCustomerRow } from "@/types/reports"
-
-function round2(value: number): number {
-  return Math.round(value * 100) / 100
-}
 
 function dayKey(iso: string): string {
   return iso.slice(0, 10)

@@ -3,7 +3,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import { useEffect, useRef, useState, type TouchEvent } from "react"
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react"
 import type { Banner } from "@/types/banner"
 import { cn } from "@/lib/utils"
 
@@ -60,9 +60,9 @@ export function HeroSlider({ banners }: { banners: Banner[] }) {
   }
 
   return (
-    <section className="relative mx-3 mt-3 max-w-7xl overflow-hidden sm:mx-4 lg:mx-auto lg:px-4">
+    <section className="relative mx-0 mt-0 max-w-7xl overflow-hidden sm:mx-4 sm:mt-3 lg:mx-auto lg:px-4">
       <div
-        className="relative touch-pan-y overflow-hidden rounded-[16px] bg-gray-100"
+        className="relative touch-pan-y overflow-hidden bg-gray-100 sm:rounded-[20px]"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -76,7 +76,7 @@ export function HeroSlider({ banners }: { banners: Banner[] }) {
           {banners.map((banner, i) => {
             const href = bannerHref(banner)
             const slide = (
-              <div className="relative h-[160px] w-full shrink-0 overflow-hidden md:h-[220px]">
+              <div className="relative h-[240px] w-full shrink-0 overflow-hidden sm:h-[320px] md:h-[380px] lg:h-[440px]">
                 <Image
                   src={banner.imageUrl}
                   alt={banner.title ?? "Promotional banner"}
@@ -87,16 +87,22 @@ export function HeroSlider({ banners }: { banners: Banner[] }) {
                   className="object-cover object-center"
                 />
                 {(banner.title || banner.subtitle || banner.buttonText) && (
-                  <div className="absolute inset-0 flex flex-col items-start justify-end gap-1 bg-gradient-to-t from-black/55 to-transparent p-3 lg:p-4">
+                  <div className="absolute inset-0 flex flex-col items-start justify-end gap-2 bg-gradient-to-t from-black/80 via-black/25 to-transparent p-4 sm:gap-2.5 sm:p-6 lg:p-8">
                     {banner.title && (
-                      <h2 className="max-w-lg text-sm font-bold text-white sm:text-base lg:text-lg">{banner.title}</h2>
+                      <span className="inline-flex items-center rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-green-700 sm:text-xs">
+                        Featured
+                      </span>
+                    )}
+                    {banner.title && (
+                      <h2 className="max-w-lg text-xl font-extrabold text-white sm:text-2xl lg:text-4xl">{banner.title}</h2>
                     )}
                     {banner.subtitle && (
-                      <p className="max-w-md text-[11px] text-white/90 sm:text-xs lg:text-sm">{banner.subtitle}</p>
+                      <p className="max-w-md text-xs text-white/90 sm:text-sm lg:text-base">{banner.subtitle}</p>
                     )}
                     {banner.buttonText && (
-                      <span className="mt-0.5 inline-flex items-center rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-black sm:text-xs">
+                      <span className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-xs font-bold text-black transition group-hover:gap-2.5 sm:px-5 sm:py-2.5 sm:text-sm">
                         {banner.buttonText}
+                        <ArrowRight className="size-3.5 sm:size-4" />
                       </span>
                     )}
                   </div>
@@ -105,7 +111,7 @@ export function HeroSlider({ banners }: { banners: Banner[] }) {
             )
             return (
               <div key={banner.id} className="w-full shrink-0">
-                {href ? <Link href={href}>{slide}</Link> : slide}
+                {href ? <Link href={href} className="group block">{slide}</Link> : slide}
               </div>
             )
           })}
@@ -116,19 +122,19 @@ export function HeroSlider({ banners }: { banners: Banner[] }) {
             <button
               onClick={() => go(-1)}
               aria-label="Previous banner"
-              className="absolute left-2 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-black shadow transition hover:bg-white lg:size-8"
+              className="absolute left-3 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-black shadow transition hover:bg-white lg:size-10"
             >
-              <ChevronLeft className="size-3.5 lg:size-4" />
+              <ChevronLeft className="size-4 lg:size-5" />
             </button>
             <button
               onClick={() => go(1)}
               aria-label="Next banner"
-              className="absolute right-2 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-black shadow transition hover:bg-white lg:size-8"
+              className="absolute right-3 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-black shadow transition hover:bg-white lg:size-10"
             >
-              <ChevronRight className="size-3.5 lg:size-4" />
+              <ChevronRight className="size-4 lg:size-5" />
             </button>
 
-            <div className="absolute bottom-1.5 left-1/2 flex -translate-x-1/2 gap-1.5">
+            <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5 sm:bottom-4">
               {banners.map((b, i) => (
                 <button
                   key={b.id}

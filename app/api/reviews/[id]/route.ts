@@ -3,6 +3,7 @@ import { requireSignedInUser } from "@/lib/api-auth"
 import { requireAdminPermission } from "@/lib/admin-api-auth"
 import { getAdminDb } from "@/lib/firebase-admin"
 import { writeAuditLog } from "@/lib/audit-log"
+import { withApiErrorHandling } from "@/lib/api-error-handler"
 import type { Review } from "@/types/review"
 
 type RouteContext = { params: Promise<{ id: string }> }
@@ -24,7 +25,7 @@ interface PatchBody {
  * the product's real sellerId (the reviews rule itself only checks
  * "any approved seller", so this route is what actually enforces
  * ownership for the trusted app flow). */
-export async function PATCH(request: NextRequest, { params }: RouteContext) {
+export const PATCH = withApiErrorHandling("reviews/[id]", async (request: NextRequest, { params }: RouteContext) => {
   const auth = await requireSignedInUser(request)
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
@@ -47,7 +48,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
   await ref.update({ sellerReply: body.sellerReply.trim() })
   return NextResponse.json({ ok: true })
-}
+})
 
 /** Admin moderation — delete-only (see firestore.rules' reviews rule /
  * types/review.ts doc comment: reviews go live immediately, no approval

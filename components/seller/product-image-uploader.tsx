@@ -200,7 +200,7 @@ export function ProductImageUploader({
                 dragOverIndex === index ? "border-green-600" : "border-border"
               }`}
             >
-              <ProductPhoto src={img.url} alt="" className="absolute inset-0" padding="sm" />
+              <ProductPhoto src={img.url} alt={`Product photo ${index + 1}${img.isCover ? " (cover)" : ""}`} className="absolute inset-0" padding="sm" />
 
               {img.isCover && (
                 <span className="absolute left-1.5 top-1.5 flex items-center gap-1 rounded-full bg-green-600 px-2 py-0.5 text-[10px] font-semibold text-white">

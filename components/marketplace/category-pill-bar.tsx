@@ -6,12 +6,11 @@ import type { Category } from "@/lib/products"
 import { cn } from "@/lib/utils"
 
 /** Desktop/tablet (sm and up): the original dense, horizontally-scrolling
- * text pill bar — untouched. Mobile (below sm): a wrapped grid instead of a
- * single scrolling row, since 9 items at the old compact size read as
- * cramped, tiny-text, and easy to over-scroll on a phone. Both render the
- * same links — "All" (home) plus every real category, plus "Offers"/"New"
- * anchors into this same page's Today's Deals / New Arrivals sections.
- * Renders nothing when there are no real categories. */
+ * text pill bar — untouched. Mobile (below sm): also one horizontally
+ * scrolling row, but with larger rounded pills sized for touch. Both render
+ * the same links — "All" (home) plus every real category, plus "Offers"/
+ * "New" anchors into this same page's Today's Deals / New Arrivals
+ * sections. Renders nothing when there are no real categories. */
 export function CategoryPillBar({ categories }: { categories: Category[] }) {
   const pathname = usePathname()
   if (categories.length === 0) return null
@@ -25,12 +24,10 @@ export function CategoryPillBar({ categories }: { categories: Category[] }) {
 
   return (
     <nav aria-label="Categories" className="border-b border-border bg-white">
-      {/* Mobile only — a fixed 3-column grid, which for these 9 items is
-          exactly 3 rows, guaranteed, regardless of how long any one label
-          is (unlike flex-wrap, whose row count depends on content width and
-          isn't predictable/boundable). A long label wraps to a second line
-          within its own cell rather than pushing a 4th row. */}
-      <div className="grid grid-cols-3 gap-2 px-3 py-3 sm:hidden">
+      {/* Mobile only — one horizontally scrollable row (swipe/scroll), never
+          wraps to multiple lines: each pill is shrink-0 + whitespace-nowrap
+          and the row itself scrolls with its scrollbar hidden. */}
+      <div className="flex gap-2 overflow-x-auto px-3 py-3 [-ms-overflow-style:none] [scrollbar-width:none] sm:hidden [&::-webkit-scrollbar]:hidden">
         {items.map((item) => (
           <MobilePill key={item.href} href={item.href} active={pathname === item.href}>
             {item.label}
@@ -68,7 +65,7 @@ function MobilePill({ href, active, children }: { href: string; active: boolean;
     <Link
       href={href}
       className={cn(
-        "flex min-h-11 items-center justify-center rounded-xl border px-2 py-2 text-center text-[15px] font-semibold leading-tight transition-colors active:scale-95",
+        "flex h-10 shrink-0 items-center justify-center whitespace-nowrap rounded-full border px-4 text-sm font-semibold transition-colors active:scale-95",
         active
           ? "border-green-600 bg-green-600 text-white"
           : "border-border bg-white text-black hover:border-green-600 hover:text-green-700",

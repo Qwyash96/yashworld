@@ -34,35 +34,37 @@ export default function SellersReportPage() {
             </Button>
           </div>
           <div className="mt-3 overflow-hidden rounded-2xl border border-border">
-            <table className="w-full text-sm">
-              <thead className="bg-[#f3f5f2] text-left text-xs uppercase tracking-widest text-[#444444]">
-                <tr>
-                  <th className="p-3">Seller</th>
-                  <th className="p-3">Orders</th>
-                  <th className="p-3">Revenue</th>
-                  <th className="p-3">Payout</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {data.bySeller.length === 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-[#f3f5f2] text-left text-xs uppercase tracking-widest text-[#444444]">
                   <tr>
-                    <td colSpan={4} className="p-4 text-center text-[#444444]">No orders in this range.</td>
+                    <th className="p-3">Seller</th>
+                    <th className="p-3">Orders</th>
+                    <th className="p-3">Revenue</th>
+                    <th className="p-3">Payout</th>
                   </tr>
-                )}
-                {data.bySeller.map((s) => (
-                  <tr key={s.sellerId}>
-                    <td className="p-3">
-                      <Link href={`/admin/sellers/${s.sellerId}`} className="text-green-700 hover:underline">
-                        {s.sellerId}
-                      </Link>
-                    </td>
-                    <td className="p-3 text-black">{s.orders}</td>
-                    <td className="p-3 text-black">{formatPrice(s.revenue)}</td>
-                    <td className="p-3 text-black">{formatPrice(s.payout)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {data.bySeller.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="p-4 text-center text-[#444444]">No orders in this range.</td>
+                    </tr>
+                  )}
+                  {data.bySeller.map((s) => (
+                    <tr key={s.sellerId}>
+                      <td className="p-3">
+                        <Link href={`/admin/sellers/${s.sellerId}`} className="text-green-700 hover:underline">
+                          {s.sellerId}
+                        </Link>
+                      </td>
+                      <td className="p-3 text-black">{s.orders}</td>
+                      <td className="p-3 text-black">{formatPrice(s.revenue)}</td>
+                      <td className="p-3 text-black">{formatPrice(s.payout)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
       )}

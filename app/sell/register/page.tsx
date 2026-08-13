@@ -276,7 +276,7 @@ export default function SellerApplicationWizard() {
           panPath: kyc.panPath,
           selfiePath: kyc.selfiePath,
           bankProofPath: kyc.bankProofPath,
-          gstPath: kyc.gstPath,
+          ...(kyc.gstPath ? { gstPath: kyc.gstPath } : {}),
           submittedAt: new Date().toISOString(),
         },
       )

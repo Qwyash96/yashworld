@@ -27,21 +27,21 @@ export function ProductCardActions({ product }: { product: Product }) {
   }
 
   return (
-    <div className="mt-1.5 flex flex-nowrap gap-1">
+    <div className="mt-2.5 flex flex-nowrap gap-1.5 sm:mt-3 sm:gap-2">
       <button
         type="button"
         onClick={handleAddToCart}
-        className="flex h-7 min-w-0 flex-1 items-center justify-center gap-1 rounded-lg bg-[#16a34a] px-1 text-[11px] font-semibold text-white transition hover:brightness-110"
+        className="flex h-9 min-w-0 flex-1 items-center justify-center gap-1 rounded-xl bg-[#16a34a] px-1 text-xs font-semibold text-white transition hover:brightness-110 sm:h-10 sm:text-sm"
       >
-        <ShoppingCart className="size-3 shrink-0" />
+        <ShoppingCart className="size-3.5 shrink-0 sm:size-4" />
         <span className="truncate">Add</span>
       </button>
       <button
         type="button"
         onClick={handleBuyNow}
-        className="flex h-7 min-w-0 flex-1 items-center justify-center gap-1 rounded-lg bg-[#f97316] px-1 text-[11px] font-semibold text-white transition hover:brightness-110"
+        className="flex h-9 min-w-0 flex-1 items-center justify-center gap-1 rounded-xl bg-[#f97316] px-1 text-xs font-semibold text-white transition hover:brightness-110 sm:h-10 sm:text-sm"
       >
-        <Zap className="size-3 shrink-0" />
+        <Zap className="size-3.5 shrink-0 sm:size-4" />
         <span className="truncate">Buy</span>
       </button>
     </div>

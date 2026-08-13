@@ -3,14 +3,11 @@ import { AggregateField } from "firebase-admin/firestore"
 import { requireAnyAdmin } from "@/lib/admin-api-auth"
 import { getAdminDb } from "@/lib/firebase-admin"
 import { hasPermission } from "@/lib/admin-roles"
+import { round2 } from "@/lib/utils"
 import type { Order } from "@/types/order"
 import type { Product } from "@/types/product"
 import type { SupportTicket } from "@/types/support-ticket"
 import type { DashboardStats, DashboardChartPoint } from "@/types/dashboard-stats"
-
-function round2(value: number): number {
-  return Math.round(value * 100) / 100
-}
 
 const CHART_DAYS = 14
 const LOW_STOCK_THRESHOLD = 5

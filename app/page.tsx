@@ -6,6 +6,7 @@ import { getTrustBadgesSettings } from "@/lib/platform-settings"
 import { calculateDiscountPercent } from "@/lib/discount"
 import { HeroSlider } from "@/components/marketplace/hero-slider"
 import { CategoryPillBar } from "@/components/marketplace/category-pill-bar"
+import { CategoryCollectionGrid } from "@/components/marketplace/category-collection-grid"
 import { TrustBadges } from "@/components/marketplace/trust-badges"
 import { FlashDeals } from "@/components/marketplace/flash-deals"
 import { ProductRail } from "@/components/marketplace/product-rail"
@@ -36,7 +37,8 @@ export const revalidate = 60
  * fetch, no fabricated data.
  *
  * Structure: Header/Search (site chrome) → Category Bar → ONE hero banner
- * slider → Best Sellers → New Arrivals → Today's Deals → Featured
+ * slider → Shop by Category grid → Best Sellers → New Arrivals → Today's
+ * Deals → Featured
  * (Indoor/Outdoor) → Trending → Recently Viewed → everything else. The
  * hero banner never repeats anywhere else on the page — no promo strips
  * between every rail.
@@ -77,6 +79,35 @@ export default async function HomePage() {
   const indoorPlants = products.filter((p) => p.category === "indoor-plants").slice(0, 10)
   const outdoorPlants = products.filter((p) => p.category === "outdoor-plants").slice(0, 10)
 
+  // Real per-category product counts for the Shop by Category cards — no
+  // fabricated numbers, just how many real catalogued products land in
+  // each real category's slug.
+  const categoryProductCounts = products.reduce<Record<string, number>>((counts, p) => {
+    counts[p.category] = (counts[p.category] ?? 0) + 1
+    return counts
+  }, {})
+
+  // Curated homepage order for the Shop by Category grid — the site's
+  // fixed, requested category lineup. Purely a display selection/order over
+  // real Admin → Categories data: any slug not yet created there is simply
+  // skipped (never a fabricated card), and once an admin adds it, it
+  // appears here automatically in this exact position. The generic
+  // "Plants" catch-all category (if created) deliberately isn't in this
+  // list — it still shows in CategoryPillBar, just not in this curated grid.
+  const SHOP_BY_CATEGORY_SLUGS = [
+    "flower-plants",
+    "fruiting-plants",
+    "indoor-plants",
+    "outdoor-plants",
+    "succulents-cacti",
+    "seeds",
+    "pots-planters",
+    "gardening-tools",
+  ]
+  const shopByCategoryList = SHOP_BY_CATEGORY_SLUGS.map((slug) => categories.find((c) => c.slug === slug)).filter(
+    (c): c is (typeof categories)[number] => c !== undefined,
+  )
+
   // Trending: highest rating x review-volume — a simple, honest popularity
   // proxy that needs no separate analytics pipeline.
   const trending = [...products]
@@ -90,6 +121,8 @@ export default async function HomePage() {
 
       <HeroSlider banners={banners} />
       <SponsoredAdSlot ads={sponsoredAds.hero} />
+
+      <CategoryCollectionGrid categories={shopByCategoryList} productCounts={categoryProductCounts} />
 
       <FlashDeals campaigns={flashSales} />
 

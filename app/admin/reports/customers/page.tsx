@@ -34,33 +34,35 @@ export default function CustomersReportPage() {
             </Button>
           </div>
           <div className="mt-3 overflow-hidden rounded-2xl border border-border">
-            <table className="w-full text-sm">
-              <thead className="bg-[#f3f5f2] text-left text-xs uppercase tracking-widest text-[#444444]">
-                <tr>
-                  <th className="p-3">Buyer</th>
-                  <th className="p-3">Orders</th>
-                  <th className="p-3">Total Spend</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {data.byCustomer.length === 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-[#f3f5f2] text-left text-xs uppercase tracking-widest text-[#444444]">
                   <tr>
-                    <td colSpan={3} className="p-4 text-center text-[#444444]">No orders in this range.</td>
+                    <th className="p-3">Buyer</th>
+                    <th className="p-3">Orders</th>
+                    <th className="p-3">Total Spend</th>
                   </tr>
-                )}
-                {data.byCustomer.map((c) => (
-                  <tr key={c.buyerId}>
-                    <td className="p-3">
-                      <Link href={`/admin/users/${c.buyerId}`} className="text-green-700 hover:underline">
-                        {c.email}
-                      </Link>
-                    </td>
-                    <td className="p-3 text-black">{c.orders}</td>
-                    <td className="p-3 text-black">{formatPrice(c.spend)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {data.byCustomer.length === 0 && (
+                    <tr>
+                      <td colSpan={3} className="p-4 text-center text-[#444444]">No orders in this range.</td>
+                    </tr>
+                  )}
+                  {data.byCustomer.map((c) => (
+                    <tr key={c.buyerId}>
+                      <td className="p-3">
+                        <Link href={`/admin/users/${c.buyerId}`} className="text-green-700 hover:underline">
+                          {c.email}
+                        </Link>
+                      </td>
+                      <td className="p-3 text-black">{c.orders}</td>
+                      <td className="p-3 text-black">{formatPrice(c.spend)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
       )}

@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { PackageSearch, ChevronDown, Sprout } from "lucide-react"
 import { fetchApprovedProducts } from "@/services/catalog.service"
 import { type Product, type Category } from "@/lib/products"
@@ -37,6 +37,7 @@ export function FullCatalogBrowser({ categories }: { categories: Category[] }) {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
+  const loadMoreTimeout = useRef<number | null>(null)
 
   const quickFilters = useMemo(
     () => [{ key: "all", label: "All" }, ...categories.map((c) => ({ key: c.slug, label: c.name })), ...quickFilterExtras],
@@ -92,9 +93,17 @@ export function FullCatalogBrowser({ categories }: { categories: Category[] }) {
     return list
   }, [products, activeFilter, sortKey])
 
+  // Cleared on unmount so a "Load More" click just before navigating away
+  // doesn't fire a state update against an unmounted component.
+  useEffect(() => {
+    return () => {
+      if (loadMoreTimeout.current) window.clearTimeout(loadMoreTimeout.current)
+    }
+  }, [])
+
   function handleLoadMore() {
     setLoadingMore(true)
-    window.setTimeout(() => {
+    loadMoreTimeout.current = window.setTimeout(() => {
       setVisibleCount((c) => c + PAGE_SIZE)
       setLoadingMore(false)
     }, 350)

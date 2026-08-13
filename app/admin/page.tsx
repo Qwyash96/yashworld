@@ -27,7 +27,17 @@ import { hasPermission, isAdminRole, type AdminPermission } from "@/lib/admin-ro
 import { DEV_SHOW_ADMIN_MENU_TO_ALL } from "@/lib/dev-flags"
 import { useDashboardStats } from "@/hooks/use-dashboard-stats"
 import { StatTile } from "@/components/admin/dashboard/stat-tile"
-import { RevenueChart } from "@/components/admin/dashboard/revenue-chart"
+import dynamic from "next/dynamic"
+
+// recharts is a genuinely heavy dependency for something that's only ever
+// below-the-fold-ish content on the admin dashboard's first screen — code-
+// split out of the initial JS bundle instead of a static import. No SSR
+// (recharts renders to an SVG sized off the client's container) and a
+// same-height skeleton so the section doesn't jump once it loads.
+const RevenueChart = dynamic(() => import("@/components/admin/dashboard/revenue-chart").then((m) => m.RevenueChart), {
+  ssr: false,
+  loading: () => <div className="h-64 animate-pulse rounded-xl bg-gray-100" />,
+})
 import { formatPrice } from "@/lib/products"
 import type { Product } from "@/types/product"
 import { Button } from "@/components/ui/button"

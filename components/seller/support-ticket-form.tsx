@@ -149,7 +149,7 @@ export function SupportTicketForm({
           <div className="flex flex-wrap gap-2">
             {screenshotUrls.map((url, i) => (
               <div key={url} className="relative size-16 overflow-hidden rounded-lg border border-border">
-                <Image src={url} alt="" fill className="object-cover" />
+                <Image src={url} alt={`Uploaded screenshot ${i + 1}`} fill className="object-cover" />
                 <button
                   type="button"
                   onClick={() => setScreenshotUrls((prev) => prev.filter((_, idx) => idx !== i))}

@@ -64,24 +64,26 @@ export default function SalesReportPage() {
               </Button>
             </div>
             <div className="mt-3 overflow-hidden rounded-2xl border border-border">
-              <table className="w-full text-sm">
-                <thead className="bg-[#f3f5f2] text-left text-xs uppercase tracking-widest text-[#444444]">
-                  <tr>
-                    <th className="p-3">Date</th>
-                    <th className="p-3">Orders</th>
-                    <th className="p-3">Revenue</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {data.dailySeries.map((d) => (
-                    <tr key={d.date}>
-                      <td className="p-3 text-black">{d.date}</td>
-                      <td className="p-3 text-black">{d.orders}</td>
-                      <td className="p-3 text-black">{formatPrice(d.revenue)}</td>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-[#f3f5f2] text-left text-xs uppercase tracking-widest text-[#444444]">
+                    <tr>
+                      <th className="p-3">Date</th>
+                      <th className="p-3">Orders</th>
+                      <th className="p-3">Revenue</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {data.dailySeries.map((d) => (
+                      <tr key={d.date}>
+                        <td className="p-3 text-black">{d.date}</td>
+                        <td className="p-3 text-black">{d.orders}</td>
+                        <td className="p-3 text-black">{formatPrice(d.revenue)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </section>
         </>

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { requireSignedInUser } from "@/lib/api-auth"
 import { getAdminDb } from "@/lib/firebase-admin"
+import { withApiErrorHandling } from "@/lib/api-error-handler"
 import type { Seller } from "@/types/seller"
 
 /** A seller's own public storefront branding — sellers/{uid} itself is
@@ -8,21 +9,21 @@ import type { Seller } from "@/types/seller"
  * sanctioned, narrowly-scoped way a seller can touch their own public
  * profile: exactly logoUrl/bannerUrl, nothing else (shopName/rating/status
  * stay admin-controlled). */
-export async function GET(request: NextRequest) {
+export const GET = withApiErrorHandling("seller/shop-profile", async (request: NextRequest) => {
   const auth = await requireSignedInUser(request)
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
   const snap = await getAdminDb().collection("sellers").doc(auth.uid).get()
   if (!snap.exists) return NextResponse.json({ error: "You're not an approved seller yet." }, { status: 403 })
   return NextResponse.json({ seller: { uid: snap.id, ...snap.data() } as Seller })
-}
+})
 
 interface PatchBody {
   logoUrl?: string
   bannerUrl?: string
 }
 
-export async function PATCH(request: NextRequest) {
+export const PATCH = withApiErrorHandling("seller/shop-profile", async (request: NextRequest) => {
   const auth = await requireSignedInUser(request)
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
@@ -42,4 +43,4 @@ export async function PATCH(request: NextRequest) {
   await ref.update(patch)
   const updated = await ref.get()
   return NextResponse.json({ seller: { uid: updated.id, ...updated.data() } as Seller })
-}
+})

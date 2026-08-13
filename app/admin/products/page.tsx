@@ -342,7 +342,7 @@ export default function AdminProductsPage() {
                       key={img.url}
                       className="relative h-24 overflow-hidden rounded-lg"
                     >
-                      <ProductImage src={img.url} alt="" className="absolute inset-0" padding="xs" />
+                      <ProductImage src={img.url} alt={viewingProduct.name} className="absolute inset-0" padding="xs" />
                       {img.isCover && (
                         <span className="absolute left-1 top-1 rounded-full bg-green-600 px-1.5 py-0.5 text-[9px] font-semibold text-white">
                           Cover

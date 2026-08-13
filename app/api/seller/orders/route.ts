@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { requireApprovedSeller } from "@/lib/seller-auth"
 import { getAdminDb } from "@/lib/firebase-admin"
 import { redactOrderForSeller } from "@/lib/seller-order-redaction"
+import { withApiErrorHandling } from "@/lib/api-error-handler"
 import type { Order } from "@/types/order"
 
 /**
@@ -11,7 +12,7 @@ import type { Order } from "@/types/order"
  * response, so those fields never reach the seller's browser at all. Mirrors
  * app/api/seller/wallet/route.ts's GET pattern.
  */
-export async function GET(request: NextRequest) {
+export const GET = withApiErrorHandling("seller/orders", async (request: NextRequest) => {
   const auth = await requireApprovedSeller(request)
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
@@ -20,4 +21,4 @@ export async function GET(request: NextRequest) {
   const orders = snap.docs.map((d) => redactOrderForSeller({ id: d.id, ...d.data() } as Order))
 
   return NextResponse.json({ orders })
-}
+})
