@@ -3,6 +3,7 @@
  * upload into) and storage.rules (which folders are valid upload targets). */
 export const MEDIA_FOLDERS = [
   "product-images",
+  "product-images-original",
   "banner-images",
   "category-images",
   "seller-logos",

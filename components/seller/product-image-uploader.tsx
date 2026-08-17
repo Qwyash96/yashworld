@@ -21,7 +21,7 @@ type UploadingItem = {
 
 /** Reorders `value` and recomputes isCover so index 0 is always the cover. */
 function withCoverRecomputed(images: ProductImage[]): ProductImage[] {
-  return images.map((img, i) => ({ url: img.url, isCover: i === 0 }))
+  return images.map((img, i) => ({ ...img, isCover: i === 0 }))
 }
 
 /**
@@ -95,11 +95,16 @@ export function ProductImageUploader({
       setUploading((prev) => [...prev, { id, fileName: file.name, progress: 0 }])
 
       try {
-        const url = await uploadProductImage(uid, file, (percent) => {
+        const result = await uploadProductImage(uid, file, (percent) => {
           setUploading((prev) => prev.map((item) => (item.id === id ? { ...item, progress: percent } : item)))
         })
         setUploading((prev) => prev.filter((item) => item.id !== id))
-        onChange(withCoverRecomputed([...value, { url, isCover: false }]))
+        onChange(
+          withCoverRecomputed([
+            ...value,
+            { url: result.url, isCover: false, originalUrl: result.originalUrl, width: result.width, height: result.height },
+          ]),
+        )
       } catch (err) {
         setUploading((prev) =>
           prev.map((item) =>
@@ -124,7 +129,7 @@ export function ProductImageUploader({
   async function removeImage(index: number) {
     const removed = value[index]
     onChange(withCoverRecomputed(value.filter((_, i) => i !== index)))
-    await deleteProductImage(removed.url)
+    await deleteProductImage(removed.url, removed.originalUrl)
   }
 
   function dismissUploadError(id: string) {

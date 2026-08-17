@@ -14,10 +14,27 @@ export interface PlantAttributes {
 }
 
 /** One uploaded product image — a Firebase Storage download URL plus which
- * one is the cover. Exactly one entry should have isCover: true. */
+ * one is the cover. Exactly one entry should have isCover: true.
+ *
+ * `url` is always the compressed, web-optimized version — every existing
+ * display surface (card grid, gallery, admin) keeps reading exactly this
+ * field with no changes required. `originalUrl`/`width`/`height` are
+ * additive: present for images uploaded through the current
+ * ProductImageUploader (services/storage.service.ts's uploadProductImage),
+ * undefined for older images that only ever had one file — those keep
+ * working exactly as before, just without a stored original or a known
+ * aspect ratio to size a gallery container against. */
 export interface ProductImage {
   url: string
   isCover: boolean
+  /** The untouched upload, preserved for future reprocessing — never
+   * rendered directly in the UI. */
+  originalUrl?: string
+  /** Natural pixel dimensions of the upload, read once at upload time —
+   * lets the product detail gallery size its container to the photo's real
+   * aspect ratio instead of one fixed ratio for every shape. */
+  width?: number
+  height?: number
 }
 
 /** A seller-set, time-boxed sale price — "Scheduled Offers". Always

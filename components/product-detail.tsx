@@ -111,7 +111,10 @@ export function ProductDetail({ product }: { product: Product }) {
       <div className="grid gap-10 lg:grid-cols-2">
         {/* Gallery */}
         <div className="flex flex-col gap-3">
-          <div className="relative aspect-[4/5] overflow-hidden rounded-md">
+          <div
+            className="relative w-full overflow-hidden rounded-md"
+            style={{ aspectRatio: product.galleryAspectRatio ?? 4 / 5 }}
+          >
             <ProductImage
               src={activeImage}
               alt={product.name}

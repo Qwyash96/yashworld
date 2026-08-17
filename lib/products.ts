@@ -15,6 +15,13 @@ export type Product = {
   /** Every uploaded photo, cover first — undefined for the static fallback
    * catalog (single `image` only). Powers the product detail gallery. */
   images?: string[]
+  /** The cover photo's real width/height ratio (clamped — see
+   * lib/product-images.ts's getImageAspectRatio), used to size the product
+   * detail gallery container to the photo's actual shape instead of one
+   * fixed ratio for every product. Undefined when the cover image predates
+   * this feature (no stored dimensions) — the gallery then falls back to
+   * the site's existing default ratio, exactly as before. */
+  galleryAspectRatio?: number
   description: string
   details: string[]
   colors: string[]

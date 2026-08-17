@@ -74,31 +74,26 @@ const IMAGE_MAX_BYTES = 10 * 1024 * 1024
 const IMAGE_TYPE_PATTERN = /^image\/(jpeg|jpg|png|webp)$/
 
 /**
- * The one real upload implementation behind every folder-specific
- * `upload*Image` export below: validates, compresses, uploads to
- * `{folder}/{uid}/{uuid}.{ext}` with real progress reporting, catalogues the
- * result into the Media Library (best-effort), and returns the public
- * download URL. Adding a new image surface to the app means adding one new
- * thin wrapper here, not reimplementing this.
+ * The one low-level upload primitive every `upload*Image` export ultimately
+ * goes through: uploads `blob` to `{folder}/{uid}/{uuid}.{ext}` with real
+ * progress reporting and a friendly error on failure, returning the public
+ * download URL. Doesn't validate, compress, or catalogue — callers that
+ * need those (i.e. every export below) layer them on top; this just moves
+ * one already-decided file into Storage, which is also why
+ * uploadProductImage (below) can call it twice — original and compressed —
+ * without duplicating the upload/progress/error logic itself.
  */
-async function uploadImage(
+async function uploadBlobToPath(
   folder: MediaFolder,
   uid: string,
-  file: File,
+  blob: Blob,
+  contentType: string,
+  ext: string,
+  originalName: string,
   onProgress?: (percent: number) => void,
-): Promise<string> {
-  if (file.size > IMAGE_MAX_BYTES) {
-    throw new Error(`"${file.name}" is too large — the maximum size is 10 MB.`)
-  }
-  if (!IMAGE_TYPE_PATTERN.test(file.type)) {
-    throw new Error(`"${file.name}" must be a JPG, PNG or WEBP image.`)
-  }
-
-  const originalName = file.name
-  const compressed = await compressImage(file)
-  const ext = compressed.name.includes(".") ? compressed.name.split(".").pop() : "jpg"
+): Promise<{ url: string; path: string }> {
   const path = `${folder}/${uid}/${crypto.randomUUID()}.${ext}`
-  const task = uploadBytesResumable(ref(storage, path), compressed, { contentType: compressed.type })
+  const task = uploadBytesResumable(ref(storage, path), blob, { contentType })
 
   const url = await new Promise<string>((resolve, reject) => {
     task.on(
@@ -119,11 +114,42 @@ async function uploadImage(
     )
   })
 
+  return { url, path }
+}
+
+function fileExt(name: string): string {
+  return name.includes(".") ? name.split(".").pop()! : "jpg"
+}
+
+/**
+ * The one real upload implementation behind every folder-specific
+ * `upload*Image` export below: validates, compresses, uploads to
+ * `{folder}/{uid}/{uuid}.{ext}` with real progress reporting, catalogues the
+ * result into the Media Library (best-effort), and returns the public
+ * download URL. Adding a new image surface to the app means adding one new
+ * thin wrapper here, not reimplementing this.
+ */
+async function uploadImage(
+  folder: MediaFolder,
+  uid: string,
+  file: File,
+  onProgress?: (percent: number) => void,
+): Promise<string> {
+  if (file.size > IMAGE_MAX_BYTES) {
+    throw new Error(`"${file.name}" is too large — the maximum size is 10 MB.`)
+  }
+  if (!IMAGE_TYPE_PATTERN.test(file.type)) {
+    throw new Error(`"${file.name}" must be a JPG, PNG or WEBP image.`)
+  }
+
+  const compressed = await compressImage(file)
+  const { url, path } = await uploadBlobToPath(folder, uid, compressed, compressed.type, fileExt(compressed.name), file.name, onProgress)
+
   void registerMediaAsset({
     url,
     path,
     folder,
-    fileName: originalName,
+    fileName: file.name,
     sizeBytes: compressed.size,
     contentType: compressed.type,
     uploadedBy: uid,
@@ -144,9 +170,80 @@ export async function uploadToMediaFolder(
   return uploadImage(folder, uid, file, onProgress)
 }
 
-/** Product gallery images — `product-images/{uid}/{uuid}.{ext}`. */
-export async function uploadProductImage(uid: string, file: File, onProgress?: (percent: number) => void): Promise<string> {
-  return uploadImage("product-images", uid, file, onProgress)
+export interface ProductImageUploadResult {
+  /** Compressed, web-optimized version — `product-images/{uid}/{uuid}.{ext}`, same path/shape as before this feature. */
+  url: string
+  /** The untouched upload, preserved for future reprocessing — `product-images-original/{uid}/{uuid}.{ext}`. */
+  originalUrl: string
+  /** Natural pixel dimensions of the upload, read once here so the gallery can size itself to the photo's real aspect ratio. */
+  width: number
+  height: number
+}
+
+/**
+ * Product gallery images. Uploads the real, unmodified original (for
+ * future reprocessing — e.g. if a better compression pipeline ships later,
+ * or a size no longer fits, it can be regenerated from this instead of a
+ * lossy re-compress of the already-compressed display copy) alongside the
+ * existing compressed display version, and reads the photo's natural pixel
+ * dimensions once so the UI never has to guess an aspect ratio. Progress
+ * reporting spans both uploads (0-40% original, 40-100% compressed) so the
+ * caller's single progress bar still reads as one continuous upload.
+ */
+export async function uploadProductImage(
+  uid: string,
+  file: File,
+  onProgress?: (percent: number) => void,
+): Promise<ProductImageUploadResult> {
+  if (file.size > IMAGE_MAX_BYTES) {
+    throw new Error(`"${file.name}" is too large — the maximum size is 10 MB.`)
+  }
+  if (!IMAGE_TYPE_PATTERN.test(file.type)) {
+    throw new Error(`"${file.name}" must be a JPG, PNG or WEBP image.`)
+  }
+
+  let width: number, height: number
+  try {
+    const bitmap = await createImageBitmap(file)
+    width = bitmap.width
+    height = bitmap.height
+    bitmap.close()
+  } catch {
+    throw new Error(`"${file.name}" doesn't look like a valid image file.`)
+  }
+
+  const { url: originalUrl } = await uploadBlobToPath(
+    "product-images-original",
+    uid,
+    file,
+    file.type,
+    fileExt(file.name),
+    file.name,
+    (percent) => onProgress?.(Math.round(percent * 0.4)),
+  )
+
+  const compressed = await compressImage(file)
+  const { url, path } = await uploadBlobToPath(
+    "product-images",
+    uid,
+    compressed,
+    compressed.type,
+    fileExt(compressed.name),
+    file.name,
+    (percent) => onProgress?.(40 + Math.round(percent * 0.6)),
+  )
+
+  void registerMediaAsset({
+    url,
+    path,
+    folder: "product-images",
+    fileName: file.name,
+    sizeBytes: compressed.size,
+    contentType: compressed.type,
+    uploadedBy: uid,
+  })
+
+  return { url, originalUrl, width, height }
 }
 
 /** Homepage hero / promo banner images — `banner-images/{uid}/{uuid}.{ext}`. */
@@ -194,12 +291,21 @@ export async function uploadReviewImage(uid: string, file: File, onProgress?: (p
   return uploadImage("review-images", uid, file, onProgress)
 }
 
-/** Best-effort cleanup when an uploaded image is removed — never blocks the UI on failure. */
-export async function deleteProductImage(url: string): Promise<void> {
+/** Best-effort cleanup when an uploaded image is removed — never blocks the
+ * UI on failure. Also removes the paired original (product-images-original)
+ * when one exists; pre-existing images that never had one just skip it. */
+export async function deleteProductImage(url: string, originalUrl?: string): Promise<void> {
   try {
     await deleteObject(ref(storage, url))
   } catch {
     // Already gone, or a permissions/network hiccup — the Firestore write
     // (dropping this URL from the owning document) is what actually matters.
+  }
+  if (originalUrl) {
+    try {
+      await deleteObject(ref(storage, originalUrl))
+    } catch {
+      // Same reasoning as above.
+    }
   }
 }

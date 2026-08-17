@@ -2,7 +2,7 @@ import { cache } from "react"
 import { collection, documentId, getDocs, query, where } from "firebase/firestore"
 import { db } from "@/services/firebase/client"
 import { toServiceError } from "@/services/firebase/errors"
-import { normalizeProductImages, getCoverImageUrl } from "@/lib/product-images"
+import { normalizeProductImages, getCoverImageUrl, getImageAspectRatio } from "@/lib/product-images"
 import { buildBaseCandidates, pickBestCandidate } from "@/lib/price-candidates"
 import {
   products as fallbackProducts,
@@ -36,6 +36,7 @@ function orderedImageUrls(images: FirestoreProduct["images"]): string[] {
 
 export function toUIProduct(product: FirestoreProduct, now: Date = new Date()): Product {
   const { plantAttrs } = product
+  const coverImage = product.images.find((img) => img.isCover) ?? product.images[0]
   const originalUnitPrice = product.originalPrice ?? product.price
   const best = pickBestCandidate(buildBaseCandidates(product, now))
   const effectivePrice = best.price
@@ -50,6 +51,7 @@ export function toUIProduct(product: FirestoreProduct, now: Date = new Date()): 
     sellerId: product.sellerId,
     image: getCoverImageUrl(product.images) ?? "/placeholder.svg",
     images: orderedImageUrls(product.images),
+    galleryAspectRatio: getImageAspectRatio(coverImage),
     description: product.description,
     details: [
       `Light: ${plantAttrs.light}`,

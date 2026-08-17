@@ -30,7 +30,9 @@ service firebase.storage {
     // read, owner-only write, image-only, 10MB cap — banner-images,
     // category-images, seller-logos, seller-banners, profile-photos,
     // support-images, coupon-banners, site-branding, review-images,
-    // ad-creatives (see types/media.ts MEDIA_FOLDERS, the single source of
+    // ad-creatives, product-images-original (the true, unmodified upload
+    // ProductImageUploader preserves alongside the compressed product-images
+    // file above — see types/media.ts MEDIA_FOLDERS, the single source of
     // truth this list must stay in sync with). Real access control for
     // what an uploaded file is actually USED as lives at the Firestore
     // layer (e.g. banners/{id} and sponsoredAds/{id} are Admin-SDK-write-
@@ -42,7 +44,7 @@ service firebase.storage {
       allow write: if folder in [
           'banner-images', 'category-images', 'seller-logos', 'seller-banners',
           'profile-photos', 'support-images', 'coupon-banners', 'site-branding',
-          'review-images', 'ad-creatives'
+          'review-images', 'ad-creatives', 'product-images-original'
         ]
         && request.auth != null && request.auth.uid == uid
         && request.resource.size < 10 * 1024 * 1024
@@ -50,7 +52,7 @@ service firebase.storage {
       allow delete: if folder in [
           'banner-images', 'category-images', 'seller-logos', 'seller-banners',
           'profile-photos', 'support-images', 'coupon-banners', 'site-branding',
-          'review-images', 'ad-creatives'
+          'review-images', 'ad-creatives', 'product-images-original'
         ]
         && request.auth != null && request.auth.uid == uid;
     }
