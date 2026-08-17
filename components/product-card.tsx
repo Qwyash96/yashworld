@@ -95,7 +95,7 @@ export function ProductCard({ product }: { product: Product }) {
       </div>
 
       <div className="pointer-events-none flex flex-1 flex-col p-2.5 sm:p-3.5">
-        <h3 className="line-clamp-2 min-h-[2.4em] text-[13px] font-semibold leading-tight text-black sm:text-[15px]">
+        <h3 className="line-clamp-2 min-h-[2.4em] text-[11px] font-semibold leading-tight text-black sm:text-[13px]">
           {product.name}
         </h3>
 
