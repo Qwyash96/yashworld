@@ -246,7 +246,7 @@ export function ProductDetail({ product }: { product: Product }) {
           <p className="text-sm uppercase tracking-widest text-muted-foreground">
             {product.category}
           </p>
-          <h1 className="mt-1.5 font-serif text-2xl font-semibold leading-tight tracking-tight sm:text-3xl lg:text-4xl">
+          <h1 className="mt-1.5 font-serif text-xl font-semibold leading-tight tracking-tight sm:text-2xl lg:text-3xl">
             {product.name}
           </h1>
 
