@@ -12,13 +12,17 @@ import { QuickView } from "@/components/quick-view"
 import { cn } from "@/lib/utils"
 
 /** Premium marketplace product card — large image (a good portion of the
- * card, not a cramped square), name (2-line clamp), rating, price/discount.
- * Deliberately no Add to Cart / Buy Now here — those live on the product
- * detail page's sticky action bar (components/product-detail.tsx) once the
- * buyer has actually opened the product, keeping the card itself a clean,
- * tap-to-view browsing surface. Wishlist sits in the primary corner;
- * Compare/Quick View are kept (real, working features) as a smaller,
- * secondary pair so they don't compete for space with wishlist. */
+ * card, not a cramped square), name (2-line clamp), rating, price/discount,
+ * and the real seller's shop name (services/catalog.service.ts's
+ * attachSellerNames — sellers/{uid}.shopName, already public data; never
+ * a seller's email/phone/uid). Hidden entirely when a product has no
+ * resolvable seller name, never a placeholder. Deliberately no Add to Cart
+ * / Buy Now here — those live on the product detail page's sticky action
+ * bar (components/product-detail.tsx) once the buyer has actually opened
+ * the product, keeping the card itself a clean, tap-to-view browsing
+ * surface. Wishlist sits in the primary corner; Compare/Quick View are kept
+ * (real, working features) as a smaller, secondary pair so they don't
+ * compete for space with wishlist. */
 export function ProductCard({ product }: { product: Product }) {
   const { toggleWishlist, isWishlisted, toggleCompare, isCompared } = useStore()
   const [quickViewOpen, setQuickViewOpen] = useState(false)
@@ -83,6 +87,10 @@ export function ProductCard({ product }: { product: Product }) {
         </div>
 
         <Price price={product.price} originalPrice={product.originalPrice} size="sm" className="mt-1.5" />
+
+        {product.sellerName && (
+          <p className="mt-1 truncate text-[11px] font-medium text-black sm:text-xs">by {product.sellerName}</p>
+        )}
       </div>
 
       <QuickView product={product} open={quickViewOpen} onOpenChange={setQuickViewOpen} />
