@@ -48,8 +48,20 @@ export const categories: Category[] = [
     image: "/placeholder.svg",
   },
   {
+    slug: "flower-plants",
+    name: "Flower",
+    description: "Blooming flower plants for every space",
+    image: "/placeholder.svg",
+  },
+  {
+    slug: "fruiting-plants",
+    name: "Fruit",
+    description: "Fruit-bearing plants for your garden or balcony",
+    image: "/placeholder.svg",
+  },
+  {
     slug: "pots-planters",
-    name: "Pots & Planters",
+    name: "Pots",
     description: "Ceramic, terracotta & decorative planters",
     image: "/placeholder.svg",
   },
