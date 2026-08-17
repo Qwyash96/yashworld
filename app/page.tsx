@@ -1,5 +1,6 @@
 import { getProductCatalog, getCategoryCatalog } from "@/services/catalog.service"
 import { getActiveBanners } from "@/services/banner.service"
+import { getCategoryImageOverrides } from "@/services/category-images.service"
 import { getActiveFlashSales } from "@/services/campaign.service"
 import { getRunningAdsByPosition } from "@/services/sponsored-ad.service"
 import { getTrustBadgesSettings } from "@/lib/platform-settings"
@@ -50,13 +51,14 @@ export const revalidate = 60
  * each slot renders nothing at all when no ad is currently running there.
  */
 export default async function HomePage() {
-  const [products, categories, banners, flashSales, trustBadgesSettings, sponsoredAds] = await Promise.all([
+  const [products, categories, banners, flashSales, trustBadgesSettings, sponsoredAds, categoryImageOverrides] = await Promise.all([
     getProductCatalog(),
     getCategoryCatalog(),
     getActiveBanners(),
     getActiveFlashSales(),
     getTrustBadgesSettings(),
     getRunningAdsByPosition(),
+    getCategoryImageOverrides(),
   ])
 
   // Best Sellers only shows real sales — a marketplace with zero sales yet
@@ -88,9 +90,11 @@ export default async function HomePage() {
   // the generic "Plants" catch-all, etc.) still shows in CategoryPillBar and
   // /categories, just not in this curated grid.
   const SHOP_BY_CATEGORY_SLUGS = ["flower-plants", "fruiting-plants", "gardening-tools", "pots-planters"]
-  const shopByCategoryList = SHOP_BY_CATEGORY_SLUGS.map((slug) => categories.find((c) => c.slug === slug)).filter(
-    (c): c is (typeof categories)[number] => c !== undefined,
-  )
+  const shopByCategoryList = SHOP_BY_CATEGORY_SLUGS.map((slug) => categories.find((c) => c.slug === slug))
+    .filter((c): c is (typeof categories)[number] => c !== undefined)
+    // Admin → Marketing → Category Images overrides the card's image only —
+    // name/description/slug still come from the category record above.
+    .map((c) => (categoryImageOverrides[c.slug] ? { ...c, image: categoryImageOverrides[c.slug]! } : c))
 
   // Trending: highest rating x review-volume — a simple, honest popularity
   // proxy that needs no separate analytics pipeline.

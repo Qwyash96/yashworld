@@ -110,6 +110,7 @@ export const adminSections: AdminSection[] = [
     permission: "marketing",
     items: [
       { label: "Home Banners", href: "/admin/banners", permission: "coupons_offers" },
+      { label: "Category Images", href: "/admin/marketing/category-images", permission: "coupons_offers" },
       { label: "Sponsored Ads", href: "/admin/sponsored-ads", permission: "coupons_offers" },
       { label: "Coupons", href: "/admin/coupons", permission: "coupons_offers" },
       { label: "Campaigns", href: "/admin/campaigns", permission: "coupons_offers" },

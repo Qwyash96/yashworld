@@ -360,6 +360,17 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // categoryImages/{slug} — homepage "Shop by Category" card image
+    // overrides (Admin → Marketing → Category Images), doc ID is the
+    // category slug itself (flower-plants, fruiting-plants, gardening-tools,
+    // pots-planters). Public read (the homepage grid reads these
+    // server-side); write is Admin-SDK-only (app/api/admin/category-images/*),
+    // same shape as banners/{id} above.
+    match /categoryImages/{slug} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // platformSettings/{doc} — e.g. platformSettings/commission,
     // platformSettings/general, platformSettings/shipping. Same sensitivity
     // treatment for every doc in this collection: a hard deny for every
