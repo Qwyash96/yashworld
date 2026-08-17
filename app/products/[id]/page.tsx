@@ -55,8 +55,8 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
   const related = [...sameCategory, ...crossCategory].slice(0, 4)
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-10 pb-28 sm:px-6 sm:pb-24 lg:px-8">
-      <nav aria-label="Breadcrumb" className="mb-8 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+    <div className="mx-auto max-w-7xl px-4 py-6 pb-28 sm:px-6 sm:py-8 sm:pb-24 lg:px-8">
+      <nav aria-label="Breadcrumb" className="mb-4 flex flex-wrap items-center gap-1 text-sm text-muted-foreground sm:mb-5">
         <Link href="/" className="hover:text-foreground">
           Home
         </Link>
@@ -73,9 +73,9 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
       <ReviewsSection productId={product.id} sellerId={product.sellerId} />
 
       {related.length > 0 && (
-        <section className="mt-20">
+        <section className="mt-10 sm:mt-12">
           <h2 className="font-serif text-2xl font-semibold tracking-tight">You may also like</h2>
-          <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4">
             {related.map((p) => (
               <ProductCard key={p.id} product={p} />
             ))}

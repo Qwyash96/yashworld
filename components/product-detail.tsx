@@ -124,9 +124,9 @@ export function ProductDetail({ product }: { product: Product }) {
 
   return (
     <>
-      <div className="grid gap-10 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2 lg:gap-8">
         {/* Gallery */}
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2">
           <div
             className="relative w-full overflow-hidden rounded-md"
             style={{ aspectRatio: product.galleryAspectRatio ?? 4 / 5 }}
@@ -198,20 +198,20 @@ export function ProductDetail({ product }: { product: Product }) {
 
         {/* Info */}
         <div className="flex flex-col">
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">
+          <p className="text-sm uppercase tracking-widest text-muted-foreground">
             {product.category}
           </p>
-          <h1 className="mt-2 font-serif text-3xl font-semibold tracking-tight sm:text-4xl">
+          <h1 className="mt-1.5 font-serif text-2xl font-semibold leading-tight tracking-tight sm:text-3xl lg:text-4xl">
             {product.name}
           </h1>
 
-          <div className="mt-3 flex items-center gap-3">
+          <div className="mt-2 flex items-center gap-2">
             <div className="flex items-center gap-1">
               {Array.from({ length: 5 }).map((_, i) => (
                 <Star
                   key={i}
                   className={cn(
-                    "size-4",
+                    "size-3.5",
                     i < Math.round(product.rating)
                       ? "fill-foreground text-foreground"
                       : "text-muted-foreground/40",
@@ -229,14 +229,14 @@ export function ProductDetail({ product }: { product: Product }) {
             originalPrice={product.originalPrice}
             size="lg"
             showSavings
-            className="mt-5"
+            className="mt-3"
           />
           <p className="mt-1 text-xs text-muted-foreground">Inclusive of all taxes</p>
 
           {stock !== undefined && (
             <p
               className={cn(
-                "mt-3 flex items-center gap-1.5 text-sm font-medium",
+                "mt-2 flex items-center gap-1.5 text-sm font-medium",
                 isOutOfStock ? "text-red-600" : isLowStock ? "text-orange-600" : "text-green-700",
               )}
             >
@@ -250,7 +250,7 @@ export function ProductDetail({ product }: { product: Product }) {
             </p>
           )}
 
-          <div className="mt-5">
+          <div className="mt-3">
             <p
               ref={descriptionRef}
               className={cn(
@@ -272,23 +272,23 @@ export function ProductDetail({ product }: { product: Product }) {
             )}
           </div>
 
-          <Separator className="my-6" />
+          <Separator className="my-4" />
 
           {/* Deliver to */}
           <div>
             <p className="text-sm font-medium">Deliver to</p>
-            <div className="mt-2 flex gap-2">
+            <div className="mt-1.5 flex gap-2">
               <input
                 value={pincode}
                 onChange={(e) => setPincode(sanitizeDigits(e.target.value, 6))}
                 inputMode="numeric"
                 placeholder="Enter PIN Code"
-                className="h-10 w-36 rounded-sm border border-border px-3 text-sm outline-none focus:border-foreground"
+                className="h-9 w-36 rounded-sm border border-border px-3 text-sm outline-none focus:border-foreground"
               />
               <Button
                 type="button"
                 variant="outline"
-                className="h-10"
+                className="h-9"
                 onClick={handleCheckPincode}
                 disabled={deliveryCheck.status === "loading"}
               >
@@ -307,7 +307,7 @@ export function ProductDetail({ product }: { product: Product }) {
           </div>
 
           {/* Quantity */}
-          <div className="mt-6 flex items-center gap-3">
+          <div className="mt-4 flex items-center gap-3">
             <div className="flex items-center rounded-sm border border-border">
               <Button
                 variant="ghost"
@@ -333,13 +333,13 @@ export function ProductDetail({ product }: { product: Product }) {
 
           {/* Benefits — real, existing storefront policy (see the Shipping &
               Returns accordion below), not invented claims. */}
-          <div className="mt-6 grid grid-cols-3 gap-2 text-center sm:gap-3">
-            <Perk icon={<Truck className="size-5" />} label="Free Delivery" />
-            <Perk icon={<RotateCcw className="size-5" />} label="7-Day Return" />
-            <Perk icon={<Leaf className="size-5" />} label="Healthy Plant Guarantee" />
+          <div className="mt-4 grid grid-cols-3 gap-2 text-center sm:gap-3">
+            <Perk icon={<Truck className="size-4" />} label="Free Delivery" />
+            <Perk icon={<RotateCcw className="size-4" />} label="7-Day Return" />
+            <Perk icon={<Leaf className="size-4" />} label="Healthy Plant Guarantee" />
           </div>
 
-          <Accordion className="mt-6 w-full">
+          <Accordion className="mt-4 w-full">
             <AccordionItem value="description">
               <AccordionTrigger>Description</AccordionTrigger>
               <AccordionContent>
@@ -384,7 +384,7 @@ export function ProductDetail({ product }: { product: Product }) {
         className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/90"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <div className="mx-auto flex max-w-7xl items-center gap-2.5 px-4 py-2.5 sm:gap-4 sm:px-6 sm:py-3 lg:px-8">
+        <div className="mx-auto flex max-w-7xl items-center gap-2.5 px-4 py-2 sm:gap-4 sm:px-6 sm:py-2.5 lg:px-8">
           <div className="hidden shrink-0 sm:block">
             <Price price={product.price} originalPrice={product.originalPrice} size="sm" />
           </div>
@@ -414,7 +414,7 @@ export function ProductDetail({ product }: { product: Product }) {
 
 function Perk({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-1 rounded-md border border-border p-2 sm:p-3">
+    <div className="flex h-full flex-col items-center justify-center gap-0.5 rounded-md border border-border p-1.5 sm:p-2">
       <span className="text-foreground">{icon}</span>
       <span className="text-[11px] leading-tight text-muted-foreground sm:text-xs">{label}</span>
     </div>

@@ -99,7 +99,7 @@ export function ReviewsSection({ productId, sellerId }: { productId: string; sel
   }
 
   return (
-    <section className="mt-16 border-t border-border pt-10">
+    <section className="mt-10 border-t border-border pt-6 sm:mt-12">
       <h2 className="font-serif text-2xl font-semibold tracking-tight">Customer Reviews</h2>
 
       {reviews === "loading" && (
