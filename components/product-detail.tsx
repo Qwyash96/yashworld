@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   Heart,
@@ -14,6 +14,7 @@ import {
   Zap,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   CheckCircle2,
   Loader2,
 } from "lucide-react"
@@ -76,6 +77,21 @@ export function ProductDetail({ product }: { product: Product }) {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => recordProductView(product.id), [product.id])
+
+  // Description collapse/expand — descriptionTruncated decides whether the
+  // More/Less toggle shows at all (a short description that already fits
+  // in 3 lines gets no button). Measured once, while the paragraph is still
+  // clamped (scrollHeight > clientHeight only when line-clamp is actually
+  // cutting text off) — real layout measurement, not a character-count guess.
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false)
+  const [descriptionTruncated, setDescriptionTruncated] = useState(false)
+  const descriptionRef = useRef<HTMLParagraphElement>(null)
+
+  useEffect(() => {
+    const el = descriptionRef.current
+    if (!el) return
+    setDescriptionTruncated(el.scrollHeight > el.clientHeight + 1)
+  }, [product.description])
 
   function goToImage(delta: number) {
     setActiveImageIndex((i) => (i + delta + images.length) % images.length)
@@ -234,9 +250,27 @@ export function ProductDetail({ product }: { product: Product }) {
             </p>
           )}
 
-          <p className="mt-5 text-pretty leading-relaxed text-muted-foreground">
-            {product.description}
-          </p>
+          <div className="mt-5">
+            <p
+              ref={descriptionRef}
+              className={cn(
+                "text-pretty leading-relaxed text-muted-foreground",
+                !descriptionExpanded && "line-clamp-3",
+              )}
+            >
+              {product.description}
+            </p>
+            {descriptionTruncated && (
+              <button
+                type="button"
+                onClick={() => setDescriptionExpanded((v) => !v)}
+                className="mt-1 flex items-center gap-1 text-sm font-semibold text-green-700 hover:underline"
+              >
+                {descriptionExpanded ? "Less" : "More"}
+                <ChevronDown className={cn("size-4 transition-transform", descriptionExpanded && "rotate-180")} />
+              </button>
+            )}
+          </div>
 
           <Separator className="my-6" />
 
