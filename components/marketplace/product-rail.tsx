@@ -3,13 +3,11 @@ import { ChevronRight } from "lucide-react"
 import { ProductCard } from "@/components/product-card"
 import { type Product } from "@/lib/products"
 
-/** Shared shell for every homepage product section — real products in, real
- * dense grid out (2/4/6 cols on mobile/tablet/desktop). Renders nothing
- * when there's no real data for this section, rather than padding it out
- * with placeholders.
- *
- * Mobile is 2 columns (Flipkart-style) rather than 3 so each card gets
- * enough width for the image/title/price/buttons to stay readable. */
+/** Shared shell for every homepage product section — real products in, a
+ * fixed 2-column grid out at every breakpoint (matches the redesigned
+ * ProductCard, which is wider and has no inline buttons — see
+ * components/product-card.tsx). Renders nothing when there's no real data
+ * for this section, rather than padding it out with placeholders. */
 export function ProductRail({
   id,
   title,
@@ -40,7 +38,7 @@ export function ProductRail({
         )}
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-2 sm:gap-2.5 md:grid-cols-4 lg:grid-cols-6">
+      <div className="mt-3 grid grid-cols-2 gap-3 sm:gap-4">
         {products.map((product) => (
           <ProductCard key={product.id} product={product} />
         ))}

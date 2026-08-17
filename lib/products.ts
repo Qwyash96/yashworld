@@ -12,6 +12,9 @@ export type Product = {
   originalPrice?: number
   category: string
   image: string
+  /** Every uploaded photo, cover first — undefined for the static fallback
+   * catalog (single `image` only). Powers the product detail gallery. */
+  images?: string[]
   description: string
   details: string[]
   colors: string[]
@@ -27,6 +30,8 @@ export type Product = {
   createdAt?: string
   /** Cumulative units sold — powers the homepage's Best Sellers ranking. Undefined for the static fallback catalog. */
   unitsSold?: number
+  /** Real inventory count — undefined for the static fallback catalog (never actually orderable). */
+  stock?: number
 }
 export const categories: Category[] = [
   {

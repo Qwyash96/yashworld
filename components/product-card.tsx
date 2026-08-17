@@ -7,16 +7,18 @@ import { useStore } from "@/components/store-provider"
 import { type Product } from "@/lib/products"
 import { calculateDiscountPercent } from "@/lib/discount"
 import { Price, DiscountBadge } from "@/components/price"
-import { ProductCardActions } from "@/components/product-card-actions"
 import { ProductImage } from "@/components/product-image"
 import { QuickView } from "@/components/quick-view"
 import { cn } from "@/lib/utils"
 
 /** Premium marketplace product card — large image (a good portion of the
- * card, not a cramped square), name (2-line clamp), rating, price/discount,
- * and full-width Add to Cart / Buy Now. Wishlist sits in the primary
- * corner; Compare/Quick View are kept (real, working features) as a
- * smaller, secondary pair so they don't compete for space with wishlist. */
+ * card, not a cramped square), name (2-line clamp), rating, price/discount.
+ * Deliberately no Add to Cart / Buy Now here — those live on the product
+ * detail page's sticky action bar (components/product-detail.tsx) once the
+ * buyer has actually opened the product, keeping the card itself a clean,
+ * tap-to-view browsing surface. Wishlist sits in the primary corner;
+ * Compare/Quick View are kept (real, working features) as a smaller,
+ * secondary pair so they don't compete for space with wishlist. */
 export function ProductCard({ product }: { product: Product }) {
   const { toggleWishlist, isWishlisted, toggleCompare, isCompared } = useStore()
   const [quickViewOpen, setQuickViewOpen] = useState(false)
@@ -81,10 +83,6 @@ export function ProductCard({ product }: { product: Product }) {
         </div>
 
         <Price price={product.price} originalPrice={product.originalPrice} size="sm" className="mt-1.5" />
-
-        <div className="mt-auto">
-          <ProductCardActions product={product} />
-        </div>
       </div>
 
       <QuickView product={product} open={quickViewOpen} onOpenChange={setQuickViewOpen} />

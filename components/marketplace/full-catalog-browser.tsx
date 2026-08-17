@@ -163,7 +163,7 @@ export function FullCatalogBrowser({ categories }: { categories: Category[] }) {
       {/* Grid */}
       <div className="mt-3">
         {loading ? (
-          <div className="grid grid-cols-3 gap-1.5 sm:gap-2.5 md:grid-cols-4 lg:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             {Array.from({ length: PAGE_SIZE }).map((_, i) => (
               <ProductCardSkeleton key={i} />
             ))}
@@ -204,7 +204,7 @@ export function FullCatalogBrowser({ categories }: { categories: Category[] }) {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-3 gap-1.5 sm:gap-2.5 md:grid-cols-4 lg:grid-cols-6">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               {visibleProducts.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}

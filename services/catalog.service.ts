@@ -27,6 +27,13 @@ const CATEGORIES_COLLECTION = "categories"
  * server-side) so a scheduled/campaign price shows everywhere automatically,
  * with no per-page changes needed.
  */
+/** Every uploaded photo's URL, cover first — the product detail gallery's thumbnail order. */
+function orderedImageUrls(images: FirestoreProduct["images"]): string[] {
+  const cover = getCoverImageUrl(images)
+  const rest = images.map((img) => img.url).filter((url) => url !== cover)
+  return cover ? [cover, ...rest] : rest
+}
+
 export function toUIProduct(product: FirestoreProduct, now: Date = new Date()): Product {
   const { plantAttrs } = product
   const originalUnitPrice = product.originalPrice ?? product.price
@@ -42,11 +49,13 @@ export function toUIProduct(product: FirestoreProduct, now: Date = new Date()): 
     category: product.categoryId,
     sellerId: product.sellerId,
     image: getCoverImageUrl(product.images) ?? "/placeholder.svg",
+    images: orderedImageUrls(product.images),
     description: product.description,
     details: [
       `Light: ${plantAttrs.light}`,
       `Water every ${plantAttrs.wateringFrequencyDays} day${plantAttrs.wateringFrequencyDays === 1 ? "" : "s"}`,
       `Difficulty: ${plantAttrs.difficulty}`,
+      `Size: ${plantAttrs.size}`,
       plantAttrs.petSafe ? "Pet safe" : "Keep away from pets",
       plantAttrs.indoor ? "Indoor plant" : "Outdoor plant",
     ],
@@ -56,6 +65,7 @@ export function toUIProduct(product: FirestoreProduct, now: Date = new Date()): 
     reviews: product.ratingCount,
     createdAt: product.createdAt,
     unitsSold: product.unitsSold,
+    stock: product.stock,
   }
 }
 
