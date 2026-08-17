@@ -46,9 +46,13 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
 
   const category = categories.find((c) => c.slug === product.category)
 
-  const related = products
-    .filter((p) => p.category === product.category && p.id !== product.id)
-    .slice(0, 4)
+  // Same category first; if that isn't enough to fill the section, top up
+  // with any other real product (never the one currently open) rather than
+  // showing fewer than 4 cards.
+  const otherProducts = products.filter((p) => p.id !== product.id)
+  const sameCategory = otherProducts.filter((p) => p.category === product.category)
+  const crossCategory = otherProducts.filter((p) => p.category !== product.category)
+  const related = [...sameCategory, ...crossCategory].slice(0, 4)
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 pb-28 sm:px-6 sm:pb-24 lg:px-8">
