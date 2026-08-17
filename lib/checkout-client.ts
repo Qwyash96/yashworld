@@ -46,6 +46,30 @@ export async function fetchCheckoutConfig(): Promise<
   return { ok: true, config: result.data }
 }
 
+export interface PincodeLookupResult {
+  city: string
+  state: string
+  /** Post office / locality names sharing this PIN code — offered as
+   * selectable area suggestions, never force-picked for the buyer. */
+  areas: string[]
+}
+
+/** Public, unauthenticated — PIN-code auto-fill for the checkout address
+ * form (app/api/checkout/pincode-lookup). Never throws — a network failure
+ * or unknown PIN code just means the buyer fills city/state manually. */
+export async function lookupPincode(
+  pincode: string,
+): Promise<{ ok: true; result: PincodeLookupResult } | { ok: false; error: string }> {
+  try {
+    const response = await fetch(`/api/checkout/pincode-lookup?pincode=${encodeURIComponent(pincode)}`)
+    const body = await response.json().catch(() => ({ ok: false }))
+    if (!body.ok) return { ok: false, error: body.error ?? "Couldn't look up this PIN code." }
+    return { ok: true, result: { city: body.city, state: body.state, areas: body.areas ?? [] } }
+  } catch {
+    return { ok: false, error: "Couldn't look up this PIN code. Please enter your address manually." }
+  }
+}
+
 export interface OrderPricingPreview {
   subtotal: number
   discount: number

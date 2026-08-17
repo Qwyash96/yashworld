@@ -10,6 +10,7 @@ import {
   createPaymentOrder,
   verifyPayment,
   previewOrderPricing,
+  lookupPincode,
   type CheckoutAddressInput,
   type CheckoutItemInput,
   type OrderPricingPreview,
@@ -184,6 +185,14 @@ export default function CheckoutPage() {
   const [selectedAddressId, setSelectedAddressId] = useState<string | "new">("new")
   const [saveNewAddress, setSaveNewAddress] = useState(true)
 
+  // PIN-code auto-fill (City/State) — never blocks checkout on failure, see
+  // the debounced effect below.
+  const [pincodeLookup, setPincodeLookup] = useState<{
+    status: "idle" | "loading" | "success" | "error"
+    message?: string
+    areas?: string[]
+  }>({ status: "idle" })
+
   function applyAddressToForm(a: Address) {
     setForm((prev) => ({
       ...prev,
@@ -330,6 +339,44 @@ export default function CheckoutPage() {
   function setField<K extends keyof CheckoutForm>(key: K, value: CheckoutForm[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
     setErrors((prev) => ({ ...prev, [key]: undefined }))
+  }
+
+  // Fires ~400ms after the postal code reaches exactly 6 digits (debounced),
+  // and only for the pincode that's still current when the response comes
+  // back (`cancelled` guard) — so rapid edits never apply a stale lookup's
+  // city/state over whatever the buyer has since typed. A failure here only
+  // ever shows a message; it never sets a form validation error and never
+  // blocks continuing checkout, since the buyer can always fill City/State
+  // by hand.
+  useEffect(() => {
+    const pincode = form.postalCode.trim()
+    if (!/^\d{6}$/.test(pincode)) {
+      setPincodeLookup({ status: "idle" })
+      return
+    }
+    let cancelled = false
+    setPincodeLookup({ status: "loading" })
+    const timer = setTimeout(() => {
+      lookupPincode(pincode).then((result) => {
+        if (cancelled) return
+        if (!result.ok) {
+          setPincodeLookup({ status: "error", message: result.error })
+          return
+        }
+        setPincodeLookup({ status: "success", areas: result.result.areas })
+        setField("city", result.result.city)
+        setField("state", result.result.state)
+      })
+    }, 400)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.postalCode])
+
+  function selectSuggestedArea(area: string) {
+    setField("line2", area)
   }
 
   /** Runs only after the order has actually been placed/paid — never before,
@@ -671,8 +718,40 @@ export default function CheckoutPage() {
                 {errors.postalCode && (
                   <p className="text-xs text-destructive">{errors.postalCode}</p>
                 )}
+                {!errors.postalCode && pincodeLookup.status === "loading" && (
+                  <p className="text-xs text-muted-foreground">Checking PIN code...</p>
+                )}
+                {!errors.postalCode && pincodeLookup.status === "error" && (
+                  <p className="text-xs text-destructive">{pincodeLookup.message}</p>
+                )}
+                {!errors.postalCode && pincodeLookup.status === "success" && (
+                  <p className="text-xs text-green-700">City/State auto-filled — edit if needed.</p>
+                )}
               </div>
             </div>
+
+            {pincodeLookup.status === "success" && pincodeLookup.areas && pincodeLookup.areas.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs text-muted-foreground">Area / Post Office (optional — tap to fill in above):</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {pincodeLookup.areas.map((area) => (
+                    <button
+                      key={area}
+                      type="button"
+                      onClick={() => selectSuggestedArea(area)}
+                      className={cn(
+                        "rounded-full border px-2.5 py-1 text-xs transition-colors",
+                        form.line2 === area
+                          ? "border-black bg-black text-white"
+                          : "border-border text-muted-foreground hover:border-black hover:text-black",
+                      )}
+                    >
+                      {area}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="country">Country</Label>
