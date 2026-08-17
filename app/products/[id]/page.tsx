@@ -75,7 +75,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
       {related.length > 0 && (
         <section className="mt-20">
           <h2 className="font-serif text-2xl font-semibold tracking-tight">You may also like</h2>
-          <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-8">
+          <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4">
             {related.map((p) => (
               <ProductCard key={p.id} product={p} />
             ))}

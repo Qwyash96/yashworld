@@ -4,10 +4,10 @@ import { ProductCard } from "@/components/product-card"
 import { type Product } from "@/lib/products"
 
 /** Shared shell for every homepage product section — real products in, a
- * fixed 2-column grid out at every breakpoint (matches the redesigned
- * ProductCard, which is wider and has no inline buttons — see
- * components/product-card.tsx). Renders nothing when there's no real data
- * for this section, rather than padding it out with placeholders. */
+ * dense Flipkart-style grid out: 2 cols on mobile, 3 on tablet, 4 on
+ * desktop (matches the redesigned ProductCard, which has no inline buttons
+ * — see components/product-card.tsx). Renders nothing when there's no real
+ * data for this section, rather than padding it out with placeholders. */
 export function ProductRail({
   id,
   title,
@@ -38,7 +38,7 @@ export function ProductRail({
         )}
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-3 sm:gap-4">
+      <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
         {products.map((product) => (
           <ProductCard key={product.id} product={product} />
         ))}
