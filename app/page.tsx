@@ -5,6 +5,7 @@ import { getRunningAdsByPosition } from "@/services/sponsored-ad.service"
 import { getTrustBadgesSettings } from "@/lib/platform-settings"
 import { calculateDiscountPercent } from "@/lib/discount"
 import { HeroSlider } from "@/components/marketplace/hero-slider"
+import { PromoPopup } from "@/components/marketplace/promo-popup"
 import { CategoryPillBar } from "@/components/marketplace/category-pill-bar"
 import { CategoryCollectionGrid } from "@/components/marketplace/category-collection-grid"
 import { TrustBadges } from "@/components/marketplace/trust-badges"
@@ -117,6 +118,8 @@ export default async function HomePage() {
 
   return (
     <div className="bg-white">
+      <PromoPopup banner={banners[0]} />
+
       <CategoryPillBar categories={categories} />
 
       <HeroSlider banners={banners} />
