@@ -48,6 +48,48 @@ const LOW_STOCK_THRESHOLD = 5
 // presence of the data itself.
 const PLANT_CATEGORY_SLUGS = ["plants", "indoor-plants", "outdoor-plants", "flower-plants", "fruiting-plants"]
 
+function capitalize(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1)
+}
+
+interface Highlight {
+  label: string
+  value: string
+}
+
+/**
+ * Product Highlights — real, dynamically-derived specs, never the same
+ * hardcoded set for every product. The only structured attributes this
+ * schema actually stores today are plantAttrs (see types/product.ts —
+ * there's no per-category field like material/color/weight/diameter for
+ * pots or tools yet, a seller-form/schema gap, not something to fabricate
+ * here). For plant categories, every plantAttrs field is a genuine
+ * plant-care fact worth showing. For everything else, only `size` is
+ * generic/physical enough to be honestly shown regardless of category —
+ * light/watering/difficulty/pet-safety would be meaningless (or actively
+ * misleading) on a pot or a gardening tool, so they're deliberately
+ * omitted outside plant categories. A product with no plantAttrs at all
+ * (the static fallback catalog) gets no highlights, and the section hides
+ * itself entirely rather than showing an empty grid.
+ */
+function getProductHighlights(product: Product, isPlantCategory: boolean): Highlight[] {
+  const attrs = product.plantAttrs
+  if (!attrs) return []
+
+  if (!isPlantCategory) {
+    return [{ label: "Size", value: capitalize(attrs.size) }]
+  }
+
+  return [
+    { label: "Plant Type", value: attrs.indoor ? "Indoor Plant" : "Outdoor Plant" },
+    { label: "Light Requirement", value: `${capitalize(attrs.light)} Light` },
+    { label: "Watering", value: `Every ${attrs.wateringFrequencyDays} Day${attrs.wateringFrequencyDays === 1 ? "" : "s"}` },
+    { label: "Difficulty", value: capitalize(attrs.difficulty) },
+    { label: "Size", value: capitalize(attrs.size) },
+    { label: "Pet Safety", value: attrs.petSafe ? "Pet Safe" : "Keep Away from Pets" },
+  ]
+}
+
 export function ProductDetail({ product }: { product: Product }) {
   const router = useRouter()
   const { addToCart, toggleWishlist, isWishlisted, recordProductView } = useStore()
@@ -58,6 +100,9 @@ export function ProductDetail({ product }: { product: Product }) {
   const wishlisted = isWishlisted(product.id)
   const discountPercent = calculateDiscountPercent(product.price, product.originalPrice)
   const isPlantCategory = PLANT_CATEGORY_SLUGS.includes(product.category)
+  const highlights = getProductHighlights(product, isPlantCategory)
+  const [highlightsOpen, setHighlightsOpen] = useState(true)
+  const [allDetailsOpen, setAllDetailsOpen] = useState(false)
 
   const images = product.images && product.images.length > 0 ? product.images : [product.image]
   const activeImage = images[activeImageIndex] ?? product.image
@@ -339,7 +384,54 @@ export function ProductDetail({ product }: { product: Product }) {
             <Perk icon={<Leaf className="size-4" />} label="Healthy Plant Guarantee" />
           </div>
 
-          <Accordion className="mt-4 w-full">
+          {/* Product Highlights — short, scannable specs only (see
+              getProductHighlights above); the full description/care/policy
+              text lives in "All Details" below, never duplicated here. */}
+          {highlights.length > 0 && (
+            <div className="mt-4 border-t border-border pt-4">
+              <button
+                type="button"
+                onClick={() => setHighlightsOpen((v) => !v)}
+                className="flex w-full items-center justify-between text-left"
+              >
+                <p className="text-lg font-semibold text-black sm:text-xl">Product Highlights</p>
+                <ChevronDown
+                  className={cn("size-5 shrink-0 text-muted-foreground transition-transform", highlightsOpen && "rotate-180")}
+                />
+              </button>
+              {highlightsOpen && (
+                <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3">
+                  {highlights.map((h) => (
+                    <div key={h.label} className="border-b border-border pb-2">
+                      <p className="text-xs text-muted-foreground">{h.label}</p>
+                      <p className="text-sm font-medium text-black">{h.value}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* All Details — the full description/care-guide/policy text,
+              collapsed by default so it doesn't add page length until the
+              buyer actually wants it. */}
+          <div className="mt-4 border-t border-border pt-4">
+            <button
+              type="button"
+              onClick={() => setAllDetailsOpen((v) => !v)}
+              className="flex w-full items-center justify-between text-left"
+            >
+              <div>
+                <p className="text-lg font-semibold text-black sm:text-xl">All Details</p>
+                <p className="text-xs text-muted-foreground">Features, description and more</p>
+              </div>
+              <ChevronDown
+                className={cn("size-5 shrink-0 text-muted-foreground transition-transform", allDetailsOpen && "rotate-180")}
+              />
+            </button>
+
+            {allDetailsOpen && (
+              <Accordion className="mt-3 w-full">
             <AccordionItem value="description">
               <AccordionTrigger>Description</AccordionTrigger>
               <AccordionContent>
@@ -370,7 +462,9 @@ export function ProductDetail({ product }: { product: Product }) {
                 </ul>
               </AccordionContent>
             </AccordionItem>
-          </Accordion>
+              </Accordion>
+            )}
+          </div>
         </div>
       </div>
 

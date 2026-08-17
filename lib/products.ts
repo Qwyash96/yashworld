@@ -39,6 +39,22 @@ export type Product = {
   unitsSold?: number
   /** Real inventory count — undefined for the static fallback catalog (never actually orderable). */
   stock?: number
+  /** Raw plant-care attributes (types/product.ts's PlantAttributes), passed
+   * through as-is for the product detail page's Product Highlights section
+   * to build real label/value specs from — undefined for the static
+   * fallback catalog. Every real Firestore product has this regardless of
+   * category (no per-category schema yet), so consumers should only treat
+   * light/wateringFrequencyDays/difficulty/petSafe as meaningful for actual
+   * plant categories; `size` and `indoor` are generic enough to show for
+   * any product. */
+  plantAttrs?: {
+    light: "low" | "medium" | "bright"
+    wateringFrequencyDays: number
+    petSafe: boolean
+    difficulty: "easy" | "moderate" | "hard"
+    size: "small" | "medium" | "large"
+    indoor: boolean
+  }
 }
 export const categories: Category[] = [
   {

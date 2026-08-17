@@ -68,6 +68,7 @@ export function toUIProduct(product: FirestoreProduct, now: Date = new Date()): 
     createdAt: product.createdAt,
     unitsSold: product.unitsSold,
     stock: product.stock,
+    plantAttrs,
   }
 }
 
